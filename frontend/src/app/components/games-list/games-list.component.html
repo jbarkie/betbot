@@ -1,0 +1,8 @@
+@if(list().length === 0) {
+  <app-alert-message message="No games found for today." />
+}
+@else {
+  @for(item of list(); track item.id) {
+    <app-game [game]="item" />
+  }
+}

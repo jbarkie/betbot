@@ -15,8 +15,8 @@ export class NbaComponent {
   game1: Game = {
     id: '1',
     sport: 'NBA',
-    awayTeam: 'LAL',
-    homeTeam: 'BOS',
+    awayTeam: 'Los Angeles Lakers',
+    homeTeam: 'Boston Celtics',
     date: '2024-03-25',
     odds: 'BOS -9.5',
   };

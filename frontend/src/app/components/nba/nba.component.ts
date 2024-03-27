@@ -15,6 +15,5 @@ import { nbaFeature } from './state';
 export class NbaComponent {
   today: Date = new Date();
   constructor(private store: Store) {}
-  loaded = this.store.selectSignal(nbaFeature.selectIsLoaded);
   games = this.store.selectSignal(nbaFeature.selectNbaGames);
 }

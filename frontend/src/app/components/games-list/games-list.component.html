@@ -1,8 +1,14 @@
+@if(loaded()) {
 @if(list().length === 0) {
-  <app-alert-message message="No games found for today." />
+<app-alert-message message="No games found for today." />
 }
 @else {
-  @for(item of list(); track item.id) {
-    <app-game [game]="item" />
-  }
+@for(item of list(); track item.id) {
+<app-game [game]="item" />
+}
+}
+} @else {
+<div class="loading-container">
+  <span class="loading loading-bars loading-lg"></span>
+</div>
 }

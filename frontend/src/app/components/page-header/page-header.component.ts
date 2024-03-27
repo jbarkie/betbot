@@ -5,9 +5,9 @@ import { NavBarComponent } from '../nav-bar/nav-bar.component';
   selector: 'app-page-header',
   standalone: true,
   imports: [NavBarComponent],
-  templateUrl: './page-header.component.html',
-  styleUrl: './page-header.component.css'
+  template: `<header>
+    <app-nav-bar />
+  </header>`,
+  styles: [],
 })
-export class PageHeaderComponent {
-
-}
+export class PageHeaderComponent {}

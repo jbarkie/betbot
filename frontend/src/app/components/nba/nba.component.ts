@@ -1,15 +1,18 @@
 import { DatePipe } from '@angular/common';
 import { Component } from '@angular/core';
 import { GamesListComponent } from '../games-list/games-list.component';
-import { Game } from '../models';
 import { Store } from '@ngrx/store';
 import { nbaFeature } from './state';
+import { NbaCommands } from './state/actions';
 
 @Component({
   selector: 'app-nba',
   standalone: true,
-  templateUrl: './nba.component.html',
-  styleUrl: './nba.component.css',
+  template: `<p class="text-center mb-2">
+      NBA odds for {{ today | date : 'EEEE, MMMM d' }}:
+    </p>
+    <app-games-list [list]="games()" />`,
+  styles: [],
   imports: [DatePipe, GamesListComponent],
 })
 export class NbaComponent {

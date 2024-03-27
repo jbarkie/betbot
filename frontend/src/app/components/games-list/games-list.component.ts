@@ -9,8 +9,18 @@ import { NbaCommands } from '../nba/state/actions';
 @Component({
   selector: 'app-games-list',
   standalone: true,
-  templateUrl: './games-list.component.html',
-  styleUrl: './games-list.component.css',
+  template: `@if(loaded()) { @if(list().length === 0) {
+    <app-alert-message message="No games found for today." />
+    } @else { @for(item of list(); track item.id) {
+    <app-game [game]="item" />
+    } } } @else {
+    <div class="loading-container">
+      <span class="loading loading-bars loading-lg"></span>
+    </div>
+    }`,
+  styles: [
+    '.loading-container { display: flex; justify-content: center; margin-top: 48px }',
+  ],
   imports: [AlertMessageComponent, GameComponent],
 })
 export class GamesListComponent {

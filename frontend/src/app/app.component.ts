@@ -4,13 +4,17 @@ import { PageHeaderComponent } from './components/page-header/page-header.compon
 import { Store } from '@ngrx/store';
 import { appActions } from './state/actions';
 
-
 @Component({
   selector: 'app-root',
   standalone: true,
   imports: [RouterOutlet, PageHeaderComponent],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.css'
+  template: `<div class="container mx-auto">
+    <app-page-header />
+    <main>
+      <router-outlet />
+    </main>
+  </div>`,
+  styles: [],
 })
 export class AppComponent {
   title = 'BetBot';

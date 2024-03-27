@@ -15,13 +15,13 @@ export class NbaEffects {
   onStartup = createEffect(() =>
     this.actions$.pipe(
       ofType(appActions.applicationStarted),
-      map(() => NbaCommands.loadNBAGames())
+      map(() => NbaCommands.loadGames())
     )
   );
 
   loadGames$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(NbaCommands.loadNBAGames),
+      ofType(NbaCommands.loadGames),
       switchMap(() =>
         this.httpClient.get<{ list: Game[] }>(this.baseUrl + '/nba/games').pipe(
           map((results) => results.list),

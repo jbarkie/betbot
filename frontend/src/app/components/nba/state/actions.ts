@@ -4,7 +4,7 @@ import { Game } from '../../models';
 export const NbaCommands = createActionGroup({
   source: 'NBA Commands',
   events: {
-    'Load NBA Games': emptyProps(),
+    'Load Games': emptyProps(),
   },
 });
 

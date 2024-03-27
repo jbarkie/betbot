@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from nba import get_todays_games
-from models.game import Game
+from models.nba import Game
+from models.nba import GamesResponse
 import uvicorn
 from typing import Any
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,7 +14,7 @@ def main():
     async def status():
         return {"status": "ok"}
     
-    @app.get("/nba/games", response_model=list[Game])
+    @app.get("/nba/games", response_model=GamesResponse)
     async def games() -> Any :
         return get_todays_games()
 

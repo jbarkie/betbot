@@ -1,6 +1,7 @@
 import { EntityState, createEntityAdapter } from '@ngrx/entity';
 import { Game } from '../../models';
-import { createFeature, createReducer, createSelector } from '@ngrx/store';
+import { createFeature, createReducer, createSelector, on } from '@ngrx/store';
+import { NBADocuments } from './actions';
 
 export interface NbaState extends EntityState<Game> {
   isLoaded: boolean;
@@ -13,7 +14,11 @@ const initialState: NbaState = adapter.getInitialState({
 
 export const nbaFeature = createFeature({
   name: 'nba',
-  reducer: createReducer(initialState),
+  reducer: createReducer(
+    initialState,
+    on(NBADocuments.games, (s, a) => adapter.setAll(a.payload, s)),
+    on(NBADocuments.games, (s) => ({...s, isLoaded: true})),
+  ),
   extraSelectors: ({ selectNbaState }) => {
     const { selectAll } = adapter.getSelectors();
     const nbaArray = createSelector(selectNbaState, (s) => selectAll(s));

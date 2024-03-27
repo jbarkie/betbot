@@ -17,7 +17,7 @@ export const nbaFeature = createFeature({
   reducer: createReducer(
     initialState,
     on(NBADocuments.games, (s, a) => adapter.setAll(a.payload, s)),
-    on(NBADocuments.games, (s) => ({...s, isLoaded: true})),
+    on(NBADocuments.games, (s) => ({ ...s, isLoaded: true }))
   ),
   extraSelectors: ({ selectNbaState }) => {
     const { selectAll } = adapter.getSelectors();
@@ -32,6 +32,7 @@ export const nbaFeature = createFeature({
               homeTeam: game.homeTeam,
               awayTeam: game.awayTeam,
               date: game.date,
+              time: game.time,
               odds: game.odds,
             } as Game)
         )

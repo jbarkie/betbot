@@ -4,5 +4,6 @@ export type Game = {
   awayTeam: string;
   homeTeam: string;
   date: string;
+  time: string;
   odds: string;
 };

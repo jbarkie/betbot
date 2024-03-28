@@ -30,23 +30,30 @@ def get_todays_games():
 def get_current_odds(data, home_team, away_team):
     for game in data:
         if game['home_team'] == home_team and game['away_team'] == away_team:
-            for market in game['bookmakers'][0]['markets']:
-                if market['key'] == 'h2h':
-                    outcomes = market['outcomes']
-                    for outcome in outcomes:
-                        if outcome['name'] == home_team:
-                            home_odds = outcome['price']
-                        elif outcome['name'] == away_team:
-                            away_odds = outcome['price']
-                    home_odds_formatted = format_american_odds(home_odds)
-                    away_odds_formatted = format_american_odds(away_odds)
-                    return f"{home_odds_formatted} {away_odds_formatted}"
+            bookmakers = game.get('bookmakers', [])
+            if bookmakers:
+                fanduel_bookmaker = next((bm for bm in bookmakers if bm['key'] == 'fanduel'), None)
+                if fanduel_bookmaker:
+                    markets = fanduel_bookmaker.get('markets', [])
+                    h2h_market = next((market for market in markets if market['key'] == 'h2h'), None)
+                    if h2h_market:
+                        outcomes = h2h_market.get('outcomes', [])
+                        for outcome in outcomes:
+                            if outcome['name'] == home_team:
+                                home_odds = outcome['price']
+                            elif outcome['name'] == away_team:
+                                away_odds = outcome['price']
+                        home_odds_formatted = format_american_odds(home_odds)
+                        away_odds_formatted = format_american_odds(away_odds)
+                        return f"{home_odds_formatted} {away_odds_formatted}"
     return 'none'
 
 def format_american_odds(decimal_odds):
-    if decimal_odds > 2:
+    if decimal_odds == 1.0:
+        return 'EVEN'
+    elif decimal_odds > 2:
         underdog_odds = round(100 * (decimal_odds - 1))
         return f"+{underdog_odds}"
     else:
         favorite_odds = round(-100 / (decimal_odds - 1))
-        return f"{favorite_odds}"
+        return f"-{favorite_odds}"

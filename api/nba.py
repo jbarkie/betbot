@@ -3,24 +3,50 @@ from models.nba import Game
 from models.nba import GamesResponse
 from dateutil import parser
 from datetime import timezone
+import requests
 
 board = scoreboard.ScoreBoard()
 date = board.score_board_date
 games = board.games.get_dict()
+api_url = 'https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=bf022898e28e9ace5e8b50e1744f5911&regions=us&markets=h2h&bookmakers=fanduel'
 
 def get_todays_games():
     response_list = []
+    odds_response = requests.get(api_url).json()
     for game in games:
-        homeTeam = game['homeTeam']
-        awayTeam = game['awayTeam']
+        homeTeam = game['homeTeam']['teamCity'] + ' ' + game['homeTeam']['teamName']
+        awayTeam = game['awayTeam']['teamCity'] + ' ' + game['awayTeam']['teamName']
         response_list.append(Game(
             id=game['gameId'],
             sport='NBA',
-            homeTeam=homeTeam['teamCity'] + ' ' + homeTeam['teamName'],
-            awayTeam=awayTeam['teamCity'] + ' ' + awayTeam['teamName'],
+            homeTeam=homeTeam,
+            awayTeam=awayTeam,
             date=date,
             time=parser.parse(game["gameTimeUTC"]).replace(tzinfo=timezone.utc).astimezone(tz=None).strftime("%H:%M"),
-            odds='+110, -110'
+            odds=get_current_odds(odds_response, homeTeam, awayTeam)
         ))
     return GamesResponse(list=response_list)
-        
+
+def get_current_odds(data, home_team, away_team):
+    for game in data:
+        if game['home_team'] == home_team and game['away_team'] == away_team:
+            for market in game['bookmakers'][0]['markets']:
+                if market['key'] == 'h2h':
+                    outcomes = market['outcomes']
+                    for outcome in outcomes:
+                        if outcome['name'] == home_team:
+                            home_odds = outcome['price']
+                        elif outcome['name'] == away_team:
+                            away_odds = outcome['price']
+                    home_odds_formatted = format_american_odds(home_odds)
+                    away_odds_formatted = format_american_odds(away_odds)
+                    return f"{home_odds_formatted} {away_odds_formatted}"
+    return 'none'
+
+def format_american_odds(decimal_odds):
+    if decimal_odds > 2:
+        underdog_odds = round(100 * (decimal_odds - 1))
+        return f"+{underdog_odds}"
+    else:
+        favorite_odds = round(-100 / (decimal_odds - 1))
+        return f"{favorite_odds}"

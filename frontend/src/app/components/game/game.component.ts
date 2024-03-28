@@ -5,26 +5,23 @@ import { Game } from '../models';
   selector: 'app-game',
   standalone: true,
   imports: [],
-  template: ` <div
-    class="card card-side bg-base-100 shadow-xl mx-auto max-w-md"
-  >
-    <figure>
-      <img
-        src="https://cdn.nba.com/headshots/nba/latest/1040x760/1628369.png"
-        alt="Jayson Tatum"
-        class="w-28 ml-5"
-      />
-    </figure>
-    <div class="card-body">
-      <h2 class="card-title">
-        {{ game().awayTeam }} &#64; {{ game().homeTeam }}
-      </h2>
-      <p>{{ game().odds }}</p>
-      <div class="card-actions justify-end">
-        <button class="btn btn-primary">Analyze</button>
-      </div>
+  schemas: [],
+  template: ` 
+  <div class="card card-side bg-base-100 shadow-xl mx-auto my-5 max-w-2xl">
+  <figure>
+    <img [src]="'assets/img/' + (game().awayTeam.split(' ').pop()?.toLowerCase()) + '.png'" alt="Away Team Logo" class="w-28 mx-5" />
+  </figure>
+  <div class="card-body">
+    <h2 class="card-title">{{ game().awayTeam }} &#64; <br/> {{ game().homeTeam }}</h2>
+    <p>{{ game().odds }}</p>
+    <div class="card-actions justify-end">
+      <button class="btn btn-primary">Analyze</button>
     </div>
-  </div>`,
+  </div>
+  <figure>
+    <img [src]="'assets/img/' + (game().homeTeam.split(' ').pop()?.toLowerCase()) + '.png'" alt="Home Team Logo" class="w-28 mx-5" />
+  </figure>
+</div>`,
   styles: [],
 })
 export class GameComponent {

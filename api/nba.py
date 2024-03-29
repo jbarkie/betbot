@@ -3,12 +3,13 @@ from models.nba import Game
 from models.nba import GamesResponse
 from dateutil import parser
 from datetime import timezone
+from config import NBA_API_KEY
 import requests
 
 board = scoreboard.ScoreBoard()
 date = board.score_board_date
 games = board.games.get_dict()
-api_url = 'https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=bf022898e28e9ace5e8b50e1744f5911&regions=us&markets=h2h&bookmakers=fanduel'
+api_url = 'https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=' + NBA_API_KEY + '&regions=us&markets=h2h&bookmakers=fanduel'
 
 def get_todays_games():
     response_list = []
@@ -45,8 +46,11 @@ def get_current_odds(data, home_team, away_team):
                                 away_odds = outcome['price']
                         home_odds_formatted = format_american_odds(home_odds)
                         away_odds_formatted = format_american_odds(away_odds)
-                        return f"{home_odds_formatted} {away_odds_formatted}"
-    return 'none'
+                        return {
+                            'home': home_odds_formatted,
+                            'away': away_odds_formatted
+                        }
+    return {}
 
 def format_american_odds(decimal_odds):
     if decimal_odds == 1.0:
@@ -55,5 +59,5 @@ def format_american_odds(decimal_odds):
         underdog_odds = round(100 * (decimal_odds - 1))
         return f"+{underdog_odds}"
     else:
-        favorite_odds = round(-100 / (decimal_odds - 1))
+        favorite_odds = round(100 / (decimal_odds - 1))
         return f"-{favorite_odds}"

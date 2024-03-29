@@ -8,7 +8,7 @@ class Game(BaseModel):
     awayTeam: str
     date: str
     time: str
-    odds: Optional[str] = '+110 -110'
+    odds: dict
 
 class GamesResponse(BaseModel):
     list: list[Game]

@@ -5,5 +5,5 @@ export type Game = {
   homeTeam: string;
   date: string;
   time: string;
-  odds: string;
+  odds: { [key: string]: string };
 };

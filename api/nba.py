@@ -3,6 +3,7 @@ from models.nba import Game, GamesResponse
 from dateutil import parser
 from datetime import timezone
 from config import ODDS_API_URL
+from utils import format_american_odds
 import requests
 
 def fetch_odds(home_team, away_team):
@@ -19,14 +20,6 @@ def fetch_odds(home_team, away_team):
                         'away': format_american_odds(outcomes.get(away_team, 0))
                     }
     return {}
-
-def format_american_odds(decimal_odds):
-    if decimal_odds > 2:
-        underdog_odds = round(100 * (decimal_odds - 1))
-        return f"+{underdog_odds}"
-    else:
-        favorite_odds = round(100 / (decimal_odds - 1))
-        return f"-{favorite_odds}"
 
 def create_game_object(game, date):
     home_team = f"{game['homeTeam']['teamCity']} {game['homeTeam']['teamName']}"

@@ -1,0 +1,10 @@
+sqlalchemy
+fastapi
+uvicorn
+nba_api
+pydantic
+python-dateutil
+requests
+psycopg2
+psycopg2-binary
+alembic

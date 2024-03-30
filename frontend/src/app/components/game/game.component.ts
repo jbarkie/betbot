@@ -13,11 +13,12 @@ import { Game } from '../models';
   </figure>
   <div class="card-body">
     <h2 class="card-title">{{ game().awayTeam }} &#64; <br/> {{ game().homeTeam }}</h2>
-    @if(game().odds === {}) {
+    @if (game().homeOdds === '' && game().awayOdds === '') {
       <p class="text-md">No odds available</p>
-    } @else {
-      <p>{{ game().homeTeam }} ML: {{ game().odds['home'] }}</p>
-      <p>{{ game().awayTeam }} ML: {{ game().odds['away'] }}</p>
+    }
+    @else {
+      <p>{{ game().homeTeam }} ML: {{ game().homeOdds }}</p>
+      <p>{{ game().awayTeam }} ML: {{ game().awayOdds }}</p>
     }
     <div class="card-actions justify-end">
       <button class="btn btn-primary">Analyze</button>

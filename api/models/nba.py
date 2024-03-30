@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from typing import Optional
 
 class Game(BaseModel):
     id: str
@@ -8,7 +7,8 @@ class Game(BaseModel):
     awayTeam: str
     date: str
     time: str
-    odds: dict
+    homeOdds: str
+    awayOdds: str
 
 class GamesResponse(BaseModel):
     list: list[Game]

@@ -33,7 +33,8 @@ export const nbaFeature = createFeature({
               awayTeam: game.awayTeam,
               date: game.date,
               time: game.time,
-              odds: game.odds,
+              homeOdds: game.homeOdds,
+              awayOdds: game.awayOdds,
             } as Game)
         )
       ),

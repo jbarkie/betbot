@@ -1,0 +1,2 @@
+ODDS_API_URL = 'https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=310ab6112f6b77ce5c62b863e97d40ea&regions=us&markets=h2h&bookmakers=fanduel'
+DB_URL = 'postgresql://user:password@localhost:5439/betbot'

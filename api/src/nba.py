@@ -4,7 +4,7 @@ from models.nba import Game, GamesResponse
 from dateutil import parser
 from datetime import timezone, datetime
 from config import ODDS_API_URL, DB_URL
-from utils import format_american_odds
+from api.src.utils import format_american_odds
 import requests
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

@@ -1,14 +1,14 @@
-from models.tables.odds import Odds
+from api.src.models.tables.odds import Odds
 from nba_api.live.nba.endpoints import scoreboard
-from models.nba import Game, GamesResponse
+from api.src.models.nba import Game, GamesResponse
 from dateutil import parser
 from datetime import timezone, datetime
-from config import ODDS_API_URL, DB_URL
+from api.src.config import ODDS_API_URL, DB_URL
 from api.src.utils import format_american_odds
 import requests
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-import pprint
+import pprint   
 
 def fetch_odds(game_id, home_team, away_team):
     response = requests.get(ODDS_API_URL).json()

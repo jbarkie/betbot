@@ -3,3 +3,4 @@ venv/
 api/config.py
 alembic.ini
 pytest.ini
+__pycache__

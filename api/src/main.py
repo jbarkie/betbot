@@ -1,24 +1,12 @@
 from fastapi import FastAPI
-from nba import get_todays_games
-from models.nba import Game
-from models.nba import GamesResponse
+from api.src.nba import get_todays_games
+from api.src.models.nba import GamesResponse
 import uvicorn
 from typing import Any
 from fastapi.middleware.cors import CORSMiddleware
 
-def main():
-    app = FastAPI()
-    configure(app)
-
-    @app.get("/status")
-    async def status():
-        return {"status": "ok"}
-    
-    @app.get("/nba/games", response_model=GamesResponse)
-    async def games() -> Any :
-        return get_todays_games()
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+app = FastAPI()
+__all__ = ["app"]
 
 def configure(app):
     app.add_middleware(
@@ -28,6 +16,18 @@ def configure(app):
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+@app.get("/status")
+async def status():
+    return {"status": "ok"}
+
+@app.get("/nba/games", response_model=GamesResponse)
+async def games() -> Any :
+    return get_todays_games()
+
+def main():
+    configure(app)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 if __name__ == "__main__":
     main()

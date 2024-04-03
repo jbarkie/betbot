@@ -1,6 +1,6 @@
 venv/
 .DS_Store
-api/config.py
+api/src/config.py
 alembic.ini
 pytest.ini
 __pycache__

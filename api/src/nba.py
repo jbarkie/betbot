@@ -22,8 +22,7 @@ def fetch_odds(game_id, home_team, away_team):
                     outcomes = {outcome['name']: outcome['price'] for outcome in h2h_market.get('outcomes', [])}
                     odds['home'] = format_american_odds(outcomes.get(home_team, 0))
                     odds['away'] = format_american_odds(outcomes.get(away_team, 0))
-    if not is_odds_data_cached(game_id) and odds:
-        pprint.pp({'game_id': game_id, 'home_team': home_team, 'away_team': away_team, 'odds': odds})
+    if odds != {}:
         cache_odds(game_id, odds, home_team, away_team)
     return odds
 

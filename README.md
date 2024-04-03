@@ -22,20 +22,29 @@ The backend API is responsible for fetching the latest odds data from an externa
 1. Clone the repository: `git clone https://github.com/jbarkie/betbot.git`
 2. Navigate to the `api` directory: `cd betbot/api`
 3. Install the dependencies: `pip install -r requirements.txt`
-4. Set up the database:
+4. Set up a virtual environment: 
+    - From the root `betbot` directory, create your virtual environment: `virtualenv venv`
+    - Activate the virtual environment: `source venv/bin/activate`
+    - To deactivate: `deactivate`
+5. Set up the database:
     - Install Docker Desktop and Docker Compose.
     - Start Docker Desktop.
     - Navigate to the `env` directory: `cd betbot/env`
     - Update the `docker-compose.yml` file to reflect whatever username and password will be used to access the PostgreSQL database.
     - Start the PostgreSQL database and Adminer: `docker-compose up -d`
     - The PostgreSQL databse should be accessible at `localhost:5439` and Adminer should be accessible at `localhost:9091`
-5. Update the database connection URL:
-    - Open `betbot/api/src/config.py`
-    - Update the `DB_URL` variable:
+6. Update the database connection URL:
+    - Create new file `betbot/api/src/config.py`
+    - Add the `DB_URL` variable:
     ```python
     DB_URL = 'postgresql://user:password@localhost:5439/betbot'
     ```
-6. From the root `betbot` directory, run the API server: `python3 -m api.src.main`
+7. Update The Odds API URL:
+    - Open file `betbot/api/src/config.py`
+    - Add the `ODDS_API_URL` variable:
+    ```python
+    ODDS_API_URL = 'https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=' + YOUR_API_KEY + '&regions=us&markets=h2h&bookmakers=fanduel'
+8. From the root `betbot` directory, run the API server: `python3 -m api.src.main`
 ### Running Tests
 From the `api/tests` directory, run the API tests and generate a coverage report: `coverage run -m pytest && coverage report -m`
 ## Frontend Client

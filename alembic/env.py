@@ -2,7 +2,7 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-from api.models.tables.odds import Base
+from api.src.models.tables.odds import Base
 
 from alembic import context
 

@@ -2,7 +2,7 @@ from api.src.models.tables.odds import Odds
 from nba_api.live.nba.endpoints import scoreboard
 from api.src.models.nba import Game, GamesResponse
 from dateutil import parser
-from datetime import timezone, datetime
+from datetime import timedelta, timezone, datetime
 from api.src.config import ODDS_API_URL, DB_URL
 from api.src.utils import format_american_odds
 import requests
@@ -12,6 +12,7 @@ import pprint
 
 def fetch_odds(game_id, home_team, away_team):
     response = requests.get(ODDS_API_URL).json()
+    pprint.pp(response)
     odds = {}
     for game in response:
         if game['home_team'] == home_team and game['away_team'] == away_team:
@@ -23,6 +24,7 @@ def fetch_odds(game_id, home_team, away_team):
                     odds['home'] = format_american_odds(outcomes.get(home_team, 0))
                     odds['away'] = format_american_odds(outcomes.get(away_team, 0))
     if odds != {}:
+        pprint.pp({'game_id': game_id, 'home_team': home_team, 'away_team': away_team, 'odds': odds})
         cache_odds(game_id, odds, home_team, away_team)
     return odds
 
@@ -34,13 +36,15 @@ def connect_to_db():
 
 def cache_odds(game_id, odds_data, home_team, away_team):
     session = connect_to_db()
+    expires = datetime.now() + timedelta(minutes=72)
     game = Odds(
         id=game_id,
         time=datetime.now(),
         home_odds=odds_data['home'],
         away_odds=odds_data['away'],
         home_team=home_team,
-        away_team=away_team
+        away_team=away_team,
+        expires=expires
     )
     session.add(game)
     session.commit()
@@ -48,14 +52,11 @@ def cache_odds(game_id, odds_data, home_team, away_team):
 def is_odds_data_cached(game_id):
     session = connect_to_db()
     odds_data = session.query(Odds).filter_by(id=game_id).first()
-    odds_data_dict = {}
-    if odds_data:
-        odds_data_dict['home'] = odds_data.home_odds
-        odds_data_dict['away'] = odds_data.away_odds
-        return odds_data_dict
-    else:
-        return None
-    
+    return {
+            'home': odds_data.home_odds,
+            'away': odds_data.away_odds
+    } if odds_data and (odds_data.expires is not None and odds_data.expires > datetime.now()) else None
+
 def team_name(game, team):
     city = game[f'{team}Team']['teamCity']
     if city == "LA":

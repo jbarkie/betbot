@@ -12,3 +12,4 @@ class Odds(Base):
     away_odds = Column(String)
     home_team = Column(String)
     away_team = Column(String)
+    expires = Column(DateTime)

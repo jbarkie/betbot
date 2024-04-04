@@ -4,3 +4,4 @@ api/src/config.py
 alembic.ini
 pytest.ini
 __pycache__
+.coverage

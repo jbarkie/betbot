@@ -8,24 +8,28 @@ from api.src.utils import format_american_odds
 import requests
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-import pprint   
 
-def fetch_odds(game_id, home_team, away_team):
+def call_odds_api():
     response = requests.get(ODDS_API_URL).json()
-    pprint.pp(response)
+    return response
+
+def parse_response_for_game(game, odds_response):
     odds = {}
-    for game in response:
-        if game['home_team'] == home_team and game['away_team'] == away_team:
-            fanduel_bookmaker = next((bm for bm in game.get('bookmakers', []) if bm['key'] == 'fanduel'), None)
+    home_team = team_name(game, 'home')
+    away_team = team_name(game, 'away')
+    for game_data in odds_response:
+        if game_data['home_team'] == home_team and game_data['away_team'] == away_team:
+            fanduel_bookmaker = next((bm for bm in game_data.get('bookmakers', []) if bm['key'] == 'fanduel'), None)
             if fanduel_bookmaker:
                 h2h_market = next((market for market in fanduel_bookmaker.get('markets', []) if market['key'] == 'h2h'), None)
                 if h2h_market:
                     outcomes = {outcome['name']: outcome['price'] for outcome in h2h_market.get('outcomes', [])}
-                    odds['home'] = format_american_odds(outcomes.get(home_team, 0))
-                    odds['away'] = format_american_odds(outcomes.get(away_team, 0))
+                    odds = {
+                        'home': format_american_odds(outcomes.get(home_team, 0)),
+                        'away': format_american_odds(outcomes.get(away_team, 0))
+                    }
     if odds != {}:
-        pprint.pp({'game_id': game_id, 'home_team': home_team, 'away_team': away_team, 'odds': odds})
-        cache_odds(game_id, odds, home_team, away_team)
+        cache_odds(game['gameId'], odds, home_team, away_team)
     return odds
 
 def connect_to_db():
@@ -63,16 +67,19 @@ def team_name(game, team):
         city = "Los Angeles"
     return f"{city} {game[f'{team}Team']['teamName']}"
 
-def create_game_object(game, date):
-    home_team = team_name(game, 'home')
-    away_team = team_name(game, 'away')
+def get_odds(game, odds_response):
     game_id = game['gameId']
     cached_odds = is_odds_data_cached(game_id)
-    odds = cached_odds if cached_odds else fetch_odds(game_id, home_team, away_team)
+    return cached_odds if cached_odds else parse_response_for_game(game, odds_response)
+
+def create_game_object(game, date, odds_response):
+    home_team = team_name(game, 'home')
+    away_team = team_name(game, 'away')
+    odds = get_odds(game, odds_response)
     home_odds = str(odds.get('home'))
     away_odds = str(odds.get('away'))
     return Game(
-        id=game_id,
+        id=game['gameId'],
         sport='NBA',
         homeTeam=home_team,
         awayTeam=away_team,
@@ -86,5 +93,6 @@ def get_todays_games():
     board = scoreboard.ScoreBoard()
     date = board.score_board_date
     games = board.games.get_dict()
-    games_list = [create_game_object(game, date) for game in games]
+    odds_response = call_odds_api()
+    games_list = [create_game_object(game, date, odds_response) for game in games]
     return GamesResponse(list=games_list)

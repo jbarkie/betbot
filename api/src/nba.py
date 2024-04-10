@@ -29,7 +29,8 @@ def parse_response_for_game(game, odds_response):
                         'away': format_american_odds(outcomes.get(away_team, 0))
                     }
     if odds != {}:
-        cache_odds(game['gameId'], odds, home_team, away_team)
+        if not update_existing_odds_in_db(game['gameId'], odds):
+            store_odds(game['gameId'], odds, home_team, away_team)
     return odds
 
 def connect_to_db():
@@ -38,9 +39,19 @@ def connect_to_db():
     session = Session()
     return session
 
-def cache_odds(game_id, odds_data, home_team, away_team):
+def update_existing_odds_in_db(game_id, odds_data):
     session = connect_to_db()
-    expires = datetime.now() + timedelta(minutes=72)
+    existing = session.query(Odds).filter_by(id=game_id).first()
+    if existing:
+        existing.home_odds = odds_data['home']
+        existing.away_odds = odds_data['away']
+        existing.expires = datetime.now() + timedelta(minutes=72)
+        session.commit()
+        return True
+    return False
+
+def store_odds(game_id, odds_data, home_team, away_team):
+    session = connect_to_db()
     game = Odds(
         id=game_id,
         time=datetime.now(),
@@ -48,7 +59,7 @@ def cache_odds(game_id, odds_data, home_team, away_team):
         away_odds=odds_data['away'],
         home_team=home_team,
         away_team=away_team,
-        expires=expires
+        expires=datetime.now() + timedelta(minutes=72)
     )
     session.add(game)
     session.commit()

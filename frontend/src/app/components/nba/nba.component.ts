@@ -8,9 +8,15 @@ import { NbaCommands } from './state/actions';
 @Component({
   selector: 'app-nba',
   standalone: true,
-  template: `<p class="text-center mb-2">
-      NBA odds for {{ today | date : 'EEEE, MMMM d' }}:
-    </p>
+  template: ` <div class="flex justify-center">
+      <ul class="menu menu-vertical lg:menu-horizontal bg-base-200 rounded-box">
+        <li><a>&lt;</a></li>
+        <p class="text-center mt-2">
+          NBA odds for {{ today | date : 'EEEE, MMMM d' }}:
+        </p>
+        <li><a>&gt;</a></li>
+      </ul>
+    </div>
     <app-games-list [list]="games()" />`,
   styles: [],
   imports: [DatePipe, GamesListComponent],

@@ -8,14 +8,10 @@ import { NbaCommands } from './state/actions';
 @Component({
   selector: 'app-nba',
   standalone: true,
-  template: ` <div class="flex justify-center">
-      <ul class="menu menu-vertical lg:menu-horizontal bg-base-200 rounded-box">
-        <li><a>&lt;</a></li>
-        <p class="text-center mt-2">
-          NBA odds for {{ today | date : 'EEEE, MMMM d' }}:
-        </p>
-        <li><a>&gt;</a></li>
-      </ul>
+  template: ` <div class="join flex justify-center my-5">
+      <button class="join-item btn">«</button>
+      <button class="join-item btn">{{ today | date: 'EEEE, MMMM d' }}</button>
+      <button class="join-item btn">»</button>
     </div>
     <app-games-list [list]="games()" />`,
   styles: [],

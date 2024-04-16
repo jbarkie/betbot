@@ -15,19 +15,20 @@ export class NbaEffects {
   onStartup = createEffect(() =>
     this.actions$.pipe(
       ofType(appActions.applicationStarted),
-      map(() => NbaCommands.loadGames())
+      map(() => NbaCommands.loadGames({ date: new Date() }))
     )
   );
-
+  
   loadGames$ = createEffect(() =>
     this.actions$.pipe(
       ofType(NbaCommands.loadGames),
-      switchMap(() =>
-        this.httpClient.get<{ list: Game[] }>(this.baseUrl + '/nba/games').pipe(
+      switchMap((action) => {
+        const date = action.date ? action.date.toISOString().split('T')[0] : '';
+        return this.httpClient.get<{ list: Game[] }>(this.baseUrl + '/nba/games', { params: { date } }).pipe(
           map((results) => results.list),
           map((payload) => NBADocuments.games({ payload }))
-        )
-      )
+        );
+      })
     )
   );
 }

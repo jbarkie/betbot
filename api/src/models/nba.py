@@ -5,7 +5,6 @@ class Game(BaseModel):
     sport: str
     homeTeam: str
     awayTeam: str
-    date: str
     time: str
     homeOdds: str
     awayOdds: str

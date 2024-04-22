@@ -1,21 +1,27 @@
-import { DatePipe } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { Component } from '@angular/core';
 import { GamesListComponent } from '../games-list/games-list.component';
 import { Store } from '@ngrx/store';
 import { nbaFeature } from './state';
 import { NbaCommands } from './state/actions';
+import { AlertMessageComponent } from "../alert-message/alert-message.component";
 
 @Component({
-  selector: 'app-nba',
-  standalone: true,
-  template: ` <div class="join flex justify-center my-5">
-      <button class="join-item btn" (click)="previousDay()" [disabled]="isCurrentDate()">«</button>
-      <button class="join-item btn">{{ selectedDate | date: 'EEEE, MMMM d' }}</button>
-      <button class="join-item btn" (click)="nextDay()">»</button>
-    </div>
-    <app-games-list [list]="games()" />`,
-  styles: [],
-  imports: [DatePipe, GamesListComponent],
+    selector: 'app-nba',
+    standalone: true,
+    template: ` <div class="join flex justify-center my-5">
+                <button class="join-item btn" (click)="previousDay()" [disabled]="isCurrentDate()">«</button>
+                <button class="join-item btn">{{ selectedDate | date: 'EEEE, MMMM d' }}</button>
+                <button class="join-item btn" (click)="nextDay()">»</button>
+              </div>
+              <ng-container *ngIf="games() && games().length > 0; else noGames">
+                <app-games-list [list]="games()"></app-games-list>
+              </ng-container>
+              <ng-template #noGames>
+                <app-alert-message message="Error loading games. Please check connection" />
+              </ng-template>`,
+    styles: [],
+    imports: [DatePipe, CommonModule, GamesListComponent, AlertMessageComponent]
 })
 export class NbaComponent {
   selectedDate: Date = new Date();

@@ -3,7 +3,7 @@ import { environment } from '../../../../environments/environment';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { appActions } from '../../../state/actions';
-import { map, switchMap } from 'rxjs';
+import { catchError, map, of, switchMap } from 'rxjs';
 import { NBADocuments, NbaCommands } from './actions';
 import { Game } from '../../models';
 import { DatePipe } from '@angular/common';
@@ -28,7 +28,11 @@ export class NbaEffects {
         const params = formattedDate ? new HttpParams().set('date', formattedDate) : new HttpParams();
         return this.httpClient.get<{ list: Game[] }>(this.baseUrl + '/nba/games', { params, responseType: 'json' }).pipe(
           map((response) => response.list),
-          map((payload) => NBADocuments.games({ payload }))
+          map((payload) => NBADocuments.games({ payload })),
+          catchError((error) => {
+            console.error('Error loading games:', error);
+            return of(NBADocuments.games({ payload: [] })); 
+          })
         );
       })
     )

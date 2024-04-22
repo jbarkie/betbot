@@ -85,14 +85,13 @@ def is_data_expired():
 
     if nearest_expiration is None:
         return True
-    
     return nearest_expiration <= current_time
 
 def get_games_by_date(date):
     if is_data_expired():
         odds_response = call_odds_api()
         games = parse_response_and_store_games(odds_response)
-        games_for_date = [game for game in games if game.time == date.strftime("%Y-%m-%d")]
+        games_for_date = [game for game in games if game.time.split(" ")[0] == date.strftime("%Y-%m-%d")]
         return GamesResponse(list=games_for_date)
     else:
         session = connect_to_db()

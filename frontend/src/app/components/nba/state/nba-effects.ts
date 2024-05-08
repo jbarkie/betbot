@@ -30,8 +30,7 @@ export class NbaEffects {
           map((response) => response.list),
           map((payload) => NBADocuments.games({ payload })),
           catchError((error) => {
-            console.error('Error loading games:', error);
-            return of(NBADocuments.games({ payload: [] })); 
+            return of(NbaCommands.loadGamesError({ error })); 
           })
         );
       })

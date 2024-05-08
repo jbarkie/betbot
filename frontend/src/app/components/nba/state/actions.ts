@@ -5,6 +5,7 @@ export const NbaCommands = createActionGroup({
   source: 'NBA Commands',
   events: {
     'Load Games': props<{ date?: Date }>(),
+    'Load Games Error': props<{ error: any }>(),
   },
 });
 

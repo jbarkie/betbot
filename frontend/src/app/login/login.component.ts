@@ -20,8 +20,8 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
           placeholder="Username"
           class="input input-bordered w-full"
           />
-          <div *ngIf="loginForm.get('username')?.invalid && (loginForm.get('username')?.dirty || loginForm.get('username')?.touched)" class="text-error mt-1" >
-            <div *ngIf="loginForm.get('username')?.errors?.['required']">Username is required.</div>
+          <div *ngIf="isValid('username')" class="text-error mt-1" >
+            <div *ngIf="isRequired('username')">Username is required.</div>
           </div>
           <div class="form-control mt-2">
             <label class="label">
@@ -33,8 +33,8 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
             placeholder="Password"
             class="input input-bordered w-full mt-2"
             />
-            <div *ngIf="loginForm.get('password')?.invalid && (loginForm.get('password')?.dirty || loginForm.get('password')?.touched)" class="text-error mt-1" >
-              <div *ngIf="loginForm.get('password')?.errors?.['required']">Password is required.</div>
+            <div *ngIf="isValid('password')" class="text-error mt-1" >
+              <div *ngIf="isRequired('password')">Password is required.</div>
             </div>
           </div>
           <div class="modal-action">
@@ -61,5 +61,13 @@ export class LoginComponent {
     if (this.loginForm.valid) {
       console.log('Form submitted');
     }
+  }
+
+  isValid(controlName: string) {
+    return this.loginForm.get(controlName)?.invalid && (this.loginForm.get(controlName)?.dirty || this.loginForm.get(controlName)?.touched);
+  }
+
+  isRequired(controlName: string) {
+    return this.loginForm.get(controlName)?.errors?.['required'];
   }
 }

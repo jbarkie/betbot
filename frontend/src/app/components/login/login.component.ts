@@ -20,27 +20,23 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
           placeholder="Username"
           class="input input-bordered w-full"
           />
-          <div *ngIf="isValid('username')" class="text-error mt-1" >
-            <div *ngIf="isRequired('username')">Username is required.</div>
-          </div>
-          <div class="form-control mt-2">
-            <label class="label">
-              <span class="label-text">Password</span>
-            </label>
-            <input
-            type="password"
-            formControlName="password"
-            placeholder="Password"
-            class="input input-bordered w-full mt-2"
-            />
-            <div *ngIf="isValid('password')" class="text-error mt-1" >
-              <div *ngIf="isRequired('password')">Password is required.</div>
-            </div>
-          </div>
-          <div class="modal-action">
-            <button type="submit" class="btn btn-primary" [disabled]="loginForm.invalid">Login</button>
-            <label for="login-modal" class="btn">Cancel</label>
-          </div>
+          <p *ngIf="isInvalid('username')" class="text-error mt-1">Username is required.</p>
+        </div>
+        <div class="form-control mt-2">
+          <label class="label">
+            <span class="label-text">Password</span>
+          </label>
+          <input
+          type="password"
+          formControlName="password"
+          placeholder="Password"
+          class="input input-bordered w-full mt-2"
+          />
+          <p *ngIf="isInvalid('password')" class="text-error mt-1" >Password is required.</p>
+        </div>
+        <div class="modal-action">
+          <button type="submit" class="btn btn-primary" [disabled]="loginForm.invalid">Login</button>
+          <label for="login-modal" class="btn">Cancel</label>
         </div>
       </form>
     </div>
@@ -63,11 +59,7 @@ export class LoginComponent {
     }
   }
 
-  isValid(controlName: string) {
+  isInvalid(controlName: string) {
     return this.loginForm.get(controlName)?.invalid && (this.loginForm.get(controlName)?.dirty || this.loginForm.get(controlName)?.touched);
-  }
-
-  isRequired(controlName: string) {
-    return this.loginForm.get(controlName)?.errors?.['required'];
   }
 }

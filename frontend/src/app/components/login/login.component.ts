@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { LoginRequest, LoginResponse } from '../models';
+import { LoginService } from './login.service';
 
 @Component({
   selector: 'app-login',
@@ -46,7 +48,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 export class LoginComponent {
   loginForm: FormGroup;
 
-  constructor(private formBuilder: FormBuilder) {
+  constructor(private formBuilder: FormBuilder, private loginService: LoginService) {
     this.loginForm = this.formBuilder.group({
       username: ['', Validators.required],
       password: ['', Validators.required],
@@ -55,7 +57,21 @@ export class LoginComponent {
 
   onSubmit() {
     if (this.loginForm.valid) {
-      console.log('Form submitted');
+      const request: LoginRequest = {
+        username: this.loginForm.get('username')?.value,
+        password: this.loginForm.get('password')?.value
+      };
+
+      this.loginService.login(request)
+        .subscribe({
+          next: (response: LoginResponse) => {
+            localStorage.setItem('token', response.token);
+            console.log('Login successful', response);
+          },
+          error: (error) => {
+            console.error('Login failed', error);
+          }    
+        });
     }
   }
 

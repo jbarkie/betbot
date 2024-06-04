@@ -13,3 +13,12 @@ class Odds(Base):
     home_team = Column(String)
     away_team = Column(String)
     expires = Column(DateTime)
+
+class Users(Base):
+    __tablename__ = 'users'
+
+    username = Column(String, primary_key=True)
+    first_name = Column(String)
+    last_name = Column(String)
+    email = Column(String)
+    password = Column(String)

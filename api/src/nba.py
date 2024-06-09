@@ -2,11 +2,10 @@ from api.src.models.tables.odds import Odds
 from api.src.models.nba import Game, GamesResponse
 from dateutil import parser
 from datetime import timedelta, datetime
-from api.src.config import ODDS_API_URL, DB_URL
-from api.src.utils import format_american_odds
+from api.src.config import ODDS_API_URL
+from api.src.utils import format_american_odds, connect_to_db
 import requests
-from sqlalchemy import create_engine, cast, Date, func
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import cast, Date, func
 from pytz import timezone, utc
 
 def call_odds_api():
@@ -46,12 +45,6 @@ def parse_response_and_store_games(odds_response):
                     store_odds(game)
     
     return games
-
-def connect_to_db():
-    engine = create_engine(DB_URL)
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    return session
 
 def update_existing_odds_in_db(game_id, home_odds, away_odds):
     session = connect_to_db()

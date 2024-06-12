@@ -1,14 +1,18 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends
 from datetime import datetime
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from api.src.login import get_user_by_username
+from api.src.models.auth import LoginResponse
 from api.src.nba import get_games_by_date
 from api.src.models.nba import GamesResponse
 import uvicorn
-from typing import Any
+from typing import Any, Annotated
 from fastapi.middleware.cors import CORSMiddleware
 import traceback
 
 app = FastAPI()
 __all__ = ["app"]
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def configure(app):
     app.add_middleware(
@@ -23,7 +27,14 @@ def configure(app):
 async def status():
     return {"status": "ok"}
 
-import traceback
+@app.post("/login", response_model=LoginResponse)
+async def login(login_request: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    username = login_request.username
+    user = get_user_by_username(username)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    response = LoginResponse(access_token=user.username)
+    return response
 
 @app.get("/nba/games", response_model=GamesResponse)
 async def games(date: str = Query(..., description="Date in YYYY-MM-DD format")) -> Any:

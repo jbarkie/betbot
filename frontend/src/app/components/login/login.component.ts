@@ -1,13 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LoginRequest, LoginResponse } from '../models';
 import { LoginService } from './login.service';
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
   template: `
     <div class="modal-box">
       <h3 class="font-bold text-lg mb-2">Login</h3>
@@ -37,6 +38,7 @@ import { LoginService } from './login.service';
           <p *ngIf="isInvalid('password')" class="text-error mt-1" >Password is required.</p>
         </div>
         <div class="modal-action">
+          <p>Need an account? <a (click)="onRegisterLinkClick()" routerLink="/register">Register here</a></p>
           <button type="submit" class="btn btn-primary" [disabled]="loginForm.invalid">Login</button>
           <label for="login-modal" class="btn">Cancel</label>
         </div>
@@ -47,6 +49,7 @@ import { LoginService } from './login.service';
 })
 export class LoginComponent {
   loginForm: FormGroup;
+  @Output() closeModal = new EventEmitter<void>();
 
   constructor(private formBuilder: FormBuilder, private loginService: LoginService) {
     this.loginForm = this.formBuilder.group({
@@ -77,5 +80,9 @@ export class LoginComponent {
 
   isInvalid(controlName: string) {
     return this.loginForm.get(controlName)?.invalid && (this.loginForm.get(controlName)?.dirty || this.loginForm.get(controlName)?.touched);
+  }
+
+  onRegisterLinkClick() {
+    this.closeModal.emit();
   }
 }

@@ -78,8 +78,15 @@ import { LoginComponent } from '../login/login.component';
     </div>
     <input type="checkbox" id="login-modal" class="modal-toggle" />
     <div class="modal">
-      <app-login></app-login>
+      <app-login (closeModal)="closeLoginModal()"></app-login>
     </div> `,
   styles: [],
 })
-export class NavBarComponent {}
+export class NavBarComponent {
+  closeLoginModal() {
+    const modalToggle = document.getElementById('login-modal') as HTMLInputElement;
+    if (modalToggle) {
+      modalToggle.checked = false;
+    }
+  }
+}

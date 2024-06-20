@@ -46,7 +46,7 @@ import { LoginComponent } from '../login/login.component';
         </div>
       </div>
       <div class="navbar-center">
-        <a class="btn btn-ghost text-xl">BetBot</a>
+        <a routerLink="/" class="btn btn-ghost text-xl">BetBot</a>
       </div>
       <div class="navbar-end">
         <div class="form-control">

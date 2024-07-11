@@ -1,4 +1,4 @@
-from api.src.models.tables.odds import Odds
+from api.src.models.tables import Odds
 from api.src.models.nba import Game, GamesResponse
 from dateutil import parser
 from datetime import timedelta, datetime

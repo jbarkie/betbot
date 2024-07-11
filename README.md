@@ -1,5 +1,5 @@
 # BetBot
-BetBot is a sports betting application that allows users to view and analyze the latest NBA odds using machine learning.The application consists of a backend API built with Python and FastAPI, and a frontend client built with Angular. 
+BetBot is a sports betting application that allows users to view and analyze the latest NBA odds using machine learning. The application consists of a backend API built with Python and FastAPI, and a frontend client built with Angular. 
 ## Features
 - View the latest NBA games and odds
 - Odds analysis and betting suggestions via integration of machine learning algorithms
@@ -18,6 +18,7 @@ The backend API is responsible for fetching the latest odds data from an externa
 ### Endpoints
 - `/status`: Returns the status of the API.
 - `/nba/games`: Returns a list of today's NBA games with their respective odds.  
+- `/login`: Authenticates an existing user.
 ### Installation
 1. Clone the repository: `git clone https://github.com/jbarkie/betbot.git`
 2. Navigate to the `api` directory: `cd betbot/api`

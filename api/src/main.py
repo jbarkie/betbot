@@ -44,7 +44,7 @@ async def login(login_request: Annotated[OAuth2PasswordRequestForm, Depends()]):
     user = get_user_by_username(username)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    response = LoginResponse(access_token=user.username)
+    response = LoginResponse(access_token=user['username'])
     return response
 
 @app.get("/nba/games", response_model=GamesResponse)

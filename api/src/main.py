@@ -2,13 +2,14 @@ from fastapi import FastAPI, HTTPException, Query, Depends
 from datetime import datetime
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from api.src.login import get_user_by_username
-from api.src.models.auth import LoginResponse
+from api.src.models.auth import LoginResponse, RegisterRequest, RegisterResponse
 from api.src.nba import get_games_by_date
 from api.src.models.nba import GamesResponse
 import uvicorn
 from typing import Any, Annotated
 from fastapi.middleware.cors import CORSMiddleware
 import traceback
+from api.src.register import register_user
 
 app = FastAPI()
 __all__ = ["app"]
@@ -26,6 +27,16 @@ def configure(app):
 @app.get("/status")
 async def status():
     return {"status": "ok"}
+
+@app.post("/register", response_model=RegisterResponse)
+async def register(register_request: RegisterRequest):
+    username = register_request.username
+    user = get_user_by_username(username)
+    if user:
+        raise HTTPException(status_code=403, detail="User already exists")
+    register_user(username, register_request.first_name, register_request.last_name, register_request.email, register_request.password)
+    response = RegisterResponse(access_token=username)
+    return response
 
 @app.post("/login", response_model=LoginResponse)
 async def login(login_request: Annotated[OAuth2PasswordRequestForm, Depends()]):

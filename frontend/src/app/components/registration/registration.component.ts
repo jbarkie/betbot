@@ -26,6 +26,36 @@ import { CommonModule } from '@angular/common';
       </div>
       <div class="form-control mt-2">
         <label class="label">
+          <span class="label-text">First Name</span>
+        </label>
+        <input
+          type="text"
+          formControlName="firstName"
+          placeholder="Johnny"
+          class="input input-bordered w-full mt-2"
+          required
+        />
+        <div *ngIf="isInvalid(firstName)">
+          <p *ngIf="firstName?.hasError('required')" class="text-error mt-1">First name is required.</p>
+        </div>
+      </div>
+      <div class="form-control mt-2">
+        <label class="label">
+          <span class="label-text">Last Name</span>
+        </label>
+        <input
+          type="text"
+          formControlName="lastName"
+          placeholder="Appleseed"
+          class="input input-bordered w-full mt-2"
+          required
+        />
+        <div *ngIf="isInvalid(lastName)">
+          <p *ngIf="lastName?.hasError('required')" class="text-error mt-1">Last name is required.</p>
+        </div>
+      </div>
+      <div class="form-control mt-2">
+        <label class="label">
           <span class="label-text">Email</span>
         </label>
         <input
@@ -84,6 +114,8 @@ export class RegistrationComponent {
   ngOnInit() {
     this.registration = new FormGroup({
       username: new FormControl('', [Validators.required]),
+      firstName: new FormControl('', [Validators.required]),
+      lastName: new FormControl('', [Validators.required]),
       email: new FormControl('', [Validators.required]),
       password: new FormControl('', [Validators.required, Validators.minLength(8)]),
       confirmPassword: new FormControl('')
@@ -96,6 +128,14 @@ export class RegistrationComponent {
 
   get username() {
     return this.registration.get('username');
+  }
+
+  get firstName() {
+    return this.registration.get('firstName');
+  }
+
+  get lastName() {
+    return this.registration.get('lastName');
   }
 
   get email() {

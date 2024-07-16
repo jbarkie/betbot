@@ -1,6 +1,8 @@
 import { Component } from '@angular/core';
 import { ReactiveFormsModule, FormGroup, Validators, FormControl, ValidatorFn, AbstractControl, ValidationErrors } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { RegisterRequest, RegisterResponse } from '../models';
+import { RegistrationService } from './registration.service';
 
 @Component({
   selector: 'app-registration',
@@ -8,7 +10,7 @@ import { CommonModule } from '@angular/common';
   imports: [ReactiveFormsModule, CommonModule],
   template: `
     <h3 class="font-bold text-lg mt-2 mb-2 text-center">Register for an account</h3>
-    <form [formGroup]="registration" class="mx-auto w-96">
+    <form [formGroup]="registration" class="mx-auto w-96" (ngSubmit)="onSubmit()">
       <div class="form-control">
         <label class="label">
           <span class="label-text">Username</span>
@@ -111,6 +113,8 @@ import { CommonModule } from '@angular/common';
 export class RegistrationComponent {
   registration!: FormGroup;
 
+  constructor(private registrationService: RegistrationService) { }
+
   ngOnInit() {
     this.registration = new FormGroup({
       username: new FormControl('', [Validators.required]),
@@ -173,5 +177,28 @@ export class RegistrationComponent {
       confirmPassword?.setErrors(null);
       return null;
     };
+  }
+
+  onSubmit() {
+    if (this.registration.valid) {
+      const request: RegisterRequest = {
+        username: this.username?.value,
+        firstName: this.firstName?.value,
+        lastName: this.lastName?.value,
+        email: this.email?.value,
+        password: this.password?.value
+      };
+
+      this.registrationService.register(request)
+        .subscribe({
+          next: (response: RegisterResponse) => {
+            localStorage.setItem('token', response.accessToken);
+            console.log('Registration successful', response);
+          },
+          error: error => {
+            console.error('Registration failed', error);
+          }
+        });
+    }
   }
 }

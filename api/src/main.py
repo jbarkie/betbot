@@ -45,7 +45,7 @@ async def login(login_request: Annotated[OAuth2PasswordRequestForm, Depends()]):
     user = get_user_by_username(username)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    if not bcrypt.checkpw(login_request.password.encode('utf-8'), user['hashed_password'].encode('utf-8')):
+    if not bcrypt.checkpw(login_request.password.encode('utf-8'), user.hashed_password.encode('utf-8')):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     response = LoginResponse(access_token=user['username'])
     return response

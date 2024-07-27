@@ -183,8 +183,8 @@ export class RegistrationComponent {
     if (this.registration.valid) {
       const request: RegisterRequest = {
         username: this.username?.value,
-        firstName: this.firstName?.value,
-        lastName: this.lastName?.value,
+        first_name: this.firstName?.value,
+        last_name: this.lastName?.value,
         email: this.email?.value,
         password: this.password?.value
       };

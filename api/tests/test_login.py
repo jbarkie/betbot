@@ -1,7 +1,13 @@
 from unittest.mock import patch, MagicMock
+from fastapi.testclient import TestClient
+import pytest
 from api.src.login import get_user_by_username
+from api.src.main import app
 from api.src.models.auth import AuthenticatedUser
 from api.src.models.tables import Users
+import bcrypt
+
+client = TestClient(app)
 
 def test_get_user_by_username():
     mock_session = MagicMock()
@@ -42,3 +48,31 @@ def test_get_user_by_username_not_found():
         mock_session.query.return_value.filter_by.return_value.first.assert_called_once()
 
         assert result is None
+
+@pytest.fixture
+def mock_user():
+    user = MagicMock()
+    user.username = "testuser"
+    user.hashed_password = bcrypt.hashpw("correctpassword".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    return user
+
+def test_login_successful(mock_user):
+    with patch('api.src.main.get_user_by_username', return_value=mock_user):
+        response = client.post("/login", data={"username": "testuser", "password": "correctpassword"})
+    
+    assert response.status_code == 200
+    assert response.json() == {"access_token": "testuser", "token_type": "bearer"}
+
+def test_login_incorrect_password(mock_user):
+    with patch('api.src.main.get_user_by_username', return_value=mock_user):
+        response = client.post("/login", data={"username": "testuser", "password": "wrongpassword"})
+    
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid username or password"}
+
+def test_login_nonexistent_user():
+    with patch('api.src.main.get_user_by_username', return_value=None):
+        response = client.post("/login", data={"username": "nonexistentuser", "password": "anypassword"})
+    
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid username or password"}

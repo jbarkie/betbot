@@ -76,3 +76,11 @@ def test_login_nonexistent_user():
     
     assert response.status_code == 401
     assert response.json() == {"detail": "Invalid username or password"}
+
+def test_login_bcrypt_error(mock_user):
+    with patch('api.src.main.get_user_by_username', return_value=mock_user), \
+         patch('bcrypt.checkpw', side_effect=ValueError()):
+        response = client.post("/login", data={"username": "testuser", "password": "anypassword"})
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid username or password"}

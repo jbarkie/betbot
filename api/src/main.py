@@ -25,10 +25,6 @@ def configure(app):
         allow_headers=["*"],
     )
 
-@app.get("/status")
-async def status():
-    return {"status": "ok"}
-
 @app.post("/register", response_model=RegisterResponse)
 async def register(register_request: RegisterRequest):
     username = register_request.username

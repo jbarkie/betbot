@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from datetime import date, datetime, timedelta
+from api.src.models.nba import GamesResponse
 from api.src.nba import call_odds_api, is_data_expired, store_odds, update_existing_odds_in_db, parse_response_and_store_games, get_games_by_date
 from api.src.main import app
 
@@ -72,7 +73,6 @@ def test_store_odds(mocker):
     mock_session.return_value.add.assert_called_once()
     mock_session.return_value.commit.assert_called_once()
 
-
 def test_parse_response_and_store_games(mocker):
     mocker.patch('api.src.nba.update_existing_odds_in_db', return_value=False)
     mocker.patch('api.src.nba.store_odds')
@@ -107,3 +107,18 @@ def test_get_games_by_date(mocker):
     assert game.awayTeam == 'Test Away Team'
     assert game.homeOdds == '-200'
     assert game.awayOdds == '+150'
+
+def test_games_invalid_date_format():
+    response = client.get("/nba/games?date=invalid-date")
+    assert response.status_code == 400
+    assert "Invalid date format" in response.json()['detail']
+
+def test_games_internal_server_error(mocker):
+    mocker.patch('api.src.main.get_games_by_date', side_effect=Exception("Unexpected error"))
+    response = client.get("/nba/games?date=2023-07-31")
+    assert response.status_code == 500
+    assert "An error occurred while processing the request" in response.json()['detail']
+
+def test_games_no_date_provided():
+    response = client.get("/nba/games")
+    assert response.status_code == 422

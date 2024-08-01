@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime
+from sqlalchemy import Column, String, DateTime, LargeBinary
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -21,4 +21,4 @@ class Users(Base):
     first_name = Column(String)
     last_name = Column(String)
     email = Column(String)
-    password = Column(String)
+    password = Column(LargeBinary)

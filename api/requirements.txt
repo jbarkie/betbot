@@ -16,3 +16,4 @@ virtualenv
 pytz
 python-multipart
 bcrypt
+pyjwt

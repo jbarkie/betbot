@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException, Query, Depends
-from datetime import datetime
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from api.src.login import get_user_by_username
+from datetime import datetime, timedelta
+from fastapi.security import OAuth2PasswordRequestForm
+from api.src.config import ACCESS_TOKEN_EXPIRE_MINUTES
+from api.src.login import create_access_token, get_user_by_username
 from api.src.models.auth import LoginResponse, RegisterRequest, RegisterResponse
 from api.src.nba import get_games_by_date
 from api.src.models.nba import GamesResponse
@@ -14,7 +15,6 @@ import bcrypt
 
 app = FastAPI()
 __all__ = ["app"]
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def configure(app):
     app.add_middleware(
@@ -32,7 +32,9 @@ async def register(register_request: RegisterRequest):
     if user:
         raise HTTPException(status_code=403, detail="User already exists")
     register_user(username, register_request.first_name, register_request.last_name, register_request.email, register_request.password)
-    response = RegisterResponse(access_token=username)
+
+    access_token = create_access_token(data={"sub": username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    response = RegisterResponse(access_token=access_token)
     return response
 
 @app.post("/login", response_model=LoginResponse)
@@ -47,7 +49,9 @@ async def login(login_request: Annotated[OAuth2PasswordRequestForm, Depends()]):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     if not correct_password:
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    response = LoginResponse(access_token=user.username)
+    
+    access_token = create_access_token(data={"sub": username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    response = LoginResponse(access_token=access_token)
     return response
 
 @app.get("/nba/games", response_model=GamesResponse)

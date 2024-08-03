@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Query, Depends
 from datetime import datetime, timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from api.src.config import ACCESS_TOKEN_EXPIRE_MINUTES
-from api.src.login import create_access_token, get_user_by_username
+from api.src.login import authenticate_user, create_access_token, get_user_by_username
 from api.src.models.auth import LoginResponse, RegisterRequest, RegisterResponse
 from api.src.nba import get_games_by_date
 from api.src.models.nba import GamesResponse
@@ -11,7 +11,6 @@ from typing import Any, Annotated
 from fastapi.middleware.cors import CORSMiddleware
 import traceback
 from api.src.register import register_user
-import bcrypt
 
 app = FastAPI()
 __all__ = ["app"]
@@ -38,19 +37,15 @@ async def register(register_request: RegisterRequest):
     return response
 
 @app.post("/login", response_model=LoginResponse)
-async def login(login_request: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    username = login_request.username
-    user = get_user_by_username(username)
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    user = authenticate_user(form_data.username, form_data.password)
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
-    try:
-        correct_password = bcrypt.checkpw(login_request.password.encode('utf-8'), user.hashed_password.encode('utf-8'))
-    except ValueError as error:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
-    if not correct_password:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
-    
-    access_token = create_access_token(data={"sub": username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     response = LoginResponse(access_token=access_token)
     return response
 

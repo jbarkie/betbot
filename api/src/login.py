@@ -7,6 +7,7 @@ from api.src.models.auth import AuthenticatedUser
 from api.src.models.tables import Users
 from api.src.utils import connect_to_db
 import jwt
+import bcrypt
 from jwt.exceptions import InvalidTokenError
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -50,4 +51,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     user = get_user_by_username(username)
     if user is None:
         raise credentials_exception
+    return user
+
+def authenticate_user(username: str, password: str):
+    user = get_user_by_username(username)
+    if not user:
+        return False
+    if not bcrypt.checkpw(password.encode('utf-8'), user.hashed_password.encode('utf-8')):
+        return False
     return user

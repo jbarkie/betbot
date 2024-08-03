@@ -1,16 +1,32 @@
 import { Component } from '@angular/core';
-import { ReactiveFormsModule, FormGroup, Validators, FormControl, ValidatorFn, AbstractControl, ValidationErrors } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  FormGroup,
+  Validators,
+  FormControl,
+  ValidatorFn,
+  AbstractControl,
+  ValidationErrors,
+} from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RegisterRequest, RegisterResponse } from '../models';
 import { RegistrationService } from './registration.service';
+import { Router } from '@angular/router';
+import { ToastService } from '../toast/toast.service';
 
 @Component({
   selector: 'app-registration',
   standalone: true,
   imports: [ReactiveFormsModule, CommonModule],
   template: `
-    <h3 class="font-bold text-lg mt-2 mb-2 text-center">Register for an account</h3>
-    <form [formGroup]="registration" class="mx-auto w-96" (ngSubmit)="onSubmit()">
+    <h3 class="font-bold text-lg mt-2 mb-2 text-center">
+      Register for an account
+    </h3>
+    <form
+      [formGroup]="registration"
+      class="mx-auto w-96"
+      (ngSubmit)="onSubmit()"
+    >
       <div class="form-control">
         <label class="label">
           <span class="label-text">Username</span>
@@ -23,7 +39,9 @@ import { RegistrationService } from './registration.service';
           required
         />
         <div *ngIf="isInvalid(username)">
-          <p *ngIf="username?.hasError('required')" class="text-error mt-1">Username is required.</p>
+          <p *ngIf="username?.hasError('required')" class="text-error mt-1">
+            Username is required.
+          </p>
         </div>
       </div>
       <div class="form-control mt-2">
@@ -38,7 +56,9 @@ import { RegistrationService } from './registration.service';
           required
         />
         <div *ngIf="isInvalid(firstName)">
-          <p *ngIf="firstName?.hasError('required')" class="text-error mt-1">First name is required.</p>
+          <p *ngIf="firstName?.hasError('required')" class="text-error mt-1">
+            First name is required.
+          </p>
         </div>
       </div>
       <div class="form-control mt-2">
@@ -53,7 +73,9 @@ import { RegistrationService } from './registration.service';
           required
         />
         <div *ngIf="isInvalid(lastName)">
-          <p *ngIf="lastName?.hasError('required')" class="text-error mt-1">Last name is required.</p>
+          <p *ngIf="lastName?.hasError('required')" class="text-error mt-1">
+            Last name is required.
+          </p>
         </div>
       </div>
       <div class="form-control mt-2">
@@ -68,7 +90,9 @@ import { RegistrationService } from './registration.service';
           required
         />
         <div *ngIf="isInvalid(email)">
-          <p *ngIf="email?.hasError('required')" class="text-error mt-1">Email is required.</p>
+          <p *ngIf="email?.hasError('required')" class="text-error mt-1">
+            Email is required.
+          </p>
         </div>
       </div>
       <div class="form-control mt-2">
@@ -83,8 +107,12 @@ import { RegistrationService } from './registration.service';
           required
         />
         <div *ngIf="isInvalid(password)">
-          <p *ngIf="password?.hasError('required')" class="text-error mt-1">Password is required.</p>
-          <p *ngIf="password?.hasError('minlength')" class="text-error mt-1">Password must be at least 8 characters.</p>
+          <p *ngIf="password?.hasError('required')" class="text-error mt-1">
+            Password is required.
+          </p>
+          <p *ngIf="password?.hasError('minlength')" class="text-error mt-1">
+            Password must be at least 8 characters.
+          </p>
         </div>
       </div>
       <div class="form-control mt-2">
@@ -99,32 +127,62 @@ import { RegistrationService } from './registration.service';
           required
         />
         <div *ngIf="isInvalid(confirmPassword)">
-          <p *ngIf="confirmPassword?.hasError('required')" class="text-error mt-1">Password confirmation is required.</p>
-          <p *ngIf="confirmPassword?.hasError('minlength')" class="text-error mt-1">Password must be at least 8 characters.</p>
-          <p *ngIf="confirmPassword?.hasError('passwordMismatch')" class="text-error mt-1">Passwords must match.</p>
+          <p
+            *ngIf="confirmPassword?.hasError('required')"
+            class="text-error mt-1"
+          >
+            Password confirmation is required.
+          </p>
+          <p
+            *ngIf="confirmPassword?.hasError('minlength')"
+            class="text-error mt-1"
+          >
+            Password must be at least 8 characters.
+          </p>
+          <p
+            *ngIf="confirmPassword?.hasError('passwordMismatch')"
+            class="text-error mt-1"
+          >
+            Passwords must match.
+          </p>
         </div>
       </div>
-      <button type="submit" class="btn btn-primary mt-6 float-right" [disabled]="registration.invalid">
+      <button
+        type="submit"
+        class="btn btn-primary mt-6 float-right"
+        [disabled]="registration.invalid"
+      >
         Register
       </button>
+    </form>
   `,
-  styles: ``
+  styles: ``,
 })
 export class RegistrationComponent {
   registration!: FormGroup;
 
-  constructor(private registrationService: RegistrationService) { }
+  constructor(
+    private registrationService: RegistrationService,
+    private router: Router,
+    private toastService: ToastService
+  ) {}
 
   ngOnInit() {
-    this.registration = new FormGroup({
-      username: new FormControl('', [Validators.required]),
-      firstName: new FormControl('', [Validators.required]),
-      lastName: new FormControl('', [Validators.required]),
-      email: new FormControl('', [Validators.required]),
-      password: new FormControl('', [Validators.required, Validators.minLength(8)]),
-      confirmPassword: new FormControl('')
-    }, { validators: this.passwordMatchValidator() });
-  } 
+    this.registration = new FormGroup(
+      {
+        username: new FormControl('', [Validators.required]),
+        firstName: new FormControl('', [Validators.required]),
+        lastName: new FormControl('', [Validators.required]),
+        email: new FormControl('', [Validators.required]),
+        password: new FormControl('', [
+          Validators.required,
+          Validators.minLength(8),
+        ]),
+        confirmPassword: new FormControl(''),
+      },
+      { validators: this.passwordMatchValidator() }
+    );
+  }
 
   isInvalid(control: AbstractControl | null) {
     return control?.invalid && (control?.touched || control?.dirty);
@@ -158,7 +216,7 @@ export class RegistrationComponent {
     return (formGroup: AbstractControl): ValidationErrors | null => {
       const password = formGroup.get('password');
       const confirmPassword = formGroup.get('confirmPassword');
-        
+
       if (!confirmPassword?.value) {
         confirmPassword?.setErrors({ required: true });
         return { confirmPasswordRequired: true };
@@ -169,7 +227,11 @@ export class RegistrationComponent {
         return { confirmPasswordMinLength: true };
       }
 
-      if (password && confirmPassword && password.value !== confirmPassword.value) {
+      if (
+        password &&
+        confirmPassword &&
+        password.value !== confirmPassword.value
+      ) {
         confirmPassword.setErrors({ passwordMismatch: true });
         return { passwordMismatch: true };
       }
@@ -186,19 +248,21 @@ export class RegistrationComponent {
         first_name: this.firstName?.value,
         last_name: this.lastName?.value,
         email: this.email?.value,
-        password: this.password?.value
+        password: this.password?.value,
       };
 
-      this.registrationService.register(request)
-        .subscribe({
-          next: (response: RegisterResponse) => {
-            localStorage.setItem('token', response.accessToken);
-            console.log('Registration successful', response);
-          },
-          error: error => {
-            console.error('Registration failed', error);
-          }
-        });
+      this.registrationService.register(request).subscribe({
+        next: (response: RegisterResponse) => {
+          localStorage.setItem('token', response.accessToken);
+          console.log('Registration successful', response);
+          this.router.navigate(['/']);
+          this.toastService.showSuccess('Registration successful');
+        },
+        error: (error) => {
+          console.error('Registration failed', error);
+          this.toastService.showError('Registration failed. Please try again.');
+        },
+      });
     }
   }
 }

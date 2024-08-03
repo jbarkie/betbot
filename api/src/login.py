@@ -10,7 +10,7 @@ import jwt
 import bcrypt
 from jwt.exceptions import InvalidTokenError
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 def get_user_by_username(username: str) -> AuthenticatedUser:
     session = connect_to_db()

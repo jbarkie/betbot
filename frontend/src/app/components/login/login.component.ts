@@ -97,9 +97,9 @@ export class LoginComponent {
       this.loginService.login(request).subscribe({
         next: (response: LoginResponse) => {
           this.store.dispatch(
-            authActions.loginSuccess({ token: response.token })
+            authActions.loginSuccess({ token: response.access_token })
           );
-          localStorage.setItem('token', response.token);
+          localStorage.setItem('token', response.access_token);
           console.log('Login successful', response);
           this.closeModal.emit();
           this.toastService.showSuccess('Login successful');

@@ -42,7 +42,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     if not user:
         raise HTTPException(
             status_code=401,
-            detail="Incorrect username or password",
+            detail="Invalid username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))

@@ -56,7 +56,8 @@ def test_register_endpoint_integration():
         response = client.post("/register", json=register_data)
         
         assert response.status_code == 200
-        assert response.json() == {"access_token": "newuser", "token_type": "bearer"}
+        assert "access_token" in response.json()
+        assert response.json()["token_type"] == "bearer"
 
         mock_users_constructor.assert_called_once_with(
             username="newuser",

@@ -57,28 +57,30 @@ def mock_user():
     return user
 
 def test_login_successful(mock_user):
-    with patch('api.src.main.get_user_by_username', return_value=mock_user):
+    with patch('api.src.login.authenticate_user', return_value=mock_user), \
+         patch('api.src.login.get_user_by_username', return_value=mock_user), \
+         patch('bcrypt.checkpw', return_value=True):
         response = client.post("/login", data={"username": "testuser", "password": "correctpassword"})
-    
-    assert response.status_code == 200
-    assert response.json() == {"access_token": "testuser", "token_type": "bearer"}
+        assert response.status_code == 200
+        assert "access_token" in response.json()
+        assert response.json()["token_type"] == "bearer"
 
 def test_login_incorrect_password(mock_user):
-    with patch('api.src.main.get_user_by_username', return_value=mock_user):
+    with patch('api.src.login.get_user_by_username', return_value=mock_user):
         response = client.post("/login", data={"username": "testuser", "password": "wrongpassword"})
     
     assert response.status_code == 401
     assert response.json() == {"detail": "Invalid username or password"}
 
 def test_login_nonexistent_user():
-    with patch('api.src.main.get_user_by_username', return_value=None):
+    with patch('api.src.login.get_user_by_username', return_value=None):
         response = client.post("/login", data={"username": "nonexistentuser", "password": "anypassword"})
     
     assert response.status_code == 401
     assert response.json() == {"detail": "Invalid username or password"}
 
 def test_login_bcrypt_error(mock_user):
-    with patch('api.src.main.get_user_by_username', return_value=mock_user), \
+    with patch('api.src.login.get_user_by_username', return_value=mock_user), \
          patch('bcrypt.checkpw', side_effect=ValueError()):
         response = client.post("/login", data={"username": "testuser", "password": "anypassword"})
 

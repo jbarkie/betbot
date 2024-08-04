@@ -10,6 +10,9 @@ import { LoginRequest, LoginResponse } from '../models';
 import { LoginService } from './login.service';
 import { RouterModule } from '@angular/router';
 import { ToastService } from '../toast/toast.service';
+import { ApplicationState } from '../../state';
+import { Store } from '@ngrx/store';
+import { authActions } from '../../state/auth/auth.actions';
 
 @Component({
   selector: 'app-login',
@@ -75,7 +78,8 @@ export class LoginComponent {
   constructor(
     private formBuilder: FormBuilder,
     private loginService: LoginService,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private store: Store<ApplicationState>
   ) {
     this.loginForm = this.formBuilder.group({
       username: ['', Validators.required],
@@ -92,6 +96,9 @@ export class LoginComponent {
 
       this.loginService.login(request).subscribe({
         next: (response: LoginResponse) => {
+          this.store.dispatch(
+            authActions.loginSuccess({ token: response.token })
+          );
           localStorage.setItem('token', response.token);
           console.log('Login successful', response);
           this.closeModal.emit();
@@ -99,6 +106,7 @@ export class LoginComponent {
           this.loginForm.reset();
         },
         error: (error) => {
+          this.store.dispatch(authActions.loginFailure({ error: error }));
           console.error('Login failed', error);
           this.toastService.showError('Login failed. Please try again.');
           this.loginForm.reset();

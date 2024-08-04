@@ -258,9 +258,9 @@ export class RegistrationComponent {
       this.registrationService.register(request).subscribe({
         next: (response: RegisterResponse) => {
           this.store.dispatch(
-            authActions.registerSuccess({ token: response.accessToken })
+            authActions.registerSuccess({ token: response.access_token })
           );
-          localStorage.setItem('token', response.accessToken);
+          localStorage.setItem('token', response.access_token);
           console.log('Registration successful', response);
           this.router.navigate(['/']);
           this.toastService.showSuccess('Registration successful');

@@ -5,7 +5,6 @@ class User(BaseModel):
     first_name: str
     last_name: str
     email: str
-    disabled: bool = False
 
 class AuthenticatedUser(User):
     hashed_password: str

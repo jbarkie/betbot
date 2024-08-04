@@ -2,8 +2,8 @@ from fastapi import FastAPI, HTTPException, Query, Depends
 from datetime import datetime, timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from api.src.config import ACCESS_TOKEN_EXPIRE_MINUTES
-from api.src.login import authenticate_user, create_access_token, get_user_by_username
-from api.src.models.auth import LoginResponse, RegisterRequest, RegisterResponse
+from api.src.login import authenticate_user, create_access_token, get_current_user, get_user_by_username
+from api.src.models.auth import AuthenticatedUser, LoginResponse, RegisterRequest, RegisterResponse, User
 from api.src.nba import get_games_by_date
 from api.src.models.nba import GamesResponse
 import uvicorn
@@ -48,6 +48,10 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     access_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     response = LoginResponse(access_token=access_token)
     return response
+
+@app.get("/users/me", response_model=User)
+async def read_users_me(current_user: Annotated[AuthenticatedUser, Depends(get_current_user)]):
+    return current_user
 
 @app.get("/nba/games", response_model=GamesResponse)
 async def games(date: str = Query(..., description="Date in YYYY-MM-DD format")) -> Any:

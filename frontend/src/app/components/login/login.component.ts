@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { LoginRequest, LoginResponse } from '../models';
 import { LoginService } from './login.service';
 import { RouterModule } from '@angular/router';
+import { ToastService } from '../toast/toast.service';
 
 @Component({
   selector: 'app-login',
@@ -51,7 +52,7 @@ export class LoginComponent {
   loginForm: FormGroup;
   @Output() closeModal = new EventEmitter<void>();
 
-  constructor(private formBuilder: FormBuilder, private loginService: LoginService) {
+  constructor(private formBuilder: FormBuilder, private loginService: LoginService, private toastService: ToastService) {
     this.loginForm = this.formBuilder.group({
       username: ['', Validators.required],
       password: ['', Validators.required],
@@ -70,9 +71,12 @@ export class LoginComponent {
           next: (response: LoginResponse) => {
             localStorage.setItem('token', response.token);
             console.log('Login successful', response);
+            this.closeModal.emit();
+            this.toastService.showSuccess('Login successful');
           },
           error: (error) => {
             console.error('Login failed', error);
+            this.toastService.showError('Login failed. Please try again.');
           }    
         });
     }

@@ -36,11 +36,11 @@ The backend API is responsible for user authentcation, fetching the latest odds 
 
 1. Clone the repository: `git clone https://github.com/jbarkie/betbot.git`
 2. Navigate to the `api` directory: `cd betbot/api`
-3. Install the dependencies: `pip install -r requirements.txt`
-4. Set up a virtual environment:
+3. Set up a virtual environment:
    - From the root `betbot` directory, create your virtual environment: `virtualenv venv`
    - Activate the virtual environment: `source venv/bin/activate`
    - To deactivate: `deactivate`
+4. Install the dependencies: `pip install -r requirements.txt`
 5. Set up the database:
    - Install Docker Desktop and Docker Compose.
    - Start Docker Desktop.

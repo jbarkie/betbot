@@ -1,11 +1,16 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LoginComponent } from '../login/login.component';
+import { CommonModule } from '@angular/common';
+import { Observable } from 'rxjs';
+import { ApplicationState } from '../../state';
+import { Store } from '@ngrx/store';
+import { authActions } from '../../state/auth/auth.actions';
 
 @Component({
   selector: 'app-nav-bar',
   standalone: true,
-  imports: [RouterLink, LoginComponent],
+  imports: [RouterLink, LoginComponent, CommonModule],
   template: `<div class="navbar bg-base-100">
       <div class="navbar-start">
         <div class="dropdown">
@@ -70,7 +75,8 @@ import { LoginComponent } from '../login/login.component';
             tabindex="0"
             class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
           >
-            <li><label for="login-modal" class="modal-button">Login</label></li>
+            <li *ngIf="!(isAuthenticated$ | async)"><label for="login-modal" class="modal-button">Login</label></li>
+            <li *ngIf="isAuthenticated$ | async"><a (click)="logout()">Logout</a></li>
             <li><a>Settings</a></li>
           </ul>
         </div>
@@ -83,10 +89,21 @@ import { LoginComponent } from '../login/login.component';
   styles: [],
 })
 export class NavBarComponent {
+  isAuthenticated$: Observable<boolean>;
+
+  constructor(private store: Store<ApplicationState>) {
+    this.isAuthenticated$ = this.store.select(state => state.auth.isAuthenticated);
+  }
+
   closeLoginModal() {
     const modalToggle = document.getElementById('login-modal') as HTMLInputElement;
     if (modalToggle) {
       modalToggle.checked = false;
     }
+  }
+
+  logout() {
+    this.store.dispatch(authActions.logout());
+    localStorage.removeItem('token');
   }
 }

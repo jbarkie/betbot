@@ -78,6 +78,7 @@ export class LoginComponent {
           error: (error) => {
             console.error('Login failed', error);
             this.toastService.showError('Login failed. Please try again.');
+            this.loginForm.reset();
           }    
         });
     }

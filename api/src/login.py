@@ -57,6 +57,11 @@ def authenticate_user(username: str, password: str):
     user = get_user_by_username(username)
     if not user:
         return False
-    if not bcrypt.checkpw(password.encode('utf-8'), user.hashed_password.encode('utf-8')):
+    
+    try:
+        if not bcrypt.checkpw(password.encode('utf-8'), user.hashed_password.encode('utf-8')):
+            return False
+    except ValueError:
         return False
+    
     return user

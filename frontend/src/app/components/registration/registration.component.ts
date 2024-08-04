@@ -13,6 +13,9 @@ import { RegisterRequest, RegisterResponse } from '../models';
 import { RegistrationService } from './registration.service';
 import { Router } from '@angular/router';
 import { ToastService } from '../toast/toast.service';
+import { ApplicationState } from '../../state';
+import { Store } from '@ngrx/store';
+import { authActions } from '../../state/auth/auth.actions';
 
 @Component({
   selector: 'app-registration',
@@ -164,7 +167,8 @@ export class RegistrationComponent {
   constructor(
     private registrationService: RegistrationService,
     private router: Router,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private store: Store<ApplicationState>
   ) {}
 
   ngOnInit() {
@@ -253,12 +257,18 @@ export class RegistrationComponent {
 
       this.registrationService.register(request).subscribe({
         next: (response: RegisterResponse) => {
+          this.store.dispatch(
+            authActions.registerSuccess({ token: response.accessToken })
+          );
           localStorage.setItem('token', response.accessToken);
           console.log('Registration successful', response);
           this.router.navigate(['/']);
           this.toastService.showSuccess('Registration successful');
         },
         error: (error) => {
+          this.store.dispatch(
+            authActions.registerFailure({ error: error })
+          );
           console.error('Registration failed', error);
           this.toastService.showError('Registration failed. Please try again.');
         },

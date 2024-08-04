@@ -73,6 +73,7 @@ export class LoginComponent {
             console.log('Login successful', response);
             this.closeModal.emit();
             this.toastService.showSuccess('Login successful');
+            this.loginForm.reset();
           },
           error: (error) => {
             console.error('Login failed', error);

@@ -106,13 +106,21 @@ export class LoginComponent {
           this.loginForm.reset();
         },
         error: (error) => {
-          this.store.dispatch(authActions.loginFailure({ error: error }));
-          console.error('Login failed', error);
-          this.toastService.showError('Login failed. Please try again.');
-          this.loginForm.reset();
+          this.handleLoginError(error);
         },
       });
     }
+  }
+
+  private handleLoginError(error: any) {
+    console.error('Login failed', error);
+    let errorMessage = 'Login failed. Please try again.';
+    if (error.status === 401) {
+      errorMessage = 'Invalid username or password.';
+    }
+    this.store.dispatch(authActions.loginFailure({ error: errorMessage }));
+    this.toastService.showError(errorMessage);
+    this.loginForm.reset();
   }
 
   isInvalid(controlName: string) {

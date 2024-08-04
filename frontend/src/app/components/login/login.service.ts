@@ -17,20 +17,10 @@ export class LoginService {
       .set('username', request.username)
       .set('password', request.password);
 
-    return this.http
-      .post<LoginResponse>(this.loginUrl, body.toString(), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      })
-      .pipe(catchError(this.handleError<LoginResponse>('login')));
-  }
-
-  private handleError<T>(operation = 'operation', result?: T) {
-    return (error: any): Observable<T> => {
-      console.error(error);
-      console.log(`${operation} failed: ${error.message}`);
-      return of(result as T);
-    };
+    return this.http.post<LoginResponse>(this.loginUrl, body.toString(), {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
   }
 }

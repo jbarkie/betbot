@@ -15,7 +15,8 @@ export type LoginRequest = {
 };
 
 export type LoginResponse = {
-  token: string;
+  access_token: string;
+  token_type: string;
 };
 
 export type RegisterRequest = {
@@ -27,6 +28,6 @@ export type RegisterRequest = {
 }
 
 export type RegisterResponse = {
-  accessToken: string;
-  tokenType: string;
+  access_token: string;
+  token_type: string;
 };

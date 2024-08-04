@@ -266,13 +266,19 @@ export class RegistrationComponent {
           this.toastService.showSuccess('Registration successful');
         },
         error: (error) => {
-          this.store.dispatch(
-            authActions.registerFailure({ error: error })
-          );
-          console.error('Registration failed', error);
-          this.toastService.showError('Registration failed. Please try again.');
+          this.handleRegistrationError(error);
         },
       });
     }
+  }
+
+  private handleRegistrationError(error: any) {
+    console.error('Registration failed', error);
+    let errorMessage = 'Registration failed. Please try again.';
+    if (error.status === 403) {
+      errorMessage = 'Username already exists.';
+    }
+    this.store.dispatch(authActions.registerFailure({ error: errorMessage }));
+    this.toastService.showError(errorMessage);
   }
 }

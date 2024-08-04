@@ -1,11 +1,13 @@
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 import pytest
+from api.src.config import ALGORITHM, SECRET_KEY
 from api.src.login import get_user_by_username
 from api.src.main import app
 from api.src.models.auth import AuthenticatedUser
 from api.src.models.tables import Users
 import bcrypt
+import jwt
 
 client = TestClient(app)
 
@@ -53,6 +55,9 @@ def test_get_user_by_username_not_found():
 def mock_user():
     user = MagicMock()
     user.username = "testuser"
+    user.first_name = "Test"
+    user.last_name = "User"
+    user.email = "test@testing.com"
     user.hashed_password = bcrypt.hashpw("correctpassword".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     return user
 
@@ -86,3 +91,35 @@ def test_login_bcrypt_error(mock_user):
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Invalid username or password"}
+
+def test_get_current_user_valid_token(mock_user):
+    with patch('api.src.login.get_user_by_username', return_value=mock_user):
+        token = jwt.encode({"sub": "testuser"}, SECRET_KEY, algorithm=ALGORITHM)
+        response = client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 200
+        assert response.json() == {
+            "username": "testuser",
+            "first_name": "Test",
+            "last_name": "User",
+            "email": "test@testing.com"
+        }
+
+def test_get_current_user_invalid_token():
+    token = "invalidtoken"
+    response = client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Could not validate credentials"}
+
+def test_get_current_user_no_username(mock_user):
+    with patch('api.src.login.get_user_by_username', return_value=mock_user):
+        token = jwt.encode({}, SECRET_KEY, algorithm=ALGORITHM)
+        response = client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 401
+        assert response.json()["detail"] == "Could not validate credentials"
+
+def test_get_current_user_nonexistent_user():
+    with patch('api.src.login.get_user_by_username', return_value=None):
+        token = jwt.encode({"sub": "nonexistentuser"}, SECRET_KEY, algorithm=ALGORITHM)
+        response = client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 401
+        assert response.json()["detail"] == "Could not validate credentials"

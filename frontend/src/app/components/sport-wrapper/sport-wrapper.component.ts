@@ -32,21 +32,21 @@ import { Game } from '../models';
   `,
   imports: [DatePipe, CommonModule, GamesListComponent, AlertMessageComponent],
 })
-export class SportWrapperComponent {
+export class SportWrapperComponent<T> {
   @Input() sportName!: string;
-  @Input() set gamesSelector(selector: (state: any) => Game[]) {
+  @Input() set gamesSelector(selector: (state: T) => Game[]) {
     this.games = this.store.selectSignal(selector);
   }
-  @Input() set errorSelector(selector: (state: any) => boolean) {
+  @Input() set errorSelector(selector: (state: T) => string) {
     this.error = this.store.selectSignal(selector);
   }
-  @Input() loadGamesAction!: any;
+  @Input() loadGamesAction!: (props: { date: Date }) => { type: string; date: Date };
 
   selectedDate: Date = new Date();
-  games: () => Game[] = () => [];
-  error: () => boolean = () => false;
+  games!: Signal<Game[]>;
+  error!: Signal<string>;
 
-  constructor(private store: Store) {}
+  constructor(private store: Store<T>) {}
 
   previousDay() {
     this.selectedDate = new Date(

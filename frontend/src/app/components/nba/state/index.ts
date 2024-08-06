@@ -1,12 +1,10 @@
-import { EntityState, createEntityAdapter } from '@ngrx/entity';
+import { createEntityAdapter } from '@ngrx/entity';
 import { Game } from '../../models';
 import { createFeature, createReducer, createSelector, on } from '@ngrx/store';
 import { NBADocuments, NbaCommands } from './actions';
+import { SportsState } from '../../sport-wrapper/state';
 
-export interface NbaState extends EntityState<Game> {
-  isLoaded: boolean;
-  error: any;
-}
+export interface NbaState extends SportsState {}
 
 const adapter = createEntityAdapter<Game>();
 const initialState: NbaState = adapter.getInitialState({
@@ -40,7 +38,7 @@ export const nbaFeature = createFeature({
             } as Game)
         )
       ),
-      selectError: createSelector(selectNbaState, (s) => s.error),
+      selectError: createSelector(selectNbaState, (s) => s.error ?? ""),
     };
   },
 });

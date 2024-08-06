@@ -96,6 +96,9 @@ import { authActions } from '../../state/auth/auth.actions';
           <p *ngIf="email?.hasError('required')" class="text-error mt-1">
             Email is required.
           </p>
+          <p *ngIf="email?.hasError('email')" class="text-error mt-1">
+            Please enter a valid email address.
+          </p>
         </div>
       </div>
       <div class="form-control mt-2">
@@ -177,7 +180,7 @@ export class RegistrationComponent {
         username: new FormControl('', [Validators.required]),
         firstName: new FormControl('', [Validators.required]),
         lastName: new FormControl('', [Validators.required]),
-        email: new FormControl('', [Validators.required]),
+        email: new FormControl('', [Validators.required, Validators.email]),
         password: new FormControl('', [
           Validators.required,
           Validators.minLength(8),

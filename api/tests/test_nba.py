@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 from datetime import date, datetime, timedelta
 from api.src.models.nba import GamesResponse
-from api.src.nba import call_odds_api, is_data_expired, store_odds, update_existing_odds_in_db, parse_response_and_store_games, get_games_by_date
+from api.src.games import call_odds_api, is_data_expired, store_odds, update_existing_odds_in_db, parse_response_and_store_games, get_games_by_date
 from api.src.main import app
 
 client = TestClient(app)

@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from api.src.config import ACCESS_TOKEN_EXPIRE_MINUTES
 from api.src.login import authenticate_user, create_access_token, get_current_user, get_user_by_username
 from api.src.models.auth import AuthenticatedUser, LoginResponse, RegisterRequest, RegisterResponse, User
-from api.src.nba import get_games_by_date
+from api.src.games import get_games_by_date
 from api.src.models.nba import GamesResponse
 import uvicorn
 from typing import Any, Annotated

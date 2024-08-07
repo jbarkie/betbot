@@ -7,6 +7,7 @@ class Odds(Base):
     __tablename__ = 'odds'
 
     id = Column(String, primary_key=True)
+    sport = Column(String)
     time = Column(DateTime)
     home_odds = Column(String)
     away_odds = Column(String)

@@ -57,7 +57,7 @@ async def read_users_me(current_user: Annotated[AuthenticatedUser, Depends(get_c
 async def games(date: str = Query(..., description="Date in YYYY-MM-DD format")) -> Any:
     try:
         parsed_date = datetime.strptime(date, "%Y-%m-%d")
-        return get_games_by_date(parsed_date)
+        return get_games_by_date(parsed_date, 'NBA', 'basketball_nba')
     except ValueError as e:
         error_message = f"Invalid date format. Please use YYYY-MM-DD format. Error: {str(e)}"
         traceback_message = traceback.format_exc()

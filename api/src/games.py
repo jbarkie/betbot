@@ -8,11 +8,12 @@ import requests
 from sqlalchemy import cast, Date, func
 from pytz import timezone, utc
 
-def call_odds_api():
-    response = requests.get(ODDS_API_URL).json()
+def call_odds_api(sport):
+    url = ODDS_API_URL.format(sport=sport)
+    response = requests.get(url).json()
     return response
 
-def parse_response_and_store_games(odds_response):
+def parse_response_and_store_games(odds_response, sport):
     games = []
     eastern = timezone('US/Eastern')
     for game_data in odds_response:
@@ -32,7 +33,7 @@ def parse_response_and_store_games(odds_response):
                 
                 game = Game(
                     id=game_id,
-                    sport='NBA',
+                    sport=sport,
                     homeTeam=home_team,
                     awayTeam=away_team,
                     time=commence_time_local.strftime("%Y-%m-%d %H:%M"),
@@ -61,6 +62,7 @@ def store_odds(game: Game):
     session = connect_to_db()
     game = Odds(
         id=game.id,
+        sport=game.sport,
         time=game.time,
         home_odds=game.homeOdds,
         away_odds=game.awayOdds,
@@ -71,28 +73,28 @@ def store_odds(game: Game):
     session.add(game)
     session.commit()
 
-def is_data_expired():
+def is_data_expired(sport):
     session = connect_to_db()
     current_time = datetime.now()
-    nearest_expiration = session.query(func.min(Odds.expires)).scalar()
+    nearest_expiration = session.query(func.min(Odds.expires)).filter(Odds.sport == sport).scalar()
 
     if nearest_expiration is None:
         return True
     return nearest_expiration <= current_time
 
-def get_games_by_date(date):
-    if is_data_expired():
-        odds_response = call_odds_api()
-        games = parse_response_and_store_games(odds_response)
+def get_games_by_date(date, sport, api_sport_param):
+    if is_data_expired(sport):
+        odds_response = call_odds_api(api_sport_param)
+        games = parse_response_and_store_games(odds_response, sport)
         games_for_date = [game for game in games if game.time.split(" ")[0] == date.strftime("%Y-%m-%d")]
         return GamesResponse(list=games_for_date)
     else:
         session = connect_to_db()
-        games = session.query(Odds).filter(cast(Odds.time, Date) == date).all()
+        games = session.query(Odds).filter(cast(Odds.time, Date) == date, Odds.sport == sport).all()
         games_list = [
             Game(
                 id=game.id,
-                sport='NBA',
+                sport=sport,
                 homeTeam=game.home_team,
                 awayTeam=game.away_team,
                 time=game.time.strftime("%Y-%m-%d %H:%M"),

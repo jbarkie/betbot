@@ -38,18 +38,27 @@ def test_nba_games():
 def test_call_odds_api(mocker):
     mock_response = mocker.patch('requests.get')
     mock_response.return_value.json.return_value = odds_data
-    odds_response = call_odds_api()
+    odds_response = call_odds_api('basketball_nba')
     assert odds_response == mock_response.return_value.json.return_value
 
 def test_is_data_expired(mocker):
-    mock_query = mocker.patch('api.src.nba.connect_to_db')
-    mock_query.return_value.query.return_value.scalar.return_value = None
-    assert is_data_expired() == True
-    mock_query.return_value.query.return_value.scalar.return_value = datetime.now() + timedelta(minutes=10)
-    assert is_data_expired() == False
+    nba = 'NBA'
+    mock_connect = mocker.patch('api.src.games.connect_to_db')
+    mock_session = mock_connect.return_value
+    mock_query = mock_session.query.return_value
+    mock_filter = mock_query.filter.return_value
+    
+    mock_filter.scalar.return_value = datetime.now() - timedelta(minutes=1)
+    assert is_data_expired(nba) == True
+
+    mock_filter.scalar.return_value = datetime.now() + timedelta(minutes=1)
+    assert is_data_expired(nba) == False
+
+    mock_filter.scalar.return_value = None
+    assert is_data_expired(nba) == True
 
 def test_update_existing_odds_in_db(mocker):
-    mock_session = mocker.patch('api.src.nba.connect_to_db')
+    mock_session = mocker.patch('api.src.games.connect_to_db')
     mock_existing_odds = mocker.MagicMock()
     mock_session.return_value.query.return_value.filter_by.return_value.first.return_value = mock_existing_odds
     assert update_existing_odds_in_db('test_game_id', '-200', '+150') == True
@@ -60,7 +69,7 @@ def test_update_existing_odds_in_db(mocker):
     assert update_existing_odds_in_db('test_game_id',  '-200', '+150') == False
 
 def test_store_odds(mocker):
-    mock_session = mocker.patch('api.src.nba.connect_to_db')
+    mock_session = mocker.patch('api.src.games.connect_to_db')
     game = mocker.MagicMock(
         id='test_game_id',
         time='2023-06-08 00:00',
@@ -74,9 +83,9 @@ def test_store_odds(mocker):
     mock_session.return_value.commit.assert_called_once()
 
 def test_parse_response_and_store_games(mocker):
-    mocker.patch('api.src.nba.update_existing_odds_in_db', return_value=False)
-    mocker.patch('api.src.nba.store_odds')
-    games = parse_response_and_store_games(odds_data)
+    mocker.patch('api.src.games.update_existing_odds_in_db', return_value=False)
+    mocker.patch('api.src.games.store_odds')
+    games = parse_response_and_store_games(odds_data, 'NBA')
     assert len(games) == 1
     game = games[0]
     assert game.sport == 'NBA'
@@ -86,8 +95,8 @@ def test_parse_response_and_store_games(mocker):
     assert game.awayOdds == '+150'
 
 def test_get_games_by_date(mocker):
-    mocker.patch('api.src.nba.is_data_expired', return_value=False)
-    mock_query = mocker.patch('api.src.nba.connect_to_db')
+    mocker.patch('api.src.games.is_data_expired', return_value=False)
+    mock_query = mocker.patch('api.src.games.connect_to_db')
     mock_query.return_value.query.return_value.filter.return_value.all.return_value = [
         mocker.MagicMock(
             id='test_game_id',
@@ -98,7 +107,7 @@ def test_get_games_by_date(mocker):
             away_odds='+150'
         )
     ]
-    games_response = get_games_by_date(datetime.now().date())
+    games_response = get_games_by_date(datetime.now().date(), 'NBA', 'basketball_nba')
     assert len(games_response.list) == 1
     game = games_response.list[0]
     assert game.id == 'test_game_id'

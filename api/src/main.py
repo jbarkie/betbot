@@ -71,6 +71,10 @@ async def get_games_for_sport(date: str, sport: str, api_sport_param: str):
 @app.get("/nba/games", response_model=GamesResponse)
 async def nba_games(date: str = Query(..., description="Date in YYYY-MM-DD format")):
     return await get_games_for_sport(date, "NBA", "basketball_nba")
+
+@app.get("/mlb/games", response_model=GamesResponse)
+async def mlb_games(date: str = Query(..., description="Date in YYYY-MM-DD format")):
+    return await get_games_for_sport(date, "MLB", "baseball_mlb")
     
 def main():
     configure(app)

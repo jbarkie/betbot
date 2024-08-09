@@ -53,11 +53,10 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
 async def read_users_me(current_user: Annotated[AuthenticatedUser, Depends(get_current_user)]):
     return current_user
 
-@app.get("/nba/games", response_model=GamesResponse)
-async def games(date: str = Query(..., description="Date in YYYY-MM-DD format")) -> Any:
+async def get_games_for_sport(date: str, sport: str, api_sport_param: str):
     try:
         parsed_date = datetime.strptime(date, "%Y-%m-%d")
-        return get_games_by_date(parsed_date, 'NBA', 'basketball_nba')
+        return get_games_by_date(parsed_date, sport, api_sport_param)
     except ValueError as e:
         error_message = f"Invalid date format. Please use YYYY-MM-DD format. Error: {str(e)}"
         traceback_message = traceback.format_exc()
@@ -68,6 +67,10 @@ async def games(date: str = Query(..., description="Date in YYYY-MM-DD format"))
         traceback_message = traceback.format_exc()
         print(f"Error: {error_message}\nTraceback: {traceback_message}")
         raise HTTPException(status_code=500, detail=error_message)
+
+@app.get("/nba/games", response_model=GamesResponse)
+async def nba_games(date: str = Query(..., description="Date in YYYY-MM-DD format")):
+    return await get_games_for_sport(date, "NBA", "basketball_nba")
     
 def main():
     configure(app)

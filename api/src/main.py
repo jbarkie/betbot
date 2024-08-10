@@ -53,19 +53,31 @@ async def read_users_me(current_user: Annotated[AuthenticatedUser, Depends(get_c
     return current_user
 
 @app.get("/nba/games", response_model=GamesResponse)
-async def nba_games(date: str = Query(..., description="Date in YYYY-MM-DD format")):
+async def nba_games(
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    date: str = Query(..., description="Date in YYYY-MM-DD format")
+):
     return await get_games_for_sport(date, "NBA", "basketball_nba")
 
 @app.get("/mlb/games", response_model=GamesResponse)
-async def mlb_games(date: str = Query(..., description="Date in YYYY-MM-DD format")):
+async def mlb_games(
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    date: str = Query(..., description="Date in YYYY-MM-DD format")
+):
     return await get_games_for_sport(date, "MLB", "baseball_mlb")
 
 @app.get("/nfl/games", response_model=GamesResponse)
-async def nfl_games(date: str = Query(..., description="Date in YYYY-MM-DD format")):
+async def nfl_games(
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    date: str = Query(..., description="Date in YYYY-MM-DD format")
+):
     return await get_games_for_sport(date, "NFL", "americanfootball_nfl")
 
 @app.get("/nhl/games", response_model=GamesResponse)
-async def nhl_games(date: str = Query(..., description="Date in YYYY-MM-DD format")):
+async def nhl_games(
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    date: str = Query(..., description="Date in YYYY-MM-DD format")
+):
     return await get_games_for_sport(date, "NHL", "icehockey_nhl")
     
 def main():

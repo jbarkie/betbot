@@ -8,6 +8,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { nbaFeature } from './components/nba/state';
 import { provideEffects } from '@ngrx/effects';
 import { NbaEffects } from './components/nba/state/nba-effects';
+import { mlbFeature } from './components/mlb/state';
+import { MlbEffects } from './components/mlb/state/mlb-effects';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -16,6 +18,8 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(),
     provideState(nbaFeature),
     provideEffects([NbaEffects]),
+    provideState(mlbFeature),
+    provideEffects([MlbEffects]),
     provideStoreDevtools(),
   ],
 };

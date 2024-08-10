@@ -1,3 +1,5 @@
+import traceback
+from fastapi import HTTPException
 from api.src.models.tables import Odds
 from api.src.models.nba import Game, GamesResponse
 from dateutil import parser
@@ -7,6 +9,21 @@ from api.src.utils import format_american_odds, connect_to_db
 import requests
 from sqlalchemy import cast, Date, func
 from pytz import timezone, utc
+    
+async def get_games_for_sport(date: str, sport: str, api_sport_param: str):
+    try:
+        parsed_date = datetime.strptime(date, "%Y-%m-%d")
+        return get_games_by_date(parsed_date, sport, api_sport_param)
+    except ValueError as e:
+        error_message = f"Invalid date format. Please use YYYY-MM-DD format. Error: {str(e)}"
+        traceback_message = traceback.format_exc()
+        print(f"Error: {error_message}\nTraceback: {traceback_message}")
+        raise HTTPException(status_code=400, detail=error_message)
+    except Exception as e:
+        error_message = f"An error occurred while processing the request. Error: {str(e)}"
+        traceback_message = traceback.format_exc()
+        print(f"Error: {error_message}\nTraceback: {traceback_message}")
+        raise HTTPException(status_code=500, detail=error_message)
 
 def call_odds_api(sport):
     url = ODDS_API_URL.format(sport=sport)

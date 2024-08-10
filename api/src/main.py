@@ -1,15 +1,14 @@
 from fastapi import FastAPI, HTTPException, Query, Depends
-from datetime import datetime, timedelta
+from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from api.src.config import ACCESS_TOKEN_EXPIRE_MINUTES
 from api.src.login import authenticate_user, create_access_token, get_current_user, get_user_by_username
 from api.src.models.auth import AuthenticatedUser, LoginResponse, RegisterRequest, RegisterResponse, User
-from api.src.games import get_games_by_date
+from api.src.games import get_games_for_sport
 from api.src.models.nba import GamesResponse
 import uvicorn
 from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
-import traceback
 from api.src.register import register_user
 
 app = FastAPI()
@@ -52,21 +51,6 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
 @app.get("/users/me", response_model=User)
 async def read_users_me(current_user: Annotated[AuthenticatedUser, Depends(get_current_user)]):
     return current_user
-
-async def get_games_for_sport(date: str, sport: str, api_sport_param: str):
-    try:
-        parsed_date = datetime.strptime(date, "%Y-%m-%d")
-        return get_games_by_date(parsed_date, sport, api_sport_param)
-    except ValueError as e:
-        error_message = f"Invalid date format. Please use YYYY-MM-DD format. Error: {str(e)}"
-        traceback_message = traceback.format_exc()
-        print(f"Error: {error_message}\nTraceback: {traceback_message}")
-        raise HTTPException(status_code=400, detail=error_message)
-    except Exception as e:
-        error_message = f"An error occurred while processing the request. Error: {str(e)}"
-        traceback_message = traceback.format_exc()
-        print(f"Error: {error_message}\nTraceback: {traceback_message}")
-        raise HTTPException(status_code=500, detail=error_message)
 
 @app.get("/nba/games", response_model=GamesResponse)
 async def nba_games(date: str = Query(..., description="Date in YYYY-MM-DD format")):

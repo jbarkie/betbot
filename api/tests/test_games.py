@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from datetime import date, datetime, timedelta
+import pytest
 from api.src.games import call_odds_api, is_data_expired, store_odds, update_existing_odds_in_db, parse_response_and_store_games, get_games_by_date
 from api.src.main import app
 
@@ -28,27 +29,15 @@ odds_data = [
     }
 ]
 
-def test_nba_games():
+@pytest.mark.parametrize("endpoint", [
+    "/nba/games",
+    "/mlb/games",
+    "/nfl/games",
+    "/nhl/games"
+])
+def test_games(endpoint):
     today = date.today().strftime("%Y-%m-%d")
-    response = client.get(f"/nba/games?date={today}")
-    assert response.status_code == 200
-    assert len(response.json()['list']) >= 0
-
-def test_mlb_games():
-    today = date.today().strftime("%Y-%m-%d")
-    response = client.get(f"/mlb/games?date={today}")
-    assert response.status_code == 200
-    assert len(response.json()['list']) >= 0
-
-def test_nfl_games():
-    today = date.today().strftime("%Y-%m-%d")
-    response = client.get(f"/nfl/games?date={today}")
-    assert response.status_code == 200
-    assert len(response.json()['list']) >= 0
-
-def test_nhl_games():
-    today = date.today().strftime("%Y-%m-%d")
-    response = client.get(f"/nhl/games?date={today}")
+    response = client.get(f"{endpoint}?date={today}")
     assert response.status_code == 200
     assert len(response.json()['list']) >= 0
 
@@ -134,63 +123,36 @@ def test_get_games_by_date(mocker):
     assert game.homeOdds == '-200'
     assert game.awayOdds == '+150'
 
-def test_nba_games_invalid_date_format():
-    response = client.get("/nba/games?date=invalid-date")
+@pytest.mark.parametrize("endpoint", [
+    "/nba/games",
+    "/mlb/games",
+    "/nfl/games",
+    "/nhl/games"
+])
+def test_games_invalid_date_format(endpoint):
+    response = client.get(f"{endpoint}?date=invalid-date")
     assert response.status_code == 400
     assert "Invalid date format" in response.json()['detail']
 
-def test_mlb_games_invalid_date_format():
-    response = client.get("/mlb/games?date=invalid-date")
-    assert response.status_code == 400
-    assert "Invalid date format" in response.json()['detail']
-
-def test_nfl_games_invalid_date_format():
-    response = client.get("/nfl/games?date=invalid-date")
-    assert response.status_code == 400
-    assert "Invalid date format" in response.json()['detail']
-
-def test_nhl_games_invalid_date_format():
-    response = client.get("/nhl/games?date=invalid-date")
-    assert response.status_code == 400
-    assert "Invalid date format" in response.json()['detail']
-
-def test_nba_games_internal_server_error(mocker):
+@pytest.mark.parametrize("endpoint", [
+    "/nba/games",
+    "/mlb/games",
+    "/nfl/games",
+    "/nhl/games"
+])
+def test_games_internal_server_error(mocker, endpoint):
     mocker.patch('api.src.games.get_games_by_date', side_effect=Exception("Unexpected error"))
-    response = client.get("/nba/games?date=2023-07-31")
+    response = client.get(f"{endpoint}?date=2023-07-31")
     assert response.status_code == 500
     assert "An error occurred while processing the request" in response.json()['detail']
 
-def test_mlb_games_internal_server_error(mocker):
-    mocker.patch('api.src.games.get_games_by_date', side_effect=Exception("Unexpected error"))
-    response = client.get("/mlb/games?date=2023-07-31")
-    assert response.status_code == 500
-    assert "An error occurred while processing the request" in response.json()['detail']
-    
-def test_nfl_games_internal_server_error(mocker):
-    mocker.patch('api.src.games.get_games_by_date', side_effect=Exception("Unexpected error"))
-    response = client.get("/nfl/games?date=2023-07-31")
-    assert response.status_code == 500
-    assert "An error occurred while processing the request" in response.json()['detail']
-
-def test_nhl_games_internal_server_error(mocker):
-    mocker.patch('api.src.games.get_games_by_date', side_effect=Exception("Unexpected error"))
-    response = client.get("/nhl/games?date=2023-07-31")
-    assert response.status_code == 500
-    assert "An error occurred while processing the request" in response.json()['detail']
-
-def test_nba_games_no_date_provided():
-    response = client.get("/nba/games")
-    assert response.status_code == 422
-
-def test_mlb_games_no_date_provided():
-    response = client.get("/mlb/games")
-    assert response.status_code == 422
-    
-def test_nfl_games_no_date_provided():
-    response = client.get("/nba/games")
-    assert response.status_code == 422
-    
-def test_nhl_games_no_date_provided():
-    response = client.get("/nhl/games")
+@pytest.mark.parametrize("endpoint", [
+    "/nba/games",
+    "/mlb/games",
+    "/nfl/games",
+    "/nhl/games"
+])
+def test_games_no_date_provided(endpoint):
+    response = client.get(endpoint)
     assert response.status_code == 422
     

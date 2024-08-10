@@ -117,17 +117,33 @@ def test_get_games_by_date(mocker):
     assert game.homeOdds == '-200'
     assert game.awayOdds == '+150'
 
-def test_games_invalid_date_format():
+def test_nba_games_invalid_date_format():
     response = client.get("/nba/games?date=invalid-date")
     assert response.status_code == 400
     assert "Invalid date format" in response.json()['detail']
 
-def test_games_internal_server_error(mocker):
+def test_mlb_games_invalid_date_format():
+    response = client.get("/mlb/games?date=invalid-date")
+    assert response.status_code == 400
+    assert "Invalid date format" in response.json()['detail']
+
+def test_nba_games_internal_server_error(mocker):
     mocker.patch('api.src.main.get_games_by_date', side_effect=Exception("Unexpected error"))
     response = client.get("/nba/games?date=2023-07-31")
     assert response.status_code == 500
     assert "An error occurred while processing the request" in response.json()['detail']
 
-def test_games_no_date_provided():
+def test_mlb_games_internal_server_error(mocker):
+    mocker.patch('api.src.main.get_games_by_date', side_effect=Exception("Unexpected error"))
+    response = client.get("/mlb/games?date=2023-07-31")
+    assert response.status_code == 500
+    assert "An error occurred while processing the request" in response.json()['detail']
+
+def test_nba_games_no_date_provided():
     response = client.get("/nba/games")
     assert response.status_code == 422
+
+def test_mlb_games_no_date_provided():
+    response = client.get("/mlb/games")
+    assert response.status_code == 422
+    

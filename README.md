@@ -5,6 +5,7 @@ BetBot is a sports betting application that allows users to view and analyze the
 ## Features
 
 - View the latest NBA games and odds
+- View the latest MLB games and odds
 - Odds analysis and betting suggestions via integration of machine learning algorithms
 
 ## Backend API
@@ -28,7 +29,8 @@ The backend API is responsible for user authentcation, fetching the latest odds 
 ### Endpoints
 
 - `/users/me`: Returns the user that is currently logged in.
-- `/nba/games`: Returns a list of today's NBA games with their respective odds.
+- `/nba/games?date={yyyy-mm-dd}`: Returns a list of NBA games and respective betting odds for a given date.
+- `/mlb/games?date={yyyy-mm-dd}`: Returns a list of MLB games and respective betting odds for a given date. 
 - `/login`: Authenticates an existing user.
 - `/register`: Register an account.
 

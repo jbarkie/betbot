@@ -4,40 +4,47 @@ import { Store } from '@ngrx/store';
 import { GamesListComponent } from '../games-list/games-list.component';
 import { AlertMessageComponent } from '../alert-message/alert-message.component';
 import { Game } from '../models';
+import { Observable } from 'rxjs';
+import { ApplicationState } from '../../state';
 
 @Component({
   selector: 'app-sport-wrapper',
   standalone: true,
   template: `
-    <div class="join flex justify-center my-5">
-      <button
-        class="join-item btn"
-        (click)="previousDay()"
-        [disabled]="isCurrentDate()"
-      >
-        «
-      </button>
-      <button class="join-item btn">
-        {{ selectedDate | date : 'EEEE, MMMM d' }}
-      </button>
-      <button class="join-item btn" (click)="nextDay()">»</button>
-    </div>
-    <ng-container *ngIf="games()">
-      <app-games-list [list]="games()"></app-games-list>
+    <ng-container *ngIf="(isAuthenticated$ | async); else unauthenticated">
+      <div class="join flex justify-center my-5">
+        <button
+          class="join-item btn"
+          (click)="previousDay()"
+          [disabled]="isCurrentDate()"
+        >
+          «
+        </button>
+        <button class="join-item btn">
+          {{ selectedDate | date : 'EEEE, MMMM d' }}
+        </button>
+        <button class="join-item btn" (click)="nextDay()">»</button>
+      </div>
+      <ng-container *ngIf="games()">
+        <app-games-list [list]="games()"></app-games-list>
+      </ng-container>
+      <app-alert-message
+        *ngIf="error()"
+        [message]="'Error loading ' + sportName + ' games.'"
+      />
     </ng-container>
-    <app-alert-message
-      *ngIf="error()"
-      [message]="'Error loading ' + sportName + ' games.'"
-    />
+    <ng-template #unauthenticated>
+      <app-alert-message message="You must be logged in to access this page." />
+    </ng-template>
   `,
   imports: [DatePipe, CommonModule, GamesListComponent, AlertMessageComponent],
 })
-export class SportWrapperComponent<T> {
+export class SportWrapperComponent {
   @Input() sportName!: string;
-  @Input() set gamesSelector(selector: (state: T) => Game[]) {
+  @Input() set gamesSelector(selector: (state: ApplicationState) => Game[]) {
     this.games = this.store.selectSignal(selector);
   }
-  @Input() set errorSelector(selector: (state: T) => string) {
+  @Input() set errorSelector(selector: (state: ApplicationState) => string) {
     this.error = this.store.selectSignal(selector);
   }
   @Input() loadGamesAction!: (props: { date: Date }) => { type: string; date: Date };
@@ -45,8 +52,14 @@ export class SportWrapperComponent<T> {
   selectedDate: Date = new Date();
   games!: Signal<Game[]>;
   error!: Signal<string>;
+  isAuthenticated$!: Observable<boolean>;
 
-  constructor(private store: Store<T>) {}
+  constructor(private store: Store<ApplicationState>) {}
+
+  ngOnInit() {
+    this.isAuthenticated$ = this.store.select((state) => state.auth.isAuthenticated);
+    this.loadGames();
+  }
 
   previousDay() {
     this.selectedDate = new Date(

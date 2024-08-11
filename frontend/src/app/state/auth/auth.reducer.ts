@@ -5,12 +5,14 @@ export interface AuthState {
   isAuthenticated: boolean;
   token: string | null;
   error: string | null;
+  showLoginModal: boolean;
 }
 
 export const initialAuthState: AuthState = {
   isAuthenticated: false,
   token: null,
   error: null,
+  showLoginModal: false,
 };
 
 export const authReducer = createReducer(
@@ -20,24 +22,36 @@ export const authReducer = createReducer(
     isAuthenticated: true,
     token,
     error: null,
+    showLoginModal: false,
   })),
   on(authActions.registerFailure, (state, { error }) => ({
     ...state,
     isAuthenticated: false,
     token: null,
     error,
+    showLoginModal: false,
   })),
   on(authActions.loginSuccess, (state, { token }) => ({
     ...state,
     isAuthenticated: true,
     token,
     error: null,
+    showLoginModal: false,
   })),
   on(authActions.loginFailure, (state, { error }) => ({
     ...state,
     isAuthenticated: false,
     token: null,
     error,
+    showLoginModal: true,
   })),
-  on(authActions.logout, () => initialAuthState)
+  on(authActions.logout, () => initialAuthState),
+  on(authActions.showLoginModal, (state) => ({
+    ...state,
+    showLoginModal: true,
+  })),
+  on(authActions.hideLoginModal, (state) => ({
+    ...state,
+    showLoginModal: false,
+  }))
 );

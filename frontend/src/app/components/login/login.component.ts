@@ -13,6 +13,7 @@ import { ToastService } from '../toast/toast.service';
 import { ApplicationState } from '../../state';
 import { Store } from '@ngrx/store';
 import { authActions } from '../../state/auth/auth.actions';
+import { AuthService } from '../../services/auth/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -79,7 +80,8 @@ export class LoginComponent {
     private formBuilder: FormBuilder,
     private loginService: LoginService,
     private toastService: ToastService,
-    private store: Store<ApplicationState>
+    private store: Store<ApplicationState>,
+    private authService: AuthService
   ) {
     this.loginForm = this.formBuilder.group({
       username: ['', Validators.required],
@@ -99,9 +101,10 @@ export class LoginComponent {
           this.store.dispatch(
             authActions.loginSuccess({ token: response.access_token })
           );
-          localStorage.setItem('token', response.access_token);
-          console.log('Login successful', response);
-          this.closeModal.emit();
+          this.store.dispatch(
+            authActions.hideLoginModal()
+          )
+          this.authService.setToken(response.access_token);
           this.toastService.showSuccess('Login successful');
           this.loginForm.reset();
         },
@@ -132,6 +135,6 @@ export class LoginComponent {
   }
 
   onRegisterLinkClick() {
-    this.closeModal.emit();
+    this.store.dispatch(authActions.hideLoginModal());
   }
 }

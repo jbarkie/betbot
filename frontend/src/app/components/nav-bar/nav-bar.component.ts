@@ -6,6 +6,7 @@ import { Observable } from 'rxjs';
 import { ApplicationState } from '../../state';
 import { Store } from '@ngrx/store';
 import { authActions } from '../../state/auth/auth.actions';
+import { AuthService } from '../../services/auth/auth.service';
 
 @Component({
   selector: 'app-nav-bar',
@@ -75,14 +76,24 @@ import { authActions } from '../../state/auth/auth.actions';
             tabindex="0"
             class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
           >
-            <li *ngIf="!(isAuthenticated$ | async)"><label for="login-modal" class="modal-button">Login</label></li>
-            <li *ngIf="isAuthenticated$ | async"><a (click)="logout()">Logout</a></li>
+            <li *ngIf="!(isAuthenticated$ | async)">
+              <label for="login-modal" class="modal-button">Login</label>
+            </li>
+            <li *ngIf="isAuthenticated$ | async">
+              <a (click)="logout()">Logout</a>
+            </li>
             <li><a>Settings</a></li>
           </ul>
         </div>
       </div>
     </div>
-    <input type="checkbox" id="login-modal" class="modal-toggle" />
+    <input
+      type="checkbox"
+      id="login-modal"
+      class="modal-toggle"
+      [checked]="showLoginModal$ | async"
+      (change)="toggleLoginModal($event)"
+    />
     <div class="modal">
       <app-login (closeModal)="closeLoginModal()"></app-login>
     </div> `,
@@ -90,20 +101,39 @@ import { authActions } from '../../state/auth/auth.actions';
 })
 export class NavBarComponent {
   isAuthenticated$: Observable<boolean>;
+  showLoginModal$: Observable<boolean>;
 
-  constructor(private store: Store<ApplicationState>) {
-    this.isAuthenticated$ = this.store.select(state => state.auth.isAuthenticated);
+  constructor(
+    private store: Store<ApplicationState>,
+    private authService: AuthService
+  ) {
+    this.isAuthenticated$ = this.store.select(
+      (state) => state.auth.isAuthenticated
+    );
+    this.showLoginModal$ = this.store.select(
+      (state) => state.auth.showLoginModal
+    );
+  }
+
+  openLoginModal() {
+    this.store.dispatch(authActions.showLoginModal());
   }
 
   closeLoginModal() {
-    const modalToggle = document.getElementById('login-modal') as HTMLInputElement;
-    if (modalToggle) {
-      modalToggle.checked = false;
+    this.store.dispatch(authActions.hideLoginModal());
+  }
+
+  toggleLoginModal(event: Event) {
+    const isChecked = (event.target as HTMLInputElement).checked;
+    if (isChecked) {
+      this.openLoginModal();
+    } else {
+      this.closeLoginModal();
     }
   }
 
   logout() {
     this.store.dispatch(authActions.logout());
-    localStorage.removeItem('token');
+    this.authService.removeToken();
   }
 }

@@ -1,7 +1,8 @@
 import { Component } from '@angular/core';
 import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
-import { mlbFeature, MlbState } from './state';
+import { mlbFeature } from './state';
 import { MLBCommands } from './state/actions';
+import { ApplicationState } from '../../state';
 
 @Component({
   selector: 'app-mlb',
@@ -18,7 +19,7 @@ import { MLBCommands } from './state/actions';
   styles: ``
 })
 export class MlbComponent {
-  selectMlbGames = (state: { mlb: MlbState }) => mlbFeature.selectMlbGames(state);
-  selectError = (state: { mlb: MlbState }) => mlbFeature.selectError(state);
+  selectMlbGames = (state: ApplicationState) => mlbFeature.selectMlbGames(state);
+  selectError = (state: ApplicationState) => mlbFeature.selectError(state);
   loadGames = MLBCommands.loadGames;
 }

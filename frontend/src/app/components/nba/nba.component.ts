@@ -1,7 +1,8 @@
 import { Component } from '@angular/core';
-import { nbaFeature, NbaState } from './state';
+import { nbaFeature } from './state';
 import { NbaCommands } from './state/actions';
 import { SportWrapperComponent } from "../sport-wrapper/sport-wrapper.component";
+import { ApplicationState } from '../../state';
 
 @Component({
   selector: 'app-nba',
@@ -18,7 +19,7 @@ import { SportWrapperComponent } from "../sport-wrapper/sport-wrapper.component"
   imports: [SportWrapperComponent],
 })
 export class NbaComponent {
-  selectNbaGames = (state: { nba: NbaState }) => nbaFeature.selectNbaGames(state);
-  selectError = (state: { nba: NbaState }) => nbaFeature.selectError(state);
+  selectNbaGames = (state: ApplicationState) => nbaFeature.selectNbaGames(state);
+  selectError = (state: ApplicationState) => nbaFeature.selectError(state);
   loadGames = NbaCommands.loadGames;
 }

@@ -1,5 +1,5 @@
 import {
-    HTTP_INTERCEPTORS,
+  HTTP_INTERCEPTORS,
   HttpErrorResponse,
   HttpEvent,
   HttpHandler,
@@ -10,7 +10,6 @@ import { Injectable, Provider } from '@angular/core';
 import { AuthService } from './auth.service';
 import { ApplicationState } from '../../state';
 import { Store } from '@ngrx/store';
-import { Router } from '@angular/router';
 import { catchError, Observable, throwError } from 'rxjs';
 import { authActions } from '../../state/auth/auth.actions';
 import { ToastService } from '../../components/toast/toast.service';
@@ -20,7 +19,6 @@ export class AuthInterceptor implements HttpInterceptor {
   constructor(
     private authService: AuthService,
     private store: Store<ApplicationState>,
-    private router: Router,
     private toastService: ToastService
   ) {}
 
@@ -41,8 +39,8 @@ export class AuthInterceptor implements HttpInterceptor {
       catchError((error: HttpErrorResponse) => {
         if (error.status === 401) {
           this.store.dispatch(authActions.logout());
+          this.store.dispatch(authActions.showLoginModal());
           this.toastService.showError('Session expired. Please log in again.');
-          this.router.navigate(['/login']);
         }
         return throwError(() => error);
       })
@@ -51,7 +49,7 @@ export class AuthInterceptor implements HttpInterceptor {
 }
 
 export const authInterceptProvider: Provider = {
-    provide: HTTP_INTERCEPTORS, 
-    useClass: AuthInterceptor,
-    multi: true
-}
+  provide: HTTP_INTERCEPTORS,
+  useClass: AuthInterceptor,
+  multi: true,
+};

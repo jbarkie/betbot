@@ -9,7 +9,7 @@ import { Game } from '../models';
   template: ` 
   <div class="card card-side bg-base-100 shadow-xl mx-auto my-5 max-w-2xl">
   <figure>
-    <img [src]="getImageSrc(game().homeTeam)" [alt]="game().homeTeam + ' logo'" class="w-28 mx-5" />
+    <img [src]="getImageSrc(game().sport, game().homeTeam)" [alt]="game().homeTeam + ' logo'" class="w-28 mx-5" />
   </figure>
   <div class="card-body">
     <h2 class="card-title">{{ game().awayTeam }} &#64; <br/> {{ game().homeTeam }}</h2>
@@ -25,7 +25,7 @@ import { Game } from '../models';
     </div>
   </div>
   <figure>
-    <img [src]="getImageSrc(game().awayTeam)" [alt]="game().awayTeam + ' logo'" class="w-28 mx-5" />
+    <img [src]="getImageSrc(game().sport, game().awayTeam)" [alt]="game().awayTeam + ' logo'" class="w-28 mx-5" />
   </figure>
 </div>`,
   styles: [],
@@ -33,9 +33,9 @@ import { Game } from '../models';
 export class GameComponent {
   game = input.required<Game>();
 
-  getImageSrc(teamString: string) {
+  getImageSrc(sport: string, teamString: string) {
     const words = teamString.split(' ');
     const teamName = words[words.length - 1].toLowerCase();
-    return `assets/img/${teamName}.png`;
+    return `assets/img/${sport}/${teamName}.png`;
   }
 }

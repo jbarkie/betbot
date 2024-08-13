@@ -2,9 +2,15 @@ from fastapi.testclient import TestClient
 from datetime import date, datetime, timedelta
 import pytest
 from api.src.games import call_odds_api, is_data_expired, store_odds, update_existing_odds_in_db, parse_response_and_store_games, get_games_by_date
+from api.src.login import create_access_token
 from api.src.main import app
 
 client = TestClient(app)
+
+def get_headers():
+    token = create_access_token(data={"sub": "test"}, expires_delta=timedelta(minutes=30))
+    headers = {"Authorization": f"Bearer {token}"}
+    return headers
 
 odds_data = [
     {
@@ -37,7 +43,7 @@ odds_data = [
 ])
 def test_games(endpoint):
     today = date.today().strftime("%Y-%m-%d")
-    response = client.get(f"{endpoint}?date={today}")
+    response = client.get(f"{endpoint}?date={today}", headers=get_headers())
     assert response.status_code == 200
     assert len(response.json()['list']) >= 0
 
@@ -130,7 +136,7 @@ def test_get_games_by_date(mocker):
     "/nhl/games"
 ])
 def test_games_invalid_date_format(endpoint):
-    response = client.get(f"{endpoint}?date=invalid-date")
+    response = client.get(f"{endpoint}?date=invalid-date", headers=get_headers())
     assert response.status_code == 400
     assert "Invalid date format" in response.json()['detail']
 
@@ -142,7 +148,7 @@ def test_games_invalid_date_format(endpoint):
 ])
 def test_games_internal_server_error(mocker, endpoint):
     mocker.patch('api.src.games.get_games_by_date', side_effect=Exception("Unexpected error"))
-    response = client.get(f"{endpoint}?date=2023-07-31")
+    response = client.get(f"{endpoint}?date=2023-07-31", headers=get_headers())
     assert response.status_code == 500
     assert "An error occurred while processing the request" in response.json()['detail']
 
@@ -153,6 +159,6 @@ def test_games_internal_server_error(mocker, endpoint):
     "/nhl/games"
 ])
 def test_games_no_date_provided(endpoint):
-    response = client.get(endpoint)
+    response = client.get(endpoint, headers=get_headers())
     assert response.status_code == 422
     

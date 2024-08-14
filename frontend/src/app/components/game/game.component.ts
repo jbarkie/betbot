@@ -34,8 +34,14 @@ export class GameComponent {
   game = input.required<Game>();
 
   getImageSrc(sport: string, teamString: string) {
-    const words = teamString.split(' ');
-    const teamName = words[words.length - 1].toLowerCase();
-    return `assets/img/${sport}/${teamName}.png`;
+    const teamName = this.normalizeTeamName(teamString);
+    const extension = sport === 'MLB' ? 'svg' : 'png';
+    return `assets/img/${sport.toLowerCase()}/${teamName}.${extension}`;
+  }
+
+  private normalizeTeamName(teamName: string): string {
+    return teamName.toLowerCase()
+      .replace(/\./g, '') 
+      .replace(/\s+/g, '-'); 
   }
 }

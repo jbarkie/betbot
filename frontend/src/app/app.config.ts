@@ -11,6 +11,7 @@ import { NbaEffects } from './components/nba/state/nba-effects';
 import { mlbFeature } from './components/mlb/state';
 import { MlbEffects } from './components/mlb/state/mlb-effects';
 import { authInterceptProvider } from './services/auth/auth.interceptor';
+import { AuthEffects } from './state/auth/auth.effects';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -18,10 +19,9 @@ export const appConfig: ApplicationConfig = {
     provideStore(reducers),
     importProvidersFrom(HttpClientModule),
     provideState(nbaFeature),
-    provideEffects([NbaEffects]),
+    provideEffects([NbaEffects, MlbEffects, AuthEffects]),
     provideState(mlbFeature),
-    provideEffects([MlbEffects]),
     provideStoreDevtools(),
-    authInterceptProvider,
+    authInterceptProvider
   ],
 };

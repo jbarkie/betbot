@@ -4,6 +4,7 @@ import { PageHeaderComponent } from './components/page-header/page-header.compon
 import { Store } from '@ngrx/store';
 import { appActions } from './state/actions';
 import { ToastComponent } from './components/toast/toast.component';
+import { authActions } from './state/auth/auth.actions';
 
 @Component({
   selector: 'app-root',
@@ -22,5 +23,6 @@ export class AppComponent {
   title = 'BetBot';
   constructor(store: Store) {
     store.dispatch(appActions.applicationStarted());
+    store.dispatch(authActions.initializeAuth());
   }
 }

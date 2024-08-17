@@ -13,6 +13,7 @@ import { ApplicationState } from '../../state';
       sportName="MLB"
       [gamesSelector]="selectMlbGames"
       [errorSelector]="selectError"
+      [loadedSelector]="selectLoaded"
       [loadGamesAction]="loadGames"
     ></app-sport-wrapper>
   `,
@@ -21,5 +22,6 @@ import { ApplicationState } from '../../state';
 export class MlbComponent {
   selectMlbGames = (state: ApplicationState) => mlbFeature.selectMlbGames(state);
   selectError = (state: ApplicationState) => mlbFeature.selectError(state);
+  selectLoaded = (state: ApplicationState) => mlbFeature.selectIsLoaded(state);
   loadGames = MLBCommands.loadGames;
 }

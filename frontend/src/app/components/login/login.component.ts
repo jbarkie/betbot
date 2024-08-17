@@ -106,7 +106,7 @@ export class LoginComponent {
           )
           this.authService.setToken(response.access_token);
           this.toastService.showSuccess('Login successful');
-          this.loginForm.reset();
+          this.loginForm.reset({ username: '', password: '' });
         },
         error: (error) => {
           this.handleLoginError(error);

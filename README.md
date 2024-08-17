@@ -102,12 +102,17 @@ The frontend client is built with Angular and provides a user interface for view
 - daisyUI
 - Tailwind CSS
 - NgRx
+- Jest
 
 ### Installation
 
 1. Navigate to the `frontend` directory: `cd betbot/frontend`
 2. Install the dependencies: `npm i`
 3. Run the development server: `ng serve -o`
+
+### Running Tests
+
+To run the frontend client unit tests: `npm test`
 
 ## Contributing
 

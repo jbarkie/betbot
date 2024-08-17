@@ -79,6 +79,16 @@ describe('LoginComponent', () => {
     expect(component.loginForm.valid).toBeTruthy();
   });
 
+  it('should mark username as invalid after field is touched', () => {
+    component.loginForm.get('username')?.markAsTouched();
+    expect(component.isInvalid('username')).toBeTruthy();
+  });
+
+  it('should mark password as invalid after field is touched', () => {
+    component.loginForm.get('password')?.markAsTouched();
+    expect(component.isInvalid('password')).toBeTruthy();
+  });
+
   it('should call loginService.login() when form is submitted', () => {
     const loginRequest = { username: 'username', password: 'password' };
     component.loginForm.patchValue(loginRequest);

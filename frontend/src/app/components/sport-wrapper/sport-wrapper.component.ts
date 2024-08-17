@@ -11,7 +11,7 @@ import { ApplicationState } from '../../state';
   selector: 'app-sport-wrapper',
   standalone: true,
   template: `
-    <ng-container *ngIf="(isAuthenticated$ | async); else unauthenticated">
+    <ng-container *ngIf="isAuthenticated$ | async; else unauthenticated">
       <div class="join flex justify-center my-5">
         <button
           class="join-item btn"
@@ -26,12 +26,12 @@ import { ApplicationState } from '../../state';
         <button class="join-item btn" (click)="nextDay()">»</button>
       </div>
       <ng-container *ngIf="games()">
-        <app-games-list [list]="games()"></app-games-list>
+        <app-games-list
+          [list]="games()"
+          [loaded]="loaded()"
+          [error]="error()"
+        ></app-games-list>
       </ng-container>
-      <app-alert-message
-        *ngIf="error()"
-        [message]="'Error loading ' + sportName + ' games.'"
-      />
     </ng-container>
     <ng-template #unauthenticated>
       <app-alert-message message="You must be logged in to access this page." />
@@ -47,17 +47,28 @@ export class SportWrapperComponent {
   @Input() set errorSelector(selector: (state: ApplicationState) => string) {
     this.error = this.store.selectSignal(selector);
   }
-  @Input() loadGamesAction!: (props: { date: Date }) => { type: string; date: Date };
+
+  @Input() set loadedSelector(selector: (state: ApplicationState) => boolean) {
+    this.loaded = this.store.selectSignal(selector);
+  }
+
+  @Input() loadGamesAction!: (props: { date: Date }) => {
+    type: string;
+    date: Date;
+  };
 
   selectedDate: Date = new Date();
   games!: Signal<Game[]>;
+  loaded!: Signal<boolean>;
   error!: Signal<string>;
   isAuthenticated$!: Observable<boolean>;
 
   constructor(private store: Store<ApplicationState>) {}
 
   ngOnInit() {
-    this.isAuthenticated$ = this.store.select((state) => state.auth.isAuthenticated);
+    this.isAuthenticated$ = this.store.select(
+      (state) => state.auth.isAuthenticated
+    );
     this.loadGames();
   }
 

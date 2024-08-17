@@ -20,6 +20,8 @@ describe('RegistrationComponent', () => {
   let authService: jest.Mocked<AuthService>;
 
   beforeEach(async () => {
+    jest.spyOn(console, 'error').mockImplementation(jest.fn());
+
     const registrationServiceMock = {
       register: jest.fn(),
     };

@@ -1,7 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideMockStore } from '@ngrx/store/testing';
 import { Component, Input } from '@angular/core';
-import { InputSignal } from '@angular/core';
 
 import { GamesListComponent } from './games-list.component';
 import { Game } from '../models';

@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv()
 from fastapi import FastAPI, HTTPException, Query, Depends
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm

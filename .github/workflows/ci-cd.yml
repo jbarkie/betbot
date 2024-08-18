@@ -9,6 +9,12 @@ on:
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
+    env:
+      ODDS_API_URL: ${{ secrets.ODDS_API_URL }}
+      DB_URL: ${{ secrets.DB_URL }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      ALGORITHM: ${{ secrets.ALGORITHM }}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python

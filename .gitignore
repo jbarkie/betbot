@@ -1,6 +1,5 @@
 venv/
 .DS_Store
-api/src/config.py
 alembic.ini
 pytest.ini
 __pycache__
@@ -8,3 +7,4 @@ __pycache__
 data
 machine-learning
 .vscode
+.env

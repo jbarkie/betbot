@@ -17,3 +17,4 @@ pytz
 python-multipart
 bcrypt
 pyjwt
+python-dotenv

@@ -25,8 +25,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r api/requirements.txt
-    - name: Setup workflow configuration
-      run: cp api/src/workflow_config.py api/src/config.py
     - name: Run tests and generate coverage report
       run: cd api/tests && coverage run -m pytest && coverage report -m
 

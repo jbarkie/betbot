@@ -1,9 +1,7 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { Game } from '../models';
 import { AlertMessageComponent } from '../alert-message/alert-message.component';
 import { GameComponent } from '../game/game.component';
-import { Store } from '@ngrx/store';
-import { nbaFeature } from '../nba/state';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -24,6 +22,7 @@ import { CommonModule } from '@angular/common';
     <div *ngIf="!loaded() && !error()" class="loading-container">
       <span class="loading loading-bars loading-lg"></span>
     </div>
+    <app-alert-message *ngIf="error()" message="Error loading games." />
   `,
   styles: [
     '.loading-container { display: flex; justify-content: center; margin-top: 48px }',
@@ -31,10 +30,9 @@ import { CommonModule } from '@angular/common';
   imports: [AlertMessageComponent, GameComponent, CommonModule],
 })
 export class GamesListComponent {
-  private store = inject(Store);
   list = input.required<Game[]>();
-  loaded = this.store.selectSignal(nbaFeature.selectIsLoaded);
-  error = this.store.selectSignal(nbaFeature.selectError);
+  loaded = input.required<boolean>();
+  error = input.required<string>();
 
   trackById(index: number, item: Game) {
     return item.id;

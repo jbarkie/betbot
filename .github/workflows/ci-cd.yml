@@ -18,7 +18,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r api/requirements.txt
     - name: Run pytest
       run: coverage run -m pytest && coverage report -m
 
@@ -31,6 +31,6 @@ jobs:
       with:
         node-version: '14'
     - name: Install dependencies
-      run: npm ci
+      run: cd frontend && npm i
     - name: Run Jest tests
-      run: npm run test:full
+      run: cd frontend && npm run test:full

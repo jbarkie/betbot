@@ -10,6 +10,7 @@ psycopg2-binary
 alembic
 pytest
 pytest-mock
+pytest-asyncio
 httpx
 coverage
 virtualenv

@@ -25,6 +25,7 @@ The backend API is responsible for user authentcation, fetching the latest odds 
 - pytest
 - bcrypt
 - JWT
+- python-dotenv
 
 ### Endpoints
 
@@ -50,19 +51,15 @@ The backend API is responsible for user authentcation, fetching the latest odds 
    - Update the `docker-compose.yml` file to reflect whatever username and password will be used to access the PostgreSQL database.
    - Start the PostgreSQL database and Adminer: `docker-compose up -d`
    - The PostgreSQL databse should be accessible at `localhost:5439` and Adminer should be accessible at `localhost:9091`
-6. Update the database connection URL:
-   - Create new file `betbot/api/src/config.py`
-   - Add the `DB_URL` variable:
+6. Set up environment variables:
+   - Create new file `betbot/api/.env`
+   - Add the following environment variables:
    ```python
+   ODDS_API_URL = 'https://api.the-odds-api.com/v4/sports/{sport}/odds/?apiKey={YOUR_API_KEY}&regions=us&markets=h2h&bookmakers=fanduel'
    DB_URL = 'postgresql://user:password@localhost:5439/betbot'
    ```
-7. Update The Odds API URL:
-   - Open file `betbot/api/src/config.py`
-   - Add the `ODDS_API_URL` variable:
-   ```python
-   ODDS_API_URL = 'https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=' + YOUR_API_KEY + '&regions=us&markets=h2h&bookmakers=fanduel'
-   ```
-8. Configure tokenization:
+   - Replace `user`, `password`, `{YOUR_API_KEY}` accordingly.
+7. Configure tokenization:
 
    - Generate a secret key that will be used to sign JWT tokens:
 
@@ -70,7 +67,7 @@ The backend API is responsible for user authentcation, fetching the latest odds 
    openssl rand -hex 32
    ```
 
-   - Open file `betbot/api/src/config.py`
+   - Open file `betbot/api/.env`
    - Add the `SECRET_KEY` variable:
 
    ```python

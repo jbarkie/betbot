@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { nbaFeature } from './state';
-import { NbaCommands } from './state/actions';
-import { SportWrapperComponent } from "../sport-wrapper/sport-wrapper.component";
+import { NBACommands } from './state/actions';
+import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
 import { ApplicationState } from '../../state';
 
 @Component({
@@ -20,8 +20,9 @@ import { ApplicationState } from '../../state';
   imports: [SportWrapperComponent],
 })
 export class NbaComponent {
-  selectNbaGames = (state: ApplicationState) => nbaFeature.selectNbaGames(state);
+  selectNbaGames = (state: ApplicationState) =>
+    nbaFeature.selectNbaGames(state);
   selectError = (state: ApplicationState) => nbaFeature.selectError(state);
   selectLoaded = (state: ApplicationState) => nbaFeature.selectIsLoaded(state);
-  loadGames = NbaCommands.loadGames;
+  loadGames = NBACommands.loadGames;
 }

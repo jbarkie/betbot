@@ -1,7 +1,7 @@
 import { createEntityAdapter } from '@ngrx/entity';
 import { Game } from '../../models';
 import { createFeature, createReducer, createSelector, on } from '@ngrx/store';
-import { NBADocuments, NbaCommands } from './actions';
+import { NBADocuments, NBACommands } from './actions';
 import { SportsState } from '../../sport-wrapper/state';
 
 export interface NbaState extends SportsState {}
@@ -16,8 +16,14 @@ export const nbaFeature = createFeature({
   name: 'nba',
   reducer: createReducer(
     initialState,
-    on(NBADocuments.games, (s, a) => adapter.setAll(a.payload, { ...s, isLoaded: true, error: null })),
-    on(NbaCommands.loadGamesError, (s, a) => ({ ...s, isLoaded: true, error: a.error }))
+    on(NBADocuments.games, (s, a) =>
+      adapter.setAll(a.payload, { ...s, isLoaded: true, error: null })
+    ),
+    on(NBACommands.loadGamesError, (s, a) => ({
+      ...s,
+      isLoaded: true,
+      error: a.error,
+    }))
   ),
   extraSelectors: ({ selectNbaState }) => {
     const { selectAll } = adapter.getSelectors();
@@ -38,7 +44,7 @@ export const nbaFeature = createFeature({
             } as Game)
         )
       ),
-      selectError: createSelector(selectNbaState, (s) => s.error ?? ""),
+      selectError: createSelector(selectNbaState, (s) => s.error ?? ''),
     };
   },
 });

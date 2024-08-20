@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 
 import { NbaComponent } from './nba.component';
-import { NbaCommands } from './state/actions';
+import { NBACommands } from './state/actions';
 
 describe('NbaComponent', () => {
   let component: NbaComponent;
@@ -121,6 +121,6 @@ describe('NbaComponent', () => {
   });
 
   it('should use correct loadGames action', () => {
-    expect(component.loadGames).toBe(NbaCommands.loadGames);
+    expect(component.loadGames).toBe(NBACommands.loadGames);
   });
 });

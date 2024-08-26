@@ -4,6 +4,7 @@ import { RegistrationComponent } from './components/registration/registration.co
 import { MlbComponent } from './components/mlb/mlb.component';
 import { authGuard } from './services/auth/auth.guard';
 import { NhlComponent } from './components/nhl/nhl.component';
+import { NflComponent } from './components/nfl/nfl.component';
 
 export const routes: Routes = [
   {
@@ -23,6 +24,11 @@ export const routes: Routes = [
   {
     path: 'nhl',
     component: NhlComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'nfl',
+    component: NflComponent,
     canActivate: [authGuard],
   },
 ];

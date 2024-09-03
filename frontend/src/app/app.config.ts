@@ -14,16 +14,19 @@ import { authInterceptProvider } from './services/auth/auth.interceptor';
 import { AuthEffects } from './state/auth/auth.effects';
 import { NhlEffects } from './components/nhl/state/nhl-effects';
 import { nhlFeature } from './components/nhl/state';
+import { nflFeature } from './components/nfl/state';
+import { NflEffects } from './components/nfl/state/nfl-effects';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
     provideStore(reducers),
     importProvidersFrom(HttpClientModule),
-    provideEffects([NbaEffects, MlbEffects, NhlEffects, AuthEffects]),
+    provideEffects([NbaEffects, MlbEffects, NhlEffects, NflEffects, AuthEffects]),
     provideState(nbaFeature),
     provideState(mlbFeature),
     provideState(nhlFeature),
+    provideState(nflFeature),
     provideStoreDevtools(),
     authInterceptProvider
   ],

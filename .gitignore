@@ -4,7 +4,5 @@ alembic.ini
 pytest.ini
 __pycache__
 .coverage
-data
-machine-learning
 .vscode
 .env

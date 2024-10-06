@@ -1,2 +1,2 @@
-MLB-StatsAPI
+python-mlb-statsapi
 colorlog

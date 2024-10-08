@@ -1,7 +1,6 @@
 from sqlalchemy import Column, String, DateTime, LargeBinary
-from sqlalchemy.orm import declarative_base
 
-Base = declarative_base()
+from shared.database import Base
 
 class Odds(Base):
     __tablename__ = 'odds'

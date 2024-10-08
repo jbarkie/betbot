@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from api.src.config import ALGORITHM, SECRET_KEY
 from api.src.models.auth import AuthenticatedUser
 from api.src.models.tables import Users
-from api.src.utils import connect_to_db
+from shared.database import connect_to_db
 import jwt
 import bcrypt
 from jwt.exceptions import InvalidTokenError

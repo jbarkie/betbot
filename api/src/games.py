@@ -5,7 +5,8 @@ from api.src.models.nba import Game, GamesResponse
 from dateutil import parser
 from datetime import timedelta, datetime
 from api.src.config import ODDS_API_URL
-from api.src.utils import format_american_odds, connect_to_db
+from api.src.utils import format_american_odds
+from shared.database import connect_to_db
 import requests
 from sqlalchemy import cast, Date, func
 from pytz import timezone, utc

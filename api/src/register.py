@@ -1,5 +1,5 @@
 from api.src.models.tables import Users
-from api.src.utils import connect_to_db
+from shared.database import connect_to_db
 import bcrypt
 
 def register_user(username: str, first_name: str, last_name: str, email: str, password: str):

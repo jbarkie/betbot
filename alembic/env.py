@@ -3,6 +3,7 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from api.src.models.tables import Base
+from machine_learning.data.models.mlb_models import Base
 
 from alembic import context
 

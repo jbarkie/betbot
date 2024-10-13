@@ -37,7 +37,7 @@ class MLBDefensiveStats(Base):
     runs_allowed = Column(Integer)
     whip = Column(Float)
     strikeouts = Column(Integer)
-    fielding_percentage = Column(Float)
+    avg_against = Column(Float)
 
 class MLBSchedule(Base):
     __tablename__ = 'mlb_schedule'

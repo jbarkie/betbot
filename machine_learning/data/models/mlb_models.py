@@ -49,6 +49,9 @@ class MLBSchedule(Base):
     away_team_id = Column(Integer, ForeignKey('mlb_teams.id'))
     home_team = relationship("MLBTeam", foreign_keys=[home_team_id])
     away_team = relationship("MLBTeam", foreign_keys=[away_team_id])
+    home_score = Column(Integer)
+    away_score = Column(Integer)
+    status = Column(String)
 
 MLBTeam.offensive_stats = relationship("MLBOffensiveStats", order_by=MLBOffensiveStats.date, back_populates="team")
 MLBTeam.defensive_stats = relationship("MLBDefensiveStats", order_by=MLBDefensiveStats.date, back_populates="team")

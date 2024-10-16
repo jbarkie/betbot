@@ -47,6 +47,18 @@ def fetch_teams(mlb, session):
             session.add(db_team)
     session.commit()
 
+def fetch_team_records(mlb, session, season):
+    standings = mlb.get_standings(league_id="103,104", season=season)  # 103 for the AL, 104 for the NL
+    for standing in standings:
+        for team_record in standing.teamrecords:
+            db_team = session.query(MLBTeam).filter_by(id=team_record.team.id).first()
+            if db_team:
+                db_team.games_played = team_record.gamesplayed
+                db_team.wins = team_record.wins
+                db_team.losses = team_record.losses
+                db_team.winning_percentage = team_record.winningpercentage
+    session.commit()
+
 def fetch_team_stats(mlb, session, start_date, end_date):
     teams = session.query(MLBTeam).all()
     for team in teams:
@@ -132,6 +144,9 @@ def main():
 
     fetch_teams(mlb, session)
     logging.info('Teams fetched and stored')
+
+    fetch_team_records(mlb, session, season_data.seasonid)
+    logging.info('Team records fetched and stored')
 
     start_date = season_data.regularseasonstartdate
     end_date = datetime.now().strftime('%Y-%m-%d')

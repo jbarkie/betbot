@@ -151,4 +151,4 @@ class RestAnalyzer:
             labels=['Back-to-back', '1 day', '2 days', '3+ days']
         )
         
-        return rolling_stats.groupby('rest_category')['rolling_win_pct'].mean().to_dict()
+        return rolling_stats.groupby('rest_category', observed=True)['rolling_win_pct'].mean().to_dict()

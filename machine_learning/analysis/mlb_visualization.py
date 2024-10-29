@@ -27,32 +27,69 @@ class TimeSeriesVisualizer:
         team_id = teams_df[teams_df['name'] == team_name]['id'].iloc[0]
         team_rolling = rolling_stats[rolling_stats['team_id'] == team_id].copy()
         
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(15, 12))
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 10))
         
-        # Win percentage plot
-        ax1.plot(team_rolling['date'], team_rolling['rolling_win_pct'])
+        # Win percentage plot with league average
+        league_avg_win_pct = rolling_stats['rolling_win_pct'].mean()
+        ax1.plot(team_rolling['date'], team_rolling['rolling_win_pct'], 
+                label='Team Win %', linewidth=2)
+        ax1.axhline(y=league_avg_win_pct, color='r', linestyle='--', 
+                   label='League Average', alpha=0.5)
         ax1.set_title(f'{team_name} Rolling Win Percentage')
         ax1.set_ylabel('Win %')
         ax1.grid(True)
+        ax1.legend()
         
-        # Runs plot
+        # Runs for/against plots with run differential
         ax2.plot(team_rolling['date'], team_rolling['rolling_runs_scored'],
-                label='Runs Scored')
+                label='Runs Scored', color='green', linewidth=2)
         ax2.plot(team_rolling['date'], team_rolling['rolling_runs_allowed'],
-                label='Runs Allowed')
-        ax2.set_title(f'{team_name} Rolling Run Production/Prevention')
-        ax2.set_ylabel('Runs per Game')
-        ax2.legend()
-        ax2.grid(True)
+                label='Runs Allowed', color='red', linewidth=2)
+        team_rolling['run_differential'] = (
+            team_rolling['rolling_runs_scored'] - team_rolling['rolling_runs_allowed']
+        )
+        ax2_twin = ax2.twinx()
+        ax2_twin.plot(team_rolling['date'], team_rolling['run_differential'],
+                     label='Run Differential', color='blue', linestyle='--', alpha=0.5)
         
-        # Streak plot
-        ax3.plot(team_rolling['date'], team_rolling['streak'])
-        ax3.set_title(f'{team_name} Rolling Win Streak')
-        ax3.set_ylabel('Wins in Last 10 Games')
-        ax3.grid(True)
+        # Set titles and labels
+        ax2.set_title(f'{team_name} Run Production and Prevention')
+        ax2.set_ylabel('Runs per Game', color='black')
+        ax2_twin.set_ylabel('Run Differential', color='blue')
+        
+        # Combine legends
+        lines1, labels1 = ax2.get_legend_handles_labels()
+        lines2, labels2 = ax2_twin.get_legend_handles_labels()
+        ax2_twin.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
+        
+        # Add summary statistics
+        latest_stats = team_rolling.iloc[-1]
+        summary_text = (
+            f"Latest Statistics:\n"
+            f"Win %: {latest_stats['rolling_win_pct']:.3f}\n"
+            f"Runs Scored/Game: {latest_stats['rolling_runs_scored']:.2f}\n"
+            f"Runs Allowed/Game: {latest_stats['rolling_runs_allowed']:.2f}\n"
+            f"Run Differential/Game: {latest_stats['run_differential']:.2f}\n"
+            f"Days Since Last Game: {latest_stats['days_rest']:.0f}"
+        )
+        
+        plt.figtext(0.02, 0.02, summary_text, fontsize=10, 
+                   bbox=dict(facecolor='white', alpha=0.8))
         
         plt.tight_layout()
         plt.show()
+        
+        # Print additional insights
+        print(f"\nTeam Performance Insights for {team_name}:")
+        print(f"- {'Above' if latest_stats['rolling_win_pct'] > league_avg_win_pct else 'Below'} "
+              f"league average win percentage "
+              f"({latest_stats['rolling_win_pct']:.3f} vs {league_avg_win_pct:.3f})")
+        
+        run_diff_trend = team_rolling['run_differential'].iloc[-5:].mean()
+        print(f"- Recent run differential trend (last 5 games): {run_diff_trend:+.2f} runs/game")
+        
+        if abs(latest_stats['days_rest']) > 2:
+            print(f"- Extended rest period: {latest_stats['days_rest']:.0f} days since last game")
 
     @staticmethod
     def plot_rest_impact(rest_impact: Dict[str, float]) -> None:

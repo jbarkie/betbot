@@ -1,6 +1,7 @@
 """
 Time series analysis utilities for MLB game predictions.
 """
+from datetime import datetime
 from typing import Tuple, Dict
 import pandas as pd
 import numpy as np
@@ -34,6 +35,7 @@ class TeamTimeSeriesAnalyzer:
             DataFrame containing rolling statistics for all teams
         """
         completed_games = schedule_df[schedule_df['status'] == 'Final'].copy()
+        completed_games['date'] = pd.to_datetime(completed_games['date'])
         completed_games = completed_games.sort_values('date')
         
         rolling_stats = []
@@ -63,6 +65,9 @@ class TeamTimeSeriesAnalyzer:
             (completed_games['home_team_id'] == team_id) |
             (completed_games['away_team_id'] == team_id)
         ].copy()
+
+        if team_games.empty:
+            return pd.DataFrame() # return empty DataFrame if no games found for given team
         
         team_games['is_win'] = np.where(
             team_games['home_team_id'] == team_id,
@@ -82,17 +87,28 @@ class TeamTimeSeriesAnalyzer:
             team_games['home_score']
         )
         
-        return pd.DataFrame({
+        rolling_stats = pd.DataFrame({
             'team_id': team_id,
             'date': team_games['date'],
             'rolling_win_pct': team_games['is_win'].rolling(window=self.window_size).mean(),
             'rolling_runs_scored': team_games['runs_scored'].rolling(window=self.window_size).mean(),
             'rolling_runs_allowed': team_games['runs_allowed'].rolling(window=self.window_size).mean(),
             'streak': team_games['is_win'].rolling(window=self.window_size).sum(),
-            'last_game_date': team_games['date'].shift(1),
-            'days_rest': team_games['date'].diff().dt.days
+            'last_game_date': team_games['date'].shift(1)
         })
 
+        rolling_stats['days_rest'] = rolling_stats['date'].diff().dt.days
+
+        if not rolling_stats.empty:
+            last_game_date = rolling_stats['date'].iloc[-1].date()
+            days_since_last_game = (datetime.now().date() - last_game_date).days
+            rolling_stats.loc[rolling_stats.index[-1], 'days_rest'] = days_since_last_game
+            
+            rolling_stats['last_game_date'] = last_game_date
+            rolling_stats['days_since_last_game'] = days_since_last_game
+
+        return rolling_stats
+        
 class MomentumAnalyzer:
     """
     Analyzes team momentum and performance trends.

@@ -81,9 +81,17 @@ class TimeSeriesVisualizer:
         
         # Print additional insights
         print(f"\nTeam Performance Insights for {team_name}:")
-        print(f"- {'Above' if latest_stats['rolling_win_pct'] > league_avg_win_pct else 'Below'} "
-              f"league average win percentage "
-              f"({latest_stats['rolling_win_pct']:.3f} vs {league_avg_win_pct:.3f})")
+
+        rolling_win_pct = latest_stats['rolling_win_pct']
+        rolling_win_pct_formatted = f"{rolling_win_pct:.3f}"
+        league_avg_win_pct_formatted = f"{league_avg_win_pct:.3f}"
+
+        if rolling_win_pct_formatted == league_avg_win_pct_formatted:
+            print("- Team win percentage is exactly league average")
+        else:
+            print(f"- {'Above' if rolling_win_pct > league_avg_win_pct else 'Below'} "
+              f"league average win percentage ")
+        print(f"({rolling_win_pct_formatted} vs {league_avg_win_pct_formatted})")
         
         run_diff_trend = team_rolling['run_differential'].iloc[-5:].mean()
         print(f"- Recent run differential trend (last 5 games): {run_diff_trend:+.2f} runs/game")

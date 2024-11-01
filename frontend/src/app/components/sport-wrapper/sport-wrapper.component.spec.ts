@@ -72,14 +72,18 @@ describe('SportWrapperComponent', () => {
   });
 
   it('should load games on init', () => {
-    expect(store.dispatch).toHaveBeenCalledWith(component.loadGamesAction({ date: component.selectedDate }));
+    expect(store.dispatch).toHaveBeenCalledWith(
+      component.loadGamesAction({ date: component.selectedDate })
+    );
   });
 
   it('should navigate to previous day', () => {
     const initialDate = new Date(component.selectedDate);
     component.previousDay();
     expect(component.selectedDate.getDate()).toBe(initialDate.getDate() - 1);
-    expect(store.dispatch).toHaveBeenCalledWith(component.loadGamesAction({ date: component.selectedDate }));
+    expect(store.dispatch).toHaveBeenCalledWith(
+      component.loadGamesAction({ date: component.selectedDate })
+    );
   });
 
   it('should navigate to next day', () => {
@@ -87,21 +91,31 @@ describe('SportWrapperComponent', () => {
     component.nextDay();
     const expectedDate = new Date(initialDate);
     expectedDate.setDate(initialDate.getDate() + 1);
-    expect(component.selectedDate.toISOString()).toBe(expectedDate.toISOString());
-    expect(store.dispatch).toHaveBeenCalledWith(component.loadGamesAction({ date: component.selectedDate }));
+    expect(component.selectedDate.toISOString()).toBe(
+      expectedDate.toISOString()
+    );
+    expect(store.dispatch).toHaveBeenCalledWith(
+      component.loadGamesAction({ date: component.selectedDate })
+    );
   });
 
   it('should correctly identify current date', () => {
     const today = new Date();
 
     expect(component.isCurrentDate()).toBeTruthy();
-    
+
     component.selectedDate = new Date(today.getTime() - 24 * 60 * 60 * 1000);
     expect(component.isCurrentDate()).toBeFalsy();
   });
-  
+
   it('should handle authentication state changes', () => {
-    store.overrideSelector(createSelector((state: ApplicationState) => state.auth.isAuthenticated, (auth) => auth), false);
+    store.overrideSelector(
+      createSelector(
+        (state: ApplicationState) => state.auth.isAuthenticated,
+        (auth) => auth
+      ),
+      false
+    );
     store.refreshState();
     fixture.detectChanges();
 
@@ -111,11 +125,20 @@ describe('SportWrapperComponent', () => {
   });
 
   it('should show alert message when not authenticated', () => {
-    store.overrideSelector(createSelector((state: ApplicationState) => state.auth.isAuthenticated, (auth) => auth), false);
+    store.overrideSelector(
+      createSelector(
+        (state: ApplicationState) => state.auth.isAuthenticated,
+        (auth) => auth
+      ),
+      false
+    );
     store.refreshState();
     fixture.detectChanges();
-    const alertMessage = fixture.nativeElement.querySelector('app-alert-message');
+    const alertMessage =
+      fixture.nativeElement.querySelector('app-alert-message');
     expect(alertMessage).toBeTruthy();
-    expect(alertMessage.getAttribute('message')).toBe('You must be logged in to access this page.');
+    expect(alertMessage.getAttribute('message')).toBe(
+      'You must be logged in to access this page.'
+    );
   });
 });

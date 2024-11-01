@@ -82,7 +82,7 @@ describe('SportWrapperComponent', () => {
     component.previousDay();
     const expectedDate = new Date(initialDate);
     expectedDate.setDate(initialDate.getDate() - 1);
-    expect(component.selectedDate.toISOString).toBe(expectedDate.toISOString());
+    expect(component.selectedDate.toISOString()).toBe(expectedDate.toISOString());
     expect(store.dispatch).toHaveBeenCalledWith(
       component.loadGamesAction({ date: component.selectedDate })
     );

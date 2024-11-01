@@ -80,7 +80,9 @@ describe('SportWrapperComponent', () => {
   it('should navigate to previous day', () => {
     const initialDate = new Date(component.selectedDate);
     component.previousDay();
-    expect(component.selectedDate.getDate()).toBe(initialDate.getDate() - 1);
+    const expectedDate = new Date(initialDate);
+    expectedDate.setDate(initialDate.getDate() - 1);
+    expect(component.selectedDate.toISOString).toBe(expectedDate.toISOString());
     expect(store.dispatch).toHaveBeenCalledWith(
       component.loadGamesAction({ date: component.selectedDate })
     );

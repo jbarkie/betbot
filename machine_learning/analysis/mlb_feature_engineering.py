@@ -2,7 +2,7 @@
 Feature enginering utilities for MLB game predictions.
 """
 from datetime import datetime
-from typing import Dict, Tuple
+from typing import Dict
 import pandas as pd
 
 class GameFeatureGenerator:
@@ -56,23 +56,40 @@ class GameFeatureGenerator:
         latest_away_stats = self._get_recent_stats(
             away_team_id, game_date, rolling_stats
         )
-
         h2h_features = self._get_head_to_head_features(
-            home_team_id,
-            away_team_id,
-            game_date,
-            schedule_df
+            home_team_id, away_team_id, game_date, schedule_df
+        )
+        home_season_stats = self._get_current_season_stats(
+            home_team_id, game_date, offensive_stats, defensive_stats
+        )
+        away_season_stats = self._get_current_season_stats(
+            away_team_id, game_date, offensive_stats, defensive_stats
         )
 
         features = {
+            # Momentum features
             'home_rolling_win_pct': latest_home_stats.get('rolling_win_pct', 0.0),
             'away_rolling_win_pct': latest_away_stats.get('rolling_win_pct', 0.0),
             'home_rolling_runs_scored': latest_home_stats.get('rolling_runs_scored', 0.0),
             'away_rolling_runs_scored': latest_away_stats.get('rolling_runs_scored', 0.0),
             'home_rolling_runs_allowed': latest_home_stats.get('rolling_runs_allowed', 0.0),
             'away_rolling_runs_allowed': latest_away_stats.get('rolling_runs_allowed', 0.0),
+
+            # Rest advantage
             'home_days_rest': latest_home_stats.get('days_rest', 0.0),
             'away_days_rest': latest_away_stats.get('days_rest', 0.0),
+
+            # Season-long performance metrics
+            'home_era': home_season_stats.get('team_era', 0.0),
+            'away_era': away_season_stats.get('team_era', 0.0),
+            'home_whip': home_season_stats.get('whip', 0.0),
+            'away_whip': away_season_stats.get('whip', 0.0),
+            'home_obp': home_season_stats.get('on_base_percentage', 0.0),
+            'away_obp': away_season_stats.get('on_base_percentage', 0.0),
+            'home_slg': home_season_stats.get('slugging_percentage', 0.0),
+            'away_slg': away_season_stats.get('slugging_percentage', 0.0),
+
+            # Head-to-head features
             'h2h_home_win_pct': h2h_features.get('home_win_pct', 0.0),
             'h2h_away_win_pct': h2h_features.get('away_win_pct', 0.0),
             'h2h_games_played': h2h_features.get('games_played', 0)
@@ -152,7 +169,11 @@ class GameFeatureGenerator:
             'games_played': games_played
         }
     
-    def _calculate_wins(self, team_id: int, h2h_games: pd.DataFrame) -> int:
+    def _calculate_wins(
+        self,
+        team_id: int,
+        h2h_games: pd.DataFrame
+    ) -> int:
         """
         Calculates head-to-head wins for a given team.
 
@@ -168,3 +189,45 @@ class GameFeatureGenerator:
             (h2h_games['away_team_id'] == team_id) & (h2h_games['away_score'] > h2h_games['home_score'])
         )
     
+    def _get_current_season_stats(
+        self,
+        team_id: int,
+        game_date: datetime,
+        offensive_stats: pd.DataFrame,
+        defensive_stats: pd.DataFrame
+    ) -> Dict[str, float]:
+        """
+        Get current season statistics for a given team up to a given date.
+
+        Args:
+            team_id: ID of the team
+            game_date: Date of the game to get statistics before 
+            offensive_stats: DataFrame containing offensive statistics for all teams
+            defensive_stats: DataFrame containing defensive statistics for all teams
+
+        Returns:
+            Dictionary containing current season statistics for the team
+        """
+        team_offense = offensive_stats[
+            (offensive_stats['team_id'] == team_id) &
+            (offensive_stats['date'] < game_date)
+        ].sort_values('date').last()
+        team_defense = defensive_stats[
+            (defensive_stats['team_id'] == team_id) &
+            (defensive_stats['date'] < game_date)
+        ].sort_values('date').last()
+
+        stats = {}
+        if not team_offense.empty:
+            stats.update({
+                'on_base_percentage': team_offense.get('on_base_percentage', 0.0),
+                'slugging_percentage': team_offense.get('slugging_percentage', 0.0)
+            })
+
+        if not team_defense.empty:
+            stats.update({
+                'team_era': team_defense.get('team_era', 0.0),
+                'whip': team_defense.get('whip', 0.0)
+            })
+
+        return stats

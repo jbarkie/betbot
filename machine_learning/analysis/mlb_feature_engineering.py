@@ -80,6 +80,8 @@ class GameFeatureGenerator:
             'away_days_rest': latest_away_stats.get('days_rest', 0.0),
 
             # Season-long performance metrics
+            'home_batting_avg': home_season_stats.get('batting_average', 0.0),
+            'away_batting_avg': away_season_stats.get('batting_average', 0.0),
             'home_obp': home_season_stats.get('on_base_percentage', 0.0),
             'away_obp': away_season_stats.get('on_base_percentage', 0.0),
             'home_slg': home_season_stats.get('slugging_percentage', 0.0),
@@ -222,6 +224,7 @@ class GameFeatureGenerator:
         stats = {}
         if not team_offense.empty:
             stats.update({
+                'batting_average': team_offense.get('team_batting_average', 0.0),
                 'on_base_percentage': team_offense.get('on_base_percentage', 0.0),
                 'slugging_percentage': team_offense.get('slugging_percentage', 0.0)
             })
@@ -229,7 +232,8 @@ class GameFeatureGenerator:
         if not team_defense.empty:
             stats.update({
                 'team_era': team_defense.get('team_era', 0.0),
-                'whip': team_defense.get('whip', 0.0)
+                'whip': team_defense.get('whip', 0.0),
+                'strikeouts': team_defense.get('strikeouts', 0)
             })
 
         return stats

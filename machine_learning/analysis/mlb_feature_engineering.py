@@ -80,14 +80,16 @@ class GameFeatureGenerator:
             'away_days_rest': latest_away_stats.get('days_rest', 0.0),
 
             # Season-long performance metrics
-            'home_era': home_season_stats.get('team_era', 0.0),
-            'away_era': away_season_stats.get('team_era', 0.0),
-            'home_whip': home_season_stats.get('whip', 0.0),
-            'away_whip': away_season_stats.get('whip', 0.0),
             'home_obp': home_season_stats.get('on_base_percentage', 0.0),
             'away_obp': away_season_stats.get('on_base_percentage', 0.0),
             'home_slg': home_season_stats.get('slugging_percentage', 0.0),
             'away_slg': away_season_stats.get('slugging_percentage', 0.0),
+            'home_era': home_season_stats.get('team_era', 0.0),
+            'away_era': away_season_stats.get('team_era', 0.0),
+            'home_whip': home_season_stats.get('whip', 0.0),
+            'away_whip': away_season_stats.get('whip', 0.0),
+            'home_strikeouts': home_season_stats.get('strikeouts', 0.0),
+            'away_strikeouts': away_season_stats.get('strikeouts', 0.0),
 
             # Head-to-head features
             'h2h_home_win_pct': h2h_features.get('home_win_pct', 0.0),
@@ -117,9 +119,9 @@ class GameFeatureGenerator:
         team_stats = rolling_stats[
             (rolling_stats['team_id'] == team_id) &
             (rolling_stats['date'] < game_date)
-        ].sort_values('date').last()
+        ].sort_values('date')
         
-        return team_stats.to_dict() if not team_stats.empty else {}
+        return team_stats.iloc[-1].to_dict() if not team_stats.empty else {}
     
     def _get_head_to_head_features(
         self,
@@ -144,8 +146,8 @@ class GameFeatureGenerator:
         df_away_team_col = schedule_df['away_team_id']
         h2h_games = schedule_df[
             (
-                (df_home_team_col == home_team_id & df_away_team_col == away_team_id) |
-                (df_home_team_col == away_team_id & df_away_team_col == home_team_id)
+                ((df_home_team_col == home_team_id) & (df_away_team_col == away_team_id)) |
+                ((df_home_team_col == away_team_id) & (df_away_team_col == home_team_id))
             ) &
             (schedule_df['date'] < game_date) &
             (schedule_df['status'] == 'Final')
@@ -211,11 +213,11 @@ class GameFeatureGenerator:
         team_offense = offensive_stats[
             (offensive_stats['team_id'] == team_id) &
             (offensive_stats['date'] < game_date)
-        ].sort_values('date').last()
+        ].sort_values('date').iloc[-1] if not offensive_stats.empty else pd.Series()
         team_defense = defensive_stats[
             (defensive_stats['team_id'] == team_id) &
             (defensive_stats['date'] < game_date)
-        ].sort_values('date').last()
+        ].sort_values('date').iloc[-1] if not defensive_stats.empty else pd.Series()
 
         stats = {}
         if not team_offense.empty:

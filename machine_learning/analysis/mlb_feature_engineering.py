@@ -168,8 +168,8 @@ class GameFeatureGenerator:
         games_played = len(h2h_games)
 
         return {
-            'home_win_pct': home_wins / games_played,
-            'away_win_pct': away_wins / games_played,
+            'home_win_pct': round(home_wins / games_played, 3),
+            'away_win_pct': round(away_wins / games_played, 3),
             'games_played': games_played
         }
     

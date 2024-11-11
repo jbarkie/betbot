@@ -215,25 +215,27 @@ class GameFeatureGenerator:
         team_offense = offensive_stats[
             (offensive_stats['team_id'] == team_id) &
             (offensive_stats['date'] < game_date)
-        ].sort_values('date').iloc[-1] if not offensive_stats.empty else pd.Series()
+        ].sort_values('date')
         team_defense = defensive_stats[
             (defensive_stats['team_id'] == team_id) &
             (defensive_stats['date'] < game_date)
-        ].sort_values('date').iloc[-1] if not defensive_stats.empty else pd.Series()
+        ].sort_values('date')
 
         stats = {}
         if not team_offense.empty:
+            latest_offense = team_offense.iloc[-1]
             stats.update({
-                'batting_average': team_offense.get('team_batting_average', 0.0),
-                'on_base_percentage': team_offense.get('on_base_percentage', 0.0),
-                'slugging_percentage': team_offense.get('slugging_percentage', 0.0)
+                'batting_average': latest_offense.get('team_batting_average', 0.0),
+                'on_base_percentage': latest_offense.get('on_base_percentage', 0.0),
+                'slugging_percentage': latest_offense.get('slugging_percentage', 0.0)
             })
 
         if not team_defense.empty:
+            latest_defense = team_defense.iloc[-1]
             stats.update({
-                'team_era': team_defense.get('team_era', 0.0),
-                'whip': team_defense.get('whip', 0.0),
-                'strikeouts': team_defense.get('strikeouts', 0)
+                'team_era': latest_defense.get('team_era', 0.0),
+                'whip': latest_defense.get('whip', 0.0),
+                'strikeouts': latest_defense.get('strikeouts', 0)
             })
 
         return stats

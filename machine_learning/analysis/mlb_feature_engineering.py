@@ -80,8 +80,8 @@ class GameFeatureGenerator:
             'away_days_rest': latest_away_stats.get('days_rest', 0.0),
 
             # Season-long performance metrics
-            'home_batting_avg': home_season_stats.get('batting_average', 0.0),
-            'away_batting_avg': away_season_stats.get('batting_average', 0.0),
+            'home_batting_avg': home_season_stats.get('team_batting_average', 0.0),
+            'away_batting_avg': away_season_stats.get('team_batting_average', 0.0),
             'home_obp': home_season_stats.get('on_base_percentage', 0.0),
             'away_obp': away_season_stats.get('on_base_percentage', 0.0),
             'home_slg': home_season_stats.get('slugging_percentage', 0.0),
@@ -206,26 +206,26 @@ class GameFeatureGenerator:
         Args:
             team_id: ID of the team
             game_date: Date of the game to get statistics before 
-            offensive_stats: DataFrame containing offensive statistics for all teams
-            defensive_stats: DataFrame containing defensive statistics for all teams
+            offensive_stats: DataFrame containing cumulative offensive statistics for all teams
+            defensive_stats: DataFrame containing cumulative defensive statistics for all teams
 
         Returns:
             Dictionary containing current season statistics for the team
         """
         team_offense = offensive_stats[
             (offensive_stats['team_id'] == team_id) &
-            (offensive_stats['date'] < game_date)
+            (offensive_stats['date'] <= game_date)  
         ].sort_values('date')
         team_defense = defensive_stats[
             (defensive_stats['team_id'] == team_id) &
-            (defensive_stats['date'] < game_date)
-        ].sort_values('date')
-
+            (defensive_stats['date'] <= game_date)  
+        ].sort_values('date')   
+        
         stats = {}
         if not team_offense.empty:
             latest_offense = team_offense.iloc[-1]
             stats.update({
-                'batting_average': latest_offense.get('team_batting_average', 0.0),
+                'team_batting_average': latest_offense.get('team_batting_average', 0.0),
                 'on_base_percentage': latest_offense.get('on_base_percentage', 0.0),
                 'slugging_percentage': latest_offense.get('slugging_percentage', 0.0)
             })

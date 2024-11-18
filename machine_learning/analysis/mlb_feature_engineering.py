@@ -65,6 +65,7 @@ class GameFeatureGenerator:
         away_season_stats = self._get_current_season_stats(
             away_team_id, game_date, offensive_stats, defensive_stats
         )
+        temporal_features = self._generate_temporal_features(game_date)
 
         features = {
             # Momentum features
@@ -96,7 +97,12 @@ class GameFeatureGenerator:
             # Head-to-head features
             'h2h_home_win_pct': h2h_features.get('home_win_pct', 0.0),
             'h2h_away_win_pct': h2h_features.get('away_win_pct', 0.0),
-            'h2h_games_played': h2h_features.get('games_played', 0)
+            'h2h_games_played': h2h_features.get('games_played', 0),
+
+            # Temporal features
+            'month': temporal_features['month'],
+            'day_of_week': temporal_features['day_of_week'],
+            'is_weekend': temporal_features['is_weekend']
         }
 
         return features
@@ -239,3 +245,23 @@ class GameFeatureGenerator:
             })
 
         return stats
+    
+    def _generate_temporal_features(
+        self, 
+        game_date: datetime
+    ) -> Dict[str, float]:
+        """
+        Generate time-based features for a game.
+
+        Args:
+            game_date: Date of the game
+
+        Returns:
+            Dictionary containing temporal features.
+        """
+        return {
+            "month": game_date.month,
+            # day of week represented by int with value in range of 0-6 (0 being Monday, 6 being Sunday)
+            "day_of_week": game_date.weekday(),
+            "is_weekend": int(game_date.weekday() >= 5)
+        }

@@ -115,6 +115,23 @@ The frontend client is built with Angular and provides a user interface for view
 
 To run the frontend client unit tests: `npm test`
 
+## Machine Learning Module
+
+The machine learning module is responsible for data collection, processing, and the analysis of various machine learning models in their ability to predict the outcome of professional sports games. A collection of Jupyter Notebooks explore the improvement of these analyses before their integration with the backend API and frontend client.
+
+### Technologies Used
+
+- python-mlb-statsapi (Python Wrapper for the MLB's Official Stats API)
+- SQLAlchemy
+- Jupyter 
+- pandas
+- NumPy
+- Matplotlib
+- Seaborn
+- python-dotenv
+- scikit-learn
+- colorlog
+
 ## Contributing
 
 If you find issues or have suggestions, open an issue or submit a pull request.

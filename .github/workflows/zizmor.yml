@@ -1,0 +1,41 @@
+name: Security Analysis with zizmor
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  zizmor-analysis:
+    name: Analyze GitHub Actions workflows
+    runs-on: ubuntu-latest
+    permissions:
+      # Required for SARIF upload to code scanning
+      security-events: write
+      contents: read
+      actions: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          
+      - name: Install uv package manager
+        uses: astral-sh/setup-uv@v4
+        
+      - name: Run zizmor analysis
+        run: |
+          uvx zizmor --format sarif \
+            --persona pedantic \
+            --min-severity medium \
+            .github/workflows/ > zizmor-results.sarif
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Upload analysis results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: zizmor-results.sarif
+          category: zizmor

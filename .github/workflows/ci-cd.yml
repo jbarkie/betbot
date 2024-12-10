@@ -17,6 +17,8 @@ jobs:
       ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
     steps:
     - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      with:
+        persist-credentials: false
     - name: Set up Python
       uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 
       with:
@@ -34,6 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+      with:
+        persist-credentials: false
     - name: Use Node.js
       uses: actions/setup-node@b39b52d1213e96004bfcb1c61a8a6fa8ab84f3e8
       with:

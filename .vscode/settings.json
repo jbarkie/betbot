@@ -1,0 +1,28 @@
+{
+  "python.testing.pytestArgs": ["api"],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "auto-rename-tag.activationOnLanguage": [
+    "html",
+    "xml",
+    "typescript",
+    "javascript"
+  ],
+  "editor.formatOnSave": true,
+  "eslint.codeActionsOnSave.mode": "all",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always",
+    "source.format": "always"
+  },
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.inlayHints.enabled": "offUnlessPressed",
+  "typescript.inlayHints.parameterNames.enabled": "literals",
+  "typescript.inlayHints.variableTypes.enabled": true,
+  "typescript.inlayHints.propertyDeclarationTypes.enabled": true,
+  "typescript.inlayHints.parameterTypes.enabled": true,
+  "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
+  "typescript.inlayHints.enumMemberValues.enabled": true
+}

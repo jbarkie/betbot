@@ -6,6 +6,7 @@
     "bradlc.vscode-tailwindcss",
     "ms-azuretools.vscode-docker",
     "mattpocock.ts-error-translator",
-    "formulahendry.auto-rename-tag"
+    "formulahendry.auto-rename-tag",
+    "ms-ossdata.vscode-postgresql"
   ]
 }

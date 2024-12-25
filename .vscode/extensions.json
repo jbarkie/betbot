@@ -4,7 +4,6 @@
     "esbenp.prettier-vscode",
     "dbaeumer.vscode-eslint",
     "bradlc.vscode-tailwindcss",
-    "ms-vscode.vscode-typescript-tslint-plugin",
     "ms-azuretools.vscode-docker",
     "mattpocock.ts-error-translator",
     "formulahendry.auto-rename-tag"

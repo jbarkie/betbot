@@ -7,6 +7,8 @@
     "ms-azuretools.vscode-docker",
     "mattpocock.ts-error-translator",
     "formulahendry.auto-rename-tag",
-    "ms-ossdata.vscode-postgresql"
+    "ms-ossdata.vscode-postgresql",
+    "ms-python.python",
+    "ms-python.vscode-pylance"
   ]
 }

@@ -1,55 +1,43 @@
 import {
-  HTTP_INTERCEPTORS,
   HttpErrorResponse,
-  HttpEvent,
-  HttpHandler,
-  HttpInterceptor,
+  HttpHandlerFn,
+  HttpInterceptorFn,
   HttpRequest,
 } from '@angular/common/http';
-import { Injectable, Provider } from '@angular/core';
-import { AuthService } from './auth.service';
-import { ApplicationState } from '../../state';
+import { inject } from '@angular/core';
 import { Store } from '@ngrx/store';
-import { catchError, Observable, throwError } from 'rxjs';
-import { authActions } from '../../state/auth/auth.actions';
+import { catchError, throwError } from 'rxjs';
 import { ToastService } from '../../components/toast/toast.service';
+import { ApplicationState } from '../../state';
+import { authActions } from '../../state/auth/auth.actions';
+import { AuthService } from './auth.service';
 
-@Injectable()
-export class AuthInterceptor implements HttpInterceptor {
-  constructor(
-    private authService: AuthService,
-    private store: Store<ApplicationState>,
-    private toastService: ToastService
-  ) {}
+export const authInterceptor: HttpInterceptorFn = (
+  request: HttpRequest<unknown>,
+  next: HttpHandlerFn
+) => {
+  const authService = inject(AuthService);
+  const store = inject(Store<ApplicationState>);
+  const toastService = inject(ToastService);
 
-  intercept(
-    request: HttpRequest<unknown>,
-    next: HttpHandler
-  ): Observable<HttpEvent<unknown>> {
-    console.log('intercepting request');
-    const token = this.authService.getToken();
-    if (token) {
-      request = request.clone({
-        setHeaders: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-    }
-    return next.handle(request).pipe(
-      catchError((error: HttpErrorResponse) => {
-        if (error.status === 401) {
-          this.store.dispatch(authActions.logout());
-          this.store.dispatch(authActions.showLoginModal());
-          this.toastService.showError('Session expired. Please log in again.');
-        }
-        return throwError(() => error);
-      })
-    );
+  console.log('intercepting request');
+  const token = authService.getToken();
+  if (token) {
+    request = request.clone({
+      setHeaders: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
   }
-}
 
-export const authInterceptProvider: Provider = {
-  provide: HTTP_INTERCEPTORS,
-  useClass: AuthInterceptor,
-  multi: true,
+  return next(request).pipe(
+    catchError((error: HttpErrorResponse) => {
+      if (error.status === 401) {
+        store.dispatch(authActions.logout());
+        store.dispatch(authActions.showLoginModal());
+        toastService.showError('Session expired. Please log in again.');
+      }
+      return throwError(() => error);
+    })
+  );
 };

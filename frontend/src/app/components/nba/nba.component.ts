@@ -6,6 +6,7 @@ import { ApplicationState } from '../../state';
 
 @Component({
     selector: 'app-nba',
+    standalone: true,
     template: `
     <app-sport-wrapper
       sportName="NBA"

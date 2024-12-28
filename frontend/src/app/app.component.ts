@@ -8,6 +8,7 @@ import { authActions } from './state/auth/auth.actions';
 
 @Component({
     selector: 'app-root',
+    standalone: true,
     imports: [RouterOutlet, PageHeaderComponent, ToastComponent],
     template: `<div class="container mx-auto">
     <app-page-header />

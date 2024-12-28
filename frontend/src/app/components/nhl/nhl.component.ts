@@ -6,6 +6,7 @@ import { NHLCommands } from './state/actions';
 
 @Component({
     selector: 'app-nhl',
+    standalone: true,
     imports: [SportWrapperComponent],
     template: `
     <app-sport-wrapper

@@ -6,6 +6,7 @@ import { CommonModule } from '@angular/common';
 
 @Component({
     selector: 'app-games-list',
+    standalone: true,
     template: `
     <ng-container *ngIf="loaded() && !error()">
       <ng-container *ngIf="list().length === 0">

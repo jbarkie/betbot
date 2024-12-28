@@ -6,6 +6,7 @@ import { NFLCommands } from './state/actions';
 
 @Component({
     selector: 'app-nfl',
+    standalone: true,
     imports: [SportWrapperComponent],
     template: `
     <app-sport-wrapper

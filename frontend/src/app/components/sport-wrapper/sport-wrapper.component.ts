@@ -9,6 +9,7 @@ import { ApplicationState } from '../../state';
 
 @Component({
     selector: 'app-sport-wrapper',
+    standalone: true,
     template: `
     <ng-container *ngIf="isAuthenticated$ | async; else unauthenticated">
       <div class="join flex justify-center my-5">

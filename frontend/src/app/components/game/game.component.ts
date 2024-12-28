@@ -3,6 +3,7 @@ import { Game } from '../models';
 
 @Component({
     selector: 'app-game',
+    standalone: true,
     imports: [],
     schemas: [],
     template: ` 

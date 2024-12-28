@@ -5,6 +5,7 @@ import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'app-toast',
+    standalone: true,
     imports: [CommonModule],
     template: `
     <div *ngIf="toast" class="toast toast-bottom toast-end">

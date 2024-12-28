@@ -20,6 +20,7 @@ import { AuthService } from '../../services/auth/auth.service';
 
 @Component({
     selector: 'app-registration',
+    standalone: true,
     imports: [ReactiveFormsModule, CommonModule],
     template: `
     <h3 class="font-bold text-lg mt-2 mb-2 text-center">

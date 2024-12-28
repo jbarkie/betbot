@@ -10,6 +10,7 @@ import { AuthService } from '../../services/auth/auth.service';
 
 @Component({
     selector: 'app-nav-bar',
+    standalone: true,
     imports: [RouterLink, LoginComponent, CommonModule],
     template: `<div class="navbar bg-base-100">
       <div class="navbar-start">

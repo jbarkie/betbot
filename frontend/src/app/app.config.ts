@@ -16,7 +16,6 @@ import { NhlEffects } from './components/nhl/state/nhl-effects';
 import { authInterceptor } from './services/auth/auth.interceptor';
 import { reducers } from './state';
 import { AuthEffects } from './state/auth/auth.effects';
-import { withHttpTransferCacheOptions } from '@angular/platform-browser';
 
 export const appConfig: ApplicationConfig = {
   providers: [

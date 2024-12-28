@@ -5,10 +5,9 @@ import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component'
 import { NHLCommands } from './state/actions';
 
 @Component({
-  selector: 'app-nhl',
-  standalone: true,
-  imports: [SportWrapperComponent],
-  template: `
+    selector: 'app-nhl',
+    imports: [SportWrapperComponent],
+    template: `
     <app-sport-wrapper
       sportName="NHL"
       [gamesSelector]="selectNhlGames"
@@ -17,7 +16,7 @@ import { NHLCommands } from './state/actions';
       [loadGamesAction]="loadGames"
     ></app-sport-wrapper>
   `,
-  styles: ``,
+    styles: ``
 })
 export class NhlComponent {
   selectNhlGames = (state: ApplicationState) =>

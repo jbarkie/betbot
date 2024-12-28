@@ -16,10 +16,9 @@ import { authActions } from '../../state/auth/auth.actions';
 import { AuthService } from '../../services/auth/auth.service';
 
 @Component({
-  selector: 'app-login',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
-  template: `
+    selector: 'app-login',
+    imports: [CommonModule, ReactiveFormsModule, RouterModule],
+    template: `
     <div class="modal-box">
       <h3 class="font-bold text-lg mb-2">Login</h3>
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
@@ -70,7 +69,7 @@ import { AuthService } from '../../services/auth/auth.service';
       </form>
     </div>
   `,
-  styles: ``,
+    styles: ``
 })
 export class LoginComponent {
   loginForm: FormGroup;

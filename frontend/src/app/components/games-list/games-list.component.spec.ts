@@ -41,8 +41,7 @@ describe('GamesListComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [MockGameComponent],
-      imports: [GamesListComponent],
+      imports: [MockGameComponent, GamesListComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(GamesListComponent);

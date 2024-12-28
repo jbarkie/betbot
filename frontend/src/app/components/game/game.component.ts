@@ -2,11 +2,10 @@ import { Component, input } from '@angular/core';
 import { Game } from '../models';
 
 @Component({
-  selector: 'app-game',
-  standalone: true,
-  imports: [],
-  schemas: [],
-  template: ` 
+    selector: 'app-game',
+    imports: [],
+    schemas: [],
+    template: ` 
   <div class="card card-side bg-base-100 shadow-xl mx-auto my-5 max-w-2xl">
   <figure>
     <img [src]="getImageSrc(game().sport, game().awayTeam)" [alt]="game().awayTeam + ' logo'" class="w-28 mx-5" />
@@ -28,7 +27,7 @@ import { Game } from '../models';
     <img [src]="getImageSrc(game().sport, game().homeTeam)" [alt]="game().homeTeam + ' logo'" class="w-28 mx-5" />
   </figure>
 </div>`,
-  styles: [],
+    styles: []
 })
 export class GameComponent {
   game = input.required<Game>();

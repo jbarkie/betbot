@@ -8,9 +8,8 @@ import { Observable } from 'rxjs';
 import { ApplicationState } from '../../state';
 
 @Component({
-  selector: 'app-sport-wrapper',
-  standalone: true,
-  template: `
+    selector: 'app-sport-wrapper',
+    template: `
     <ng-container *ngIf="isAuthenticated$ | async; else unauthenticated">
       <div class="join flex justify-center my-5">
         <button
@@ -37,7 +36,7 @@ import { ApplicationState } from '../../state';
       <app-alert-message message="You must be logged in to access this page." />
     </ng-template>
   `,
-  imports: [DatePipe, CommonModule, GamesListComponent, AlertMessageComponent],
+    imports: [DatePipe, CommonModule, GamesListComponent, AlertMessageComponent]
 })
 export class SportWrapperComponent {
   @Input() sportName!: string;

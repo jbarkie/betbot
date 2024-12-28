@@ -5,9 +5,8 @@ import { GameComponent } from '../game/game.component';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'app-games-list',
-  standalone: true,
-  template: `
+    selector: 'app-games-list',
+    template: `
     <ng-container *ngIf="loaded() && !error()">
       <ng-container *ngIf="list().length === 0">
         <app-alert-message message="No games found for today." />
@@ -24,10 +23,10 @@ import { CommonModule } from '@angular/common';
     </div>
     <app-alert-message *ngIf="error()" message="Error loading games." />
   `,
-  styles: [
-    '.loading-container { display: flex; justify-content: center; margin-top: 48px }',
-  ],
-  imports: [AlertMessageComponent, GameComponent, CommonModule],
+    styles: [
+        '.loading-container { display: flex; justify-content: center; margin-top: 48px }',
+    ],
+    imports: [AlertMessageComponent, GameComponent, CommonModule]
 })
 export class GamesListComponent {
   list = input.required<Game[]>();

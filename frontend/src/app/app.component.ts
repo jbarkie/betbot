@@ -7,17 +7,16 @@ import { ToastComponent } from './components/toast/toast.component';
 import { authActions } from './state/auth/auth.actions';
 
 @Component({
-  selector: 'app-root',
-  standalone: true,
-  imports: [RouterOutlet, PageHeaderComponent, ToastComponent],
-  template: `<div class="container mx-auto">
+    selector: 'app-root',
+    imports: [RouterOutlet, PageHeaderComponent, ToastComponent],
+    template: `<div class="container mx-auto">
     <app-page-header />
     <main>
       <router-outlet />
     </main>
     <app-toast />
   </div>`,
-  styles: [],
+    styles: []
 })
 export class AppComponent {
   title = 'BetBot';

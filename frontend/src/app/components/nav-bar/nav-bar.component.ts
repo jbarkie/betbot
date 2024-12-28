@@ -9,10 +9,9 @@ import { authActions } from '../../state/auth/auth.actions';
 import { AuthService } from '../../services/auth/auth.service';
 
 @Component({
-  selector: 'app-nav-bar',
-  standalone: true,
-  imports: [RouterLink, LoginComponent, CommonModule],
-  template: `<div class="navbar bg-base-100">
+    selector: 'app-nav-bar',
+    imports: [RouterLink, LoginComponent, CommonModule],
+    template: `<div class="navbar bg-base-100">
       <div class="navbar-start">
         <div class="dropdown">
           <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
@@ -97,7 +96,7 @@ import { AuthService } from '../../services/auth/auth.service';
     <div class="modal">
       <app-login (closeModal)="closeLoginModal()"></app-login>
     </div> `,
-  styles: [],
+    styles: []
 })
 export class NavBarComponent {
   isAuthenticated$: Observable<boolean>;

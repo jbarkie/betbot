@@ -5,10 +5,9 @@ import { MLBCommands } from './state/actions';
 import { ApplicationState } from '../../state';
 
 @Component({
-  selector: 'app-mlb',
-  standalone: true,
-  imports: [SportWrapperComponent],
-  template: `
+    selector: 'app-mlb',
+    imports: [SportWrapperComponent],
+    template: `
     <app-sport-wrapper
       sportName="MLB"
       [gamesSelector]="selectMlbGames"
@@ -17,7 +16,7 @@ import { ApplicationState } from '../../state';
       [loadGamesAction]="loadGames"
     ></app-sport-wrapper>
   `,
-  styles: ``
+    styles: ``
 })
 export class MlbComponent {
   selectMlbGames = (state: ApplicationState) => mlbFeature.selectMlbGames(state);

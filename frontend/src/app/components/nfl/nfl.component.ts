@@ -5,10 +5,9 @@ import { nflFeature } from './state';
 import { NFLCommands } from './state/actions';
 
 @Component({
-  selector: 'app-nfl',
-  standalone: true,
-  imports: [SportWrapperComponent],
-  template: `
+    selector: 'app-nfl',
+    imports: [SportWrapperComponent],
+    template: `
     <app-sport-wrapper
       sportName="NFL"
       [gamesSelector]="selectNflGames"
@@ -17,7 +16,7 @@ import { NFLCommands } from './state/actions';
       [loadGamesAction]="loadGames"
     ></app-sport-wrapper>
   `,
-  styles: ``,
+    styles: ``
 })
 export class NflComponent {
   selectNflGames = (state: ApplicationState) =>

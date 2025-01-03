@@ -24,6 +24,8 @@
     "@angular/router": "^19.0.5",
     "@ngrx/effects": "^19.0.0",
     "@ngrx/entity": "^19.0.0",
+    "@ngrx/operators": "^19.0.0",
+    "@ngrx/signals": "^19.0.0",
     "@ngrx/store-devtools": "^19.0.0",
     "jwt-decode": "^4.0.0",
     "rxjs": "~7.8.0",
@@ -31,10 +33,10 @@
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
+    "@angular-devkit/core": "^19.0.6",
     "@angular/build": "^19.0.6",
     "@angular/cli": "^19.0.6",
     "@angular/compiler-cli": "^19.0.5",
-    "@angular-devkit/core": "^19.0.6",
     "@types/jest": "^29.5.12",
     "daisyui": "^4.7.3",
     "jest": "^29.7.0",

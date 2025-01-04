@@ -7,8 +7,7 @@ import { provideStoreDevtools } from '@ngrx/store-devtools';
 import { routes } from './app.routes';
 import { mlbFeature } from './components/mlb/state';
 import { MlbEffects } from './components/mlb/state/mlb-effects';
-import { nbaFeature } from './components/nba/state';
-import { NbaEffects } from './components/nba/state/nba-effects';
+import { NBAStore } from './components/nba/services/nba.store';
 import { nflFeature } from './components/nfl/state';
 import { NflEffects } from './components/nfl/state/nfl-effects';
 import { nhlFeature } from './components/nhl/state';
@@ -21,14 +20,12 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
     provideStore(reducers),
-    provideHttpClient(
-      withInterceptors([authInterceptor])
-    ),
-    provideEffects([NbaEffects, MlbEffects, NhlEffects, NflEffects, AuthEffects]),
-    provideState(nbaFeature),
+    provideHttpClient(withInterceptors([authInterceptor])),
+    provideEffects([MlbEffects, NhlEffects, NflEffects, AuthEffects]),
     provideState(mlbFeature),
     provideState(nhlFeature),
     provideState(nflFeature),
-    provideStoreDevtools()
+    provideStoreDevtools(),
+    NBAStore,
   ],
 };

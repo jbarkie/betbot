@@ -1,10 +1,9 @@
-import { Component, Input, Signal } from '@angular/core';
+import { Component, inject, Input, OnInit, Signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Store } from '@ngrx/store';
 import { GamesListComponent } from '../games-list/games-list.component';
 import { AlertMessageComponent } from '../alert-message/alert-message.component';
 import { Game } from '../models';
-import { Observable } from 'rxjs';
 import { ApplicationState } from '../../state';
 
 @Component({
@@ -28,8 +27,8 @@ import { ApplicationState } from '../../state';
       <ng-container *ngIf="games()">
         <app-games-list
           [list]="games()"
-          [loaded]="loaded()"
-          [error]="error()"
+          [loaded]="!isLoading()"
+          [error]="error()  || ''"
         ></app-games-list>
       </ng-container>
     </ng-container>
@@ -39,36 +38,19 @@ import { ApplicationState } from '../../state';
   `,
     imports: [DatePipe, CommonModule, GamesListComponent, AlertMessageComponent]
 })
-export class SportWrapperComponent {
+export class SportWrapperComponent implements OnInit {
+  private readonly store = inject(Store<ApplicationState>);
+
   @Input() sportName!: string;
-  @Input() set gamesSelector(selector: (state: ApplicationState) => Game[]) {
-    this.games = this.store.selectSignal(selector);
-  }
-  @Input() set errorSelector(selector: (state: ApplicationState) => string) {
-    this.error = this.store.selectSignal(selector);
-  }
-
-  @Input() set loadedSelector(selector: (state: ApplicationState) => boolean) {
-    this.loaded = this.store.selectSignal(selector);
-  }
-
-  @Input() loadGamesAction!: (props: { date: Date }) => {
-    type: string;
-    date: Date;
-  };
-
+  @Input() games!: Signal<Game[]>;
+  @Input() isLoading!: Signal<boolean>;
+  @Input() error!: Signal<string | null>;
+  @Input() dateChange!: (date: Date) => void;
+  
   selectedDate: Date = new Date();
-  games!: Signal<Game[]>;
-  loaded!: Signal<boolean>;
-  error!: Signal<string>;
-  isAuthenticated$!: Observable<boolean>;
+  isAuthenticated$ = this.store.select((state) => state.auth.isAuthenticated);
 
-  constructor(private store: Store<ApplicationState>) {}
-
-  ngOnInit() {
-    this.isAuthenticated$ = this.store.select(
-      (state) => state.auth.isAuthenticated
-    );
+  ngOnInit(): void {
     this.loadGames();
   }
 
@@ -96,6 +78,6 @@ export class SportWrapperComponent {
   }
 
   private loadGames() {
-    this.store.dispatch(this.loadGamesAction({ date: this.selectedDate }));
+    this.dateChange(this.selectedDate);
   }
 }

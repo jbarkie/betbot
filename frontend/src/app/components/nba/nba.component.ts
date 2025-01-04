@@ -1,8 +1,6 @@
-import { Component } from '@angular/core';
-import { nbaFeature } from './state';
-import { NBACommands } from './state/actions';
+import { Component, inject } from '@angular/core';
 import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
-import { ApplicationState } from '../../state';
+import { NBAStore } from './services/nba.store';
 
 @Component({
     selector: 'app-nba',
@@ -10,19 +8,19 @@ import { ApplicationState } from '../../state';
     template: `
     <app-sport-wrapper
       sportName="NBA"
-      [gamesSelector]="selectNbaGames"
-      [errorSelector]="selectError"
-      [loadedSelector]="selectLoaded"
-      [loadGamesAction]="loadGames"
+      [games]="store.games"
+      [error]="store.error"
+      [isLoading]="store.isLoading"
+      [dateChange]="handleDateChange"
     ></app-sport-wrapper>
   `,
     styles: [],
     imports: [SportWrapperComponent]
 })
 export class NbaComponent {
-  selectNbaGames = (state: ApplicationState) =>
-    nbaFeature.selectNbaGames(state);
-  selectError = (state: ApplicationState) => nbaFeature.selectError(state);
-  selectLoaded = (state: ApplicationState) => nbaFeature.selectIsLoaded(state);
-  loadGames = NBACommands.loadGames;
+  protected readonly store = inject(NBAStore);
+
+  protected readonly handleDateChange = (date: Date): void => {
+    this.store.loadGames(date);
+  }
 }

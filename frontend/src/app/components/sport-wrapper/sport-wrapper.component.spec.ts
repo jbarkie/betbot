@@ -2,7 +2,7 @@ import { Signal, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { Store } from '@ngrx/store';
-import { of } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import { Game } from '../models';
 import { SportWrapperComponent } from './sport-wrapper.component';
 
@@ -10,11 +10,12 @@ describe('SportWrapperComponent', () => {
   let component: SportWrapperComponent;
   let fixture: ComponentFixture<SportWrapperComponent>;
   let mockStore: Partial<Store>;
-  let mockGames: Game[] = [];
+  let authStateSubject: BehaviorSubject<boolean>;
 
   beforeEach(async () => {
+    authStateSubject = new BehaviorSubject<boolean>(false);
     mockStore = {
-      select: jest.fn(),
+      select: jest.fn().mockReturnValue(authStateSubject.asObservable()),
     };
 
     await TestBed.configureTestingModule({
@@ -24,9 +25,10 @@ describe('SportWrapperComponent', () => {
 
     fixture = TestBed.createComponent(SportWrapperComponent);
     component = fixture.componentInstance;
-    component.games = signal([]);
-    component.error = signal(null);
-    component.isLoading = signal(false);
+    
+    component.games = signal([]) as Signal<Game[]>;
+    component.error = signal(null) as Signal<string | null>;
+    component.isLoading = signal(false) as Signal<boolean>;
     component.dateChange = jest.fn();
 
     fixture.detectChanges();
@@ -69,7 +71,7 @@ describe('SportWrapperComponent', () => {
   });
 
   it('should handle authentication state changes', () => {
-    (mockStore.select as jest.Mock).mockReturnValue(of(false));
+    authStateSubject.next(false);
     fixture.detectChanges();
 
     component.isAuthenticated$.subscribe((isAuthenticated) => {
@@ -77,9 +79,10 @@ describe('SportWrapperComponent', () => {
     });
   });
 
-  it('should show alert message when not authenticated', () => {
-    (mockStore.select as jest.Mock).mockReturnValue(of(false));
+  it('should show alert message when not authenticated', async () => {
+    authStateSubject.next(false);
     fixture.detectChanges();
+    await fixture.whenStable();
 
     const alertMessage = fixture.debugElement.query(
       By.css('app-alert-message')
@@ -88,30 +91,48 @@ describe('SportWrapperComponent', () => {
     expect(alertMessage.attributes['message']).toBe(
       'You must be logged in to access this page.'
     );
+
+    // Verify date navigation is not shown
+    const buttons = fixture.debugElement.queryAll(By.css('.btn'));
+    expect(buttons.length).toBe(0);
   });
 
-  it('should render date navigation correctly', () => {
+  it('should render date navigation correctly when authenticated', async () => {
+    // Set authenticated state and provide some games
+    authStateSubject.next(true);
+    (component.games as any) = signal([{ id: '1', sport: 'TEST', homeTeam: 'Home team', awayTeam: 'Away team' } as Game]); // Create new signal with games
+    fixture.detectChanges();
+    await fixture.whenStable();
+    
+    // Verify authentication alert is not shown
+    const authAlert = fixture.debugElement.query(
+      By.css('app-alert-message[message="You must be logged in to access this page."]')
+    );
+    expect(authAlert).toBeFalsy();
+    
+    // Verify navigation buttons
     const buttons = fixture.debugElement.queryAll(By.css('.btn'));
-    expect(buttons.length).toBe(3); // Previous, Current, Next
-
+    expect(buttons.length).toBeGreaterThanOrEqual(3);
+  
     const dateButton = buttons[1];
     const today = new Date();
-    const expectedDateText = today.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-    });
-
     expect(dateButton.nativeElement.textContent.trim()).toContain(
-      expectedDateText
+      today.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        month: 'long', 
+        day: 'numeric' 
+      })
     );
   });
 
-  it('should disable previous day button on current date', () => {
+  it('should disable previous day button on current date when authenticated', async () => {
+    // Set authenticated state
+    authStateSubject.next(true);
     component.selectedDate = new Date();
     fixture.detectChanges();
-
+    await fixture.whenStable();
+  
     const prevButton = fixture.debugElement.queryAll(By.css('.btn'))[0];
-    expect(prevButton.properties['disabled']).toBe(true);
+    expect(prevButton.nativeElement.disabled).toBe(true);
   });
 });

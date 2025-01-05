@@ -1,63 +1,33 @@
+import { Signal, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MockStore, provideMockStore } from '@ngrx/store/testing';
-import { createSelector } from '@ngrx/store';
-
-import { SportWrapperComponent } from './sport-wrapper.component';
+import { By } from '@angular/platform-browser';
+import { Store } from '@ngrx/store';
+import { of } from 'rxjs';
 import { Game } from '../models';
-import { ApplicationState } from '../../state';
+import { SportWrapperComponent } from './sport-wrapper.component';
 
 describe('SportWrapperComponent', () => {
   let component: SportWrapperComponent;
   let fixture: ComponentFixture<SportWrapperComponent>;
-  let store: MockStore;
+  let mockStore: Partial<Store>;
   let mockGames: Game[] = [];
 
-  const mockGamesSelector = createSelector(
-    (state: ApplicationState) => state,
-    () => mockGames
-  );
-
-  const mockErrorSelector = createSelector(
-    (state: ApplicationState) => state,
-    () => ''
-  );
-
-  const mockLoadedSelector = createSelector(
-    (state: ApplicationState) => state,
-    () => true
-  );
-
   beforeEach(async () => {
+    mockStore = {
+      select: jest.fn(),
+    };
+
     await TestBed.configureTestingModule({
       imports: [SportWrapperComponent],
-      providers: [
-        provideMockStore({
-          selectors: [
-            {
-              selector: createSelector(
-                (state: ApplicationState) => state.auth.isAuthenticated,
-                (auth) => auth
-              ),
-              value: true,
-            },
-          ],
-        }),
-      ],
+      providers: [{ provide: Store, useValue: mockStore }],
     }).compileComponents();
-
-    store = TestBed.inject(MockStore);
-    jest.spyOn(store, 'dispatch');
 
     fixture = TestBed.createComponent(SportWrapperComponent);
     component = fixture.componentInstance;
-
-    component.sportName = 'Baseball';
-    component.gamesSelector = mockGamesSelector;
-    component.errorSelector = mockErrorSelector;
-    component.loadedSelector = mockLoadedSelector;
-    component.loadGamesAction = jest
-      .fn()
-      .mockReturnValue({ type: 'Load Games ' });
+    component.games = signal([]);
+    component.error = signal(null);
+    component.isLoading = signal(false);
+    component.dateChange = jest.fn();
 
     fixture.detectChanges();
   });
@@ -71,54 +41,35 @@ describe('SportWrapperComponent', () => {
     expect(component.selectedDate.getDate()).toBe(today.getDate());
   });
 
-  it('should load games on init', () => {
-    expect(store.dispatch).toHaveBeenCalledWith(
-      component.loadGamesAction({ date: component.selectedDate })
-    );
-  });
-
-  it('should navigate to previous day', () => {
-    const initialDate = new Date(component.selectedDate);
+  it('should emit date change on previous day', () => {
+    const initialDate = component.selectedDate;
     component.previousDay();
-    const expectedDate = new Date(initialDate);
-    expectedDate.setDate(initialDate.getDate() - 1);
-    expect(component.selectedDate.toISOString()).toBe(expectedDate.toISOString());
-    expect(store.dispatch).toHaveBeenCalledWith(
-      component.loadGamesAction({ date: component.selectedDate })
+
+    expect(component.dateChange).toHaveBeenCalledWith(
+      new Date(initialDate.getTime() - 24 * 60 * 60 * 1000)
     );
   });
 
-  it('should navigate to next day', () => {
-    const initialDate = new Date(component.selectedDate);
+  it('should emit date change on next day', () => {
+    const initialDate = component.selectedDate;
     component.nextDay();
-    const expectedDate = new Date(initialDate);
-    expectedDate.setDate(initialDate.getDate() + 1);
-    expect(component.selectedDate.toISOString()).toBe(
-      expectedDate.toISOString()
-    );
-    expect(store.dispatch).toHaveBeenCalledWith(
-      component.loadGamesAction({ date: component.selectedDate })
+
+    expect(component.dateChange).toHaveBeenCalledWith(
+      new Date(initialDate.getTime() + 24 * 60 * 60 * 1000)
     );
   });
 
-  it('should correctly identify current date', () => {
+  it('should detect current date correctly', () => {
     const today = new Date();
-
-    expect(component.isCurrentDate()).toBeTruthy();
+    component.selectedDate = today;
+    expect(component.isCurrentDate()).toBe(true);
 
     component.selectedDate = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-    expect(component.isCurrentDate()).toBeFalsy();
+    expect(component.isCurrentDate()).toBe(false);
   });
 
   it('should handle authentication state changes', () => {
-    store.overrideSelector(
-      createSelector(
-        (state: ApplicationState) => state.auth.isAuthenticated,
-        (auth) => auth
-      ),
-      false
-    );
-    store.refreshState();
+    (mockStore.select as jest.Mock).mockReturnValue(of(false));
     fixture.detectChanges();
 
     component.isAuthenticated$.subscribe((isAuthenticated) => {
@@ -127,20 +78,40 @@ describe('SportWrapperComponent', () => {
   });
 
   it('should show alert message when not authenticated', () => {
-    store.overrideSelector(
-      createSelector(
-        (state: ApplicationState) => state.auth.isAuthenticated,
-        (auth) => auth
-      ),
-      false
-    );
-    store.refreshState();
+    (mockStore.select as jest.Mock).mockReturnValue(of(false));
     fixture.detectChanges();
-    const alertMessage =
-      fixture.nativeElement.querySelector('app-alert-message');
+
+    const alertMessage = fixture.debugElement.query(
+      By.css('app-alert-message')
+    );
     expect(alertMessage).toBeTruthy();
-    expect(alertMessage.getAttribute('message')).toBe(
+    expect(alertMessage.attributes['message']).toBe(
       'You must be logged in to access this page.'
     );
+  });
+
+  it('should render date navigation correctly', () => {
+    const buttons = fixture.debugElement.queryAll(By.css('.btn'));
+    expect(buttons.length).toBe(3); // Previous, Current, Next
+
+    const dateButton = buttons[1];
+    const today = new Date();
+    const expectedDateText = today.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    expect(dateButton.nativeElement.textContent.trim()).toContain(
+      expectedDateText
+    );
+  });
+
+  it('should disable previous day button on current date', () => {
+    component.selectedDate = new Date();
+    fixture.detectChanges();
+
+    const prevButton = fixture.debugElement.queryAll(By.css('.btn'))[0];
+    expect(prevButton.properties['disabled']).toBe(true);
   });
 });

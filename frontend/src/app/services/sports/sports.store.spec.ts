@@ -1,4 +1,3 @@
-// sports.store.spec.ts
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { createSportsStore } from './sports.store';
@@ -57,7 +56,6 @@ describe('SportsStore', () => {
   });
 
   it('should handle errors', () => {
-    // Create date with specific timezone
     const testDate = new Date('2024-01-01T12:00:00Z');
     const errorMessage = 'Test error';
     const formattedDate = datePipe.transform(testDate, 'yyyy-MM-dd');

@@ -1,32 +1,60 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MockStore, provideMockStore } from '@ngrx/store/testing';
-
+import { signal, Signal } from '@angular/core';
+import { By } from '@angular/platform-browser';
+import { Store } from '@ngrx/store';
+import { of } from 'rxjs';
+import { NFLStore } from '../../services/sports/sports.store';
+import { Game } from '../models';
+import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
 import { NflComponent } from './nfl.component';
-import { NFLCommands } from './state/actions';
+
+interface MockNFLStore {
+  games: Signal<Game[]>;
+  error: Signal<string | null>;
+  isLoading: Signal<boolean>;
+  loadGames: jest.Mock;
+}
 
 describe('NflComponent', () => {
   let component: NflComponent;
   let fixture: ComponentFixture<NflComponent>;
-  let store: MockStore;
+  let mockStore: MockNFLStore;
+  let mockAuthStore: Partial<Store>;
+  const mockDate = new Date('2024-01-01T12:00:00Z');
 
   beforeEach(async () => {
+    const mockGames = [
+      {
+        id: '1',
+        sport: 'NFL',
+        homeTeam: 'New England Patriots',
+        awayTeam: 'Dallas Cowboys',
+        date: mockDate.toISOString(),
+        time: '1:00 PM',
+        homeOdds: '-150',
+        awayOdds: '+200',
+      } as Game,
+    ];
+
+    mockStore = {
+      games: signal(mockGames),
+      error: signal(''),
+      isLoading: signal(false),
+      loadGames: jest.fn(),
+    };
+
+    mockAuthStore = {
+      select: jest.fn().mockReturnValue(of(true)),
+    };
+
     await TestBed.configureTestingModule({
-      imports: [NflComponent],
+      imports: [NflComponent, SportWrapperComponent],
       providers: [
-        provideMockStore({
-          initialState: {
-            nfl: {
-              entities: {},
-              ids: [],
-              isLoaded: false,
-              error: '',
-            },
-          },
-        }),
+        { provide: NFLStore, useValue: mockStore },
+        { provide: Store, useValue: mockAuthStore },
       ],
     }).compileComponents();
 
-    store = TestBed.inject(MockStore);
     fixture = TestBed.createComponent(NflComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
@@ -37,70 +65,81 @@ describe('NflComponent', () => {
   });
 
   it('should use SportWrapperComponent with correct inputs', () => {
-    const sportWrapper =
-      fixture.nativeElement.querySelector('app-sport-wrapper');
+    const sportWrapper = fixture.debugElement.query(
+      By.directive(SportWrapperComponent)
+    );
     expect(sportWrapper).toBeTruthy();
-    expect(sportWrapper.getAttribute('sportName')).toBe('NFL');
+    expect(sportWrapper.componentInstance.sportName).toBe('NFL');
   });
 
-  it('should select NFL games correctly', () => {
-    const mockDate = new Date().toISOString();
-    const mockState = {
-      nfl: {
-        entities: {
-          '1': {
-            id: '1',
-            sport: 'NFL',
-            homeTeam: 'New England Patriots',
-            awayTeam: 'Dallas Cowboys',
-            date: mockDate,
-            time: '1:00 PM',
-            homeOdds: '-150',
-            awayOdds: '+200',
-          },
-        },
-        ids: ['1'],
-        isLoaded: true,
-        error: '',
-      },
-    };
+  it('should handle date changes', () => {
+    component.handleDateChange(mockDate);
+    expect(mockStore.loadGames).toHaveBeenCalledWith(mockDate);
+  });
 
-    const result = component.selectNflGames(mockState as any);
-    expect(result).toEqual([
+  it('should provide games to sport wrapper', () => {
+    const testGames = [
       {
         id: '1',
         sport: 'NFL',
         homeTeam: 'New England Patriots',
         awayTeam: 'Dallas Cowboys',
-        date: mockDate,
+        date: mockDate.toISOString(),
         time: '1:00 PM',
         homeOdds: '-150',
         awayOdds: '+200',
-      },
-    ]);
+      } as Game,
+    ];
+
+    (mockStore.games as any).set(testGames);
+    fixture.detectChanges();
+
+    const sportWrapper = fixture.debugElement.query(
+      By.directive(SportWrapperComponent)
+    );
+    expect(sportWrapper.componentInstance.games()).toEqual(testGames);
   });
 
-  it('should select error correctly', () => {
-    const mockState = {
-      nfl: {
-        error: 'Error loading NFL games',
-      },
-    };
-    const result = component.selectError(mockState as any);
-    expect(result).toBe('Error loading NFL games');
+  it('should handle loading states', () => {
+    (mockStore.isLoading as any).set(true);
+    fixture.detectChanges();
+
+    const sportWrapper = fixture.debugElement.query(
+      By.directive(SportWrapperComponent)
+    );
+    expect(sportWrapper.componentInstance.isLoading()).toBe(true);
   });
 
-  it('should select loaded correctly', () => {
-    const mockState = {
-      nfl: {
-        isLoaded: true,
-      },
-    };
-    const result = component.selectLoaded(mockState as any);
-    expect(result).toBe(true);
+  it('should update games when store changes', () => {
+    const newGames = [
+      {
+        id: '2',
+        sport: 'NFL',
+        homeTeam: 'New York Giants',
+        awayTeam: 'Philadelphia Eagles',
+        date: mockDate.toISOString(),
+        time: '4:00 PM',
+        homeOdds: '-110',
+        awayOdds: '-110',
+      } as Game,
+    ];
+
+    (mockStore.games as any).set(newGames);
+    fixture.detectChanges();
+
+    const sportWrapper = fixture.debugElement.query(
+      By.directive(SportWrapperComponent)
+    );
+    expect(sportWrapper.componentInstance.games()).toEqual(newGames);
   });
 
-  it('should use correct loadGames action', () => {
-    expect(component.loadGames).toBe(NFLCommands.loadGames);
+  it('should integrate with SportWrapperComponent date handling', () => {
+    const sportWrapper = fixture.debugElement.query(
+      By.directive(SportWrapperComponent)
+    );
+    const testDate = new Date('2024-02-01');
+
+    sportWrapper.componentInstance.dateChange(testDate);
+    expect(mockStore.loadGames).toHaveBeenCalledWith(testDate);
   });
 });

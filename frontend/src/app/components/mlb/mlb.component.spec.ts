@@ -1,4 +1,3 @@
-// mlb.component.spec.ts
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MlbComponent } from './mlb.component';
 import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
@@ -37,7 +36,6 @@ describe('MlbComponent', () => {
       } as Game
     ];
 
-    // Create mock store with proper typing
     mockStore = {
       games: signal(mockGames),
       error: signal(''),

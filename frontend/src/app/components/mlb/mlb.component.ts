@@ -1,8 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
-import { mlbFeature } from './state';
-import { MLBCommands } from './state/actions';
-import { ApplicationState } from '../../state';
+import { MLBStore } from '../../services/sports/sports.store';
 
 @Component({
     selector: 'app-mlb',
@@ -11,17 +9,18 @@ import { ApplicationState } from '../../state';
     template: `
     <app-sport-wrapper
       sportName="MLB"
-      [gamesSelector]="selectMlbGames"
-      [errorSelector]="selectError"
-      [loadedSelector]="selectLoaded"
-      [loadGamesAction]="loadGames"
+      [games]="store.games"
+      [error]="store.error"
+      [isLoading]="store.isLoading"
+      [dateChange]="handleDateChange"
     ></app-sport-wrapper>
   `,
     styles: ``
 })
 export class MlbComponent {
-  selectMlbGames = (state: ApplicationState) => mlbFeature.selectMlbGames(state);
-  selectError = (state: ApplicationState) => mlbFeature.selectError(state);
-  selectLoaded = (state: ApplicationState) => mlbFeature.selectIsLoaded(state);
-  loadGames = MLBCommands.loadGames;
+  protected readonly store = inject(MLBStore);
+
+  public readonly handleDateChange = (date: Date): void => {
+    this.store.loadGames(date);
+  }
 }

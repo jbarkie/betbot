@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
-import { NBAStore } from './services/nba.store';
+import { NBAStore } from '../../services/sports/sports.store';
 
 @Component({
     selector: 'app-nba',
@@ -20,7 +20,7 @@ import { NBAStore } from './services/nba.store';
 export class NbaComponent {
   protected readonly store = inject(NBAStore);
 
-  protected readonly handleDateChange = (date: Date): void => {
+  public readonly handleDateChange = (date: Date): void => {
     this.store.loadGames(date);
   }
 }

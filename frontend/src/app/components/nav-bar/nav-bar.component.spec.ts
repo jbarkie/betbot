@@ -2,12 +2,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { of } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { By } from '@angular/platform-browser';
 
 import { NavBarComponent } from './nav-bar.component';
 import { authActions } from '../../state/auth/auth.actions';
 import { AuthService } from '../../services/auth/auth.service';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
 
 describe('NavBarComponent', () => {
   let component: NavBarComponent;
@@ -21,7 +22,7 @@ describe('NavBarComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [NavBarComponent, HttpClientTestingModule],
+      imports: [NavBarComponent],
       providers: [
         provideMockStore({
           initialState: {
@@ -41,6 +42,8 @@ describe('NavBarComponent', () => {
           provide: AuthService,
           useValue: authServiceMock,
         },
+        provideHttpClient(),
+        provideHttpClientTesting(),
       ],
     }).compileComponents();
 

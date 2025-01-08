@@ -1,10 +1,14 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+} from '@angular/common/http/testing';
 import { createSportsStore } from './sports.store';
 import { environment } from '../../../environments/environment';
 import { Signal } from '@angular/core';
 import { Game } from '../../components/models';
 import { DatePipe } from '@angular/common';
+import { provideHttpClient } from '@angular/common/http';
 
 describe('SportsStore', () => {
   const TestStore = createSportsStore('TEST');
@@ -20,8 +24,13 @@ describe('SportsStore', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      providers: [TestStore, DatePipe]
+      imports: [],
+      providers: [
+        TestStore,
+        DatePipe,
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
     });
 
     store = TestBed.inject(TestStore);

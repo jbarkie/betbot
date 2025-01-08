@@ -3,13 +3,14 @@ import { MockStore } from '@ngrx/store/testing';
 import { provideMockStore } from '@ngrx/store/testing';
 import { ActivatedRoute } from '@angular/router';
 import { of } from 'rxjs';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { AppComponent } from './app.component';
 import { PageHeaderComponent } from './components/page-header/page-header.component';
 import { ToastComponent } from './components/toast/toast.component';
 import { appActions } from './state/actions';
 import { authActions } from './state/auth/auth.actions';
+import { provideHttpClient } from '@angular/common/http';
 
 describe('AppComponent', () => {
   let component: AppComponent;
@@ -18,11 +19,13 @@ describe('AppComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AppComponent, PageHeaderComponent, ToastComponent, HttpClientTestingModule],
+      imports: [AppComponent, PageHeaderComponent, ToastComponent],
       providers: [provideMockStore(),
         { provide: ActivatedRoute, useValue: {
           params: of({})
-        }}
+        }},
+        provideHttpClient(),
+        provideHttpClientTesting(),
       ],
     }).compileComponents();
 

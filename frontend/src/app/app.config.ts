@@ -15,6 +15,7 @@ import {
 import { reducers } from './state';
 import { provideEffects } from '@ngrx/effects';
 import { AuthEffects } from './state/auth/auth.effects';
+import { AuthStore } from './services/auth/auth.store';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -28,5 +29,6 @@ export const appConfig: ApplicationConfig = {
     NHLStore,
     NFLStore,
     MLBStore,
+    AuthStore,
   ],
 };

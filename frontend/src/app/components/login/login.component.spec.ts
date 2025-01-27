@@ -9,38 +9,43 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { authActions } from '../../state/auth/auth.actions';
+import { AuthStore } from '../../services/auth/auth.store';
+import { AuthStoreService } from '../../services/auth/models';
+import { signal } from '@angular/core';
 
 describe('LoginComponent', () => {
   let component: LoginComponent;
   let fixture: ComponentFixture<LoginComponent>;
-  let mockLoginService: jest.Mocked<LoginService>;
   let mockToastService: jest.Mocked<ToastService>;
-  let mockAuthService: jest.Mocked<AuthService>;
-  let mockStore: MockStore;
+  let mockAuthStore: jest.Mocked<AuthStoreService>;
 
   beforeEach(async () => {
     jest.spyOn(console, 'error').mockImplementation(jest.fn());
-
-    mockLoginService = {
-      login: jest.fn(),
-    } as unknown as jest.Mocked<LoginService>;
 
     mockToastService = {
       showSuccess: jest.fn(),
       showError: jest.fn(),
     } as unknown as jest.Mocked<ToastService>;
 
-    mockAuthService = {
-      setToken: jest.fn(),
-    } as unknown as jest.Mocked<AuthService>;
+    mockAuthStore = {
+      login: jest.fn(),
+      register: jest.fn(),
+      logout: jest.fn(),
+      initializeAuth: jest.fn(),
+      showLoginModal: jest.fn(),
+      hideLoginModal: jest.fn(),
+      isAuthenticated: signal(false),
+      token: signal(null),
+      error: signal(null),
+      hasError: signal(false),
+    } as unknown as jest.Mocked<AuthStoreService>;
 
     await TestBed.configureTestingModule({
       imports: [LoginComponent, ReactiveFormsModule],
       providers: [
         provideMockStore(),
-        { provide: LoginService, useValue: mockLoginService },
         { provide: ToastService, useValue: mockToastService },
-        { provide: AuthService, useValue: mockAuthService },
+        { provide: AuthStore, useValue: mockAuthStore },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -49,9 +54,6 @@ describe('LoginComponent', () => {
         },
       ],
     }).compileComponents();
-
-    mockStore = TestBed.inject(MockStore);
-    jest.spyOn(mockStore, 'dispatch');
 
     fixture = TestBed.createComponent(LoginComponent);
     component = fixture.componentInstance;
@@ -89,70 +91,42 @@ describe('LoginComponent', () => {
     expect(component.isInvalid('password')).toBeTruthy();
   });
 
-  it('should call loginService.login() when form is submitted', () => {
+  it('should call loginService.login() when form is submitted', async () => {
     const loginRequest = { username: 'username', password: 'password' };
     component.loginForm.patchValue(loginRequest);
-    mockLoginService.login.mockReturnValue(
-      of({ access_token: 'token', token_type: 'bearer' })
-    );
-    component.onSubmit();
-    expect(mockLoginService.login).toHaveBeenCalledWith(loginRequest);
-  });
-
-  it('should dispatch loginSuccess action on successful login', () => {
-    const loginRequest = { username: 'username', password: 'password' };
-    component.loginForm.patchValue(loginRequest);
-    mockLoginService.login.mockReturnValue(
-      of({ access_token: 'token', token_type: 'bearer' })
-    );
-
-    component.onSubmit();
-
-    expect(mockStore.dispatch).toHaveBeenCalledWith(
-      authActions.loginSuccess({ token: 'token' })
-    );
-    expect(mockStore.dispatch).toHaveBeenCalledWith(
-      authActions.hideLoginModal()
-    );
-    expect(mockAuthService.setToken).toHaveBeenCalledWith('token');
+    mockAuthStore.login.mockResolvedValue(undefined);
+    await component.onSubmit();
+    expect(mockAuthStore.login).toHaveBeenCalledWith(loginRequest);
     expect(mockToastService.showSuccess).toHaveBeenCalledWith(
       'Login successful'
     );
   });
 
-  it('should handle login error', () => {
+  it('should handle login error', async () => {
     const loginRequest = { username: 'username', password: 'password' };
     component.loginForm.patchValue(loginRequest);
-    mockLoginService.login.mockReturnValue(
-      throwError(() => ({ status: 401}))
-    );
+    mockAuthStore.login?.mockRejectedValue({ status: 401 });
 
-    component.onSubmit();
+    await component.onSubmit();
 
-    expect(mockStore.dispatch).toHaveBeenCalledWith(
-      authActions.loginFailure({ error: 'Invalid username or password.' })
+    expect(mockToastService.showError).toHaveBeenCalledWith(
+      'Invalid username or password.'
     );
-    expect(mockToastService.showError).toHaveBeenCalledWith('Invalid username or password.');
   });
 
-  it('should reset form after successful login', () => {
+  it('should reset form after successful login', async () => {
     const loginRequest = { username: 'username', password: 'password' };
     component.loginForm.patchValue(loginRequest);
-    mockLoginService.login.mockReturnValue(
-      of({ access_token: 'token', token_type: 'bearer' })
-    );
+    mockAuthStore.login?.mockResolvedValue(undefined);
 
-    component.onSubmit();
+    await component.onSubmit();
 
-    expect(component.loginForm.get('username')?.value).toBe('');
-    expect(component.loginForm.get('password')?.value).toBe('');
+    expect(component.loginForm.get('username')?.value).toBeNull();
+    expect(component.loginForm.get('password')?.value).toBeNull();
   });
 
-  it('should emit closeModal event when register link is clicked', () => {
-    jest.spyOn(component.closeModal, 'emit');
-
+  it('should call hideLoginModal when register link is clicked', () => {
     component.onRegisterLinkClick();
-
-    expect(mockStore.dispatch).toHaveBeenCalledWith(authActions.hideLoginModal());
+    expect(mockAuthStore.hideLoginModal).toHaveBeenCalled();
   });
 });

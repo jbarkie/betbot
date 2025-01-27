@@ -31,3 +31,8 @@ export type RegisterResponse = {
   access_token: string;
   token_type: string;
 };
+
+export interface LoginError {
+  status?: number;
+  message?: string;
+}

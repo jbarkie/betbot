@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MockStore } from '@ngrx/store/testing';
 import { provideMockStore } from '@ngrx/store/testing';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 
@@ -11,6 +11,7 @@ import { ToastComponent } from './components/toast/toast.component';
 import { appActions } from './state/actions';
 import { authActions } from './state/auth/auth.actions';
 import { provideHttpClient } from '@angular/common/http';
+import { AuthStore } from './services/auth/auth.store';
 
 describe('AppComponent', () => {
   let component: AppComponent;
@@ -20,12 +21,18 @@ describe('AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent, PageHeaderComponent, ToastComponent],
-      providers: [provideMockStore(),
-        { provide: ActivatedRoute, useValue: {
-          params: of({})
-        }},
+      providers: [
+        provideMockStore(),
+        AuthStore,
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            params: of({}),
+          },
+        },
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideRouter([]),
       ],
     }).compileComponents();
 
@@ -38,15 +45,11 @@ describe('AppComponent', () => {
   });
 
   it('should create the app', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    const app = fixture.componentInstance;
-    expect(app).toBeTruthy();
+    expect(component).toBeTruthy();
   });
 
   it(`should have the 'BetBot' title`, () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    const app = fixture.componentInstance;
-    expect(app.title).toEqual('BetBot');
+    expect(component.title).toEqual('BetBot');
   });
 
   it('should render the page header', () => {
@@ -65,7 +68,9 @@ describe('AppComponent', () => {
   });
 
   it('should dispatch applicationStarted action on init', () => {
-    expect(store.dispatch).toHaveBeenCalledWith(appActions.applicationStarted());
+    expect(store.dispatch).toHaveBeenCalledWith(
+      appActions.applicationStarted()
+    );
   });
 
   it('should dispatch initializeAuth action on init', () => {

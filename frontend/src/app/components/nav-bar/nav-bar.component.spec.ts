@@ -24,10 +24,6 @@ describe('NavBarComponent', () => {
       removeToken: jest.fn(),
     };
 
-    const toastServiceMock = {
-      show: jest.fn(),
-    };
-
     await TestBed.configureTestingModule({
       imports: [NavBarComponent, LoginComponent],
       providers: [
@@ -49,10 +45,6 @@ describe('NavBarComponent', () => {
         {
           provide: AuthService,
           useValue: authServiceMock,
-        },
-        {
-          provide: ToastService,
-          useValue: toastServiceMock,
         },
         provideHttpClient(),
         provideHttpClientTesting(),

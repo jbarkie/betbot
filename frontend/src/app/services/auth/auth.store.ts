@@ -5,13 +5,7 @@ import { RegistrationService } from '../../components/registration/registration.
 import { LoginService } from '../../components/login/login.service';
 import { LoginRequest, RegisterRequest } from '../../components/models';
 import { firstValueFrom } from 'rxjs';
-
-export interface AuthState {
-  isAuthenticated: boolean;
-  token: string | null;
-  error: string | null;
-  showLoginModal: boolean;
-}
+import { AuthState } from './models';
 
 const initialState: AuthState = {
   isAuthenticated: false,
@@ -78,7 +72,7 @@ export const AuthStore = signalStore(
         const response = await firstValueFrom(loginService.login(request));
         const token = response.access_token;
         authService.setToken(token);
-        
+
         patchState(store, {
           isAuthenticated: true,
           token,

@@ -25,10 +25,6 @@ export const appConfig: ApplicationConfig = {
     provideEffects([AuthEffects]),
     provideStoreDevtools(),
     provideHttpClientTesting(),
-    NBAStore,
-    NHLStore,
-    NFLStore,
-    MLBStore,
     AuthStore,
   ],
 };

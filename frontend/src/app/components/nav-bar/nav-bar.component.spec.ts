@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { of } from 'rxjs';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 import { By } from '@angular/platform-browser';
 
 import { NavBarComponent } from './nav-bar.component';
@@ -9,6 +9,9 @@ import { authActions } from '../../state/auth/auth.actions';
 import { AuthService } from '../../services/auth/auth.service';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
+import { LoginComponent } from '../login/login.component';
+import { AuthStore } from '../../services/auth/auth.store';
+import { ToastService } from '../toast/toast.service';
 
 describe('NavBarComponent', () => {
   let component: NavBarComponent;
@@ -21,8 +24,12 @@ describe('NavBarComponent', () => {
       removeToken: jest.fn(),
     };
 
+    const toastServiceMock = {
+      show: jest.fn(),
+    };
+
     await TestBed.configureTestingModule({
-      imports: [NavBarComponent],
+      imports: [NavBarComponent, LoginComponent],
       providers: [
         provideMockStore({
           initialState: {
@@ -32,6 +39,7 @@ describe('NavBarComponent', () => {
             },
           },
         }),
+        AuthStore,
         {
           provide: ActivatedRoute,
           useValue: {
@@ -42,8 +50,13 @@ describe('NavBarComponent', () => {
           provide: AuthService,
           useValue: authServiceMock,
         },
+        {
+          provide: ToastService,
+          useValue: toastServiceMock,
+        },
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideRouter([]),
       ],
     }).compileComponents();
 
@@ -128,7 +141,9 @@ describe('NavBarComponent', () => {
       auth: { isAuthenticated: false, showLoginModal: true },
     });
     fixture.detectChanges();
-    const modalToggle = fixture.debugElement.query(By.css('input[type="checkbox"]')); 
+    const modalToggle = fixture.debugElement.query(
+      By.css('input[type="checkbox"]')
+    );
     expect(modalToggle.nativeElement.checked).toBe(true);
 
     store.setState({

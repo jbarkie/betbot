@@ -8,6 +8,12 @@ import { PageHeaderComponent } from './page-header.component';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { AuthStore } from '../../services/auth/auth.store';
+import { signal } from '@angular/core';
+
+const mockAuthStore = {
+  isAuthenticated: jest.fn(),
+  showLoginModal: signal(false),
+};
 
 describe('PageHeaderComponent', () => {
   let component: PageHeaderComponent;
@@ -18,10 +24,10 @@ describe('PageHeaderComponent', () => {
       imports: [PageHeaderComponent],
       providers: [
         provideMockStore({}),
+        { provide: AuthStore, useValue: mockAuthStore },
         { provide: ActivatedRoute, useValue: { params: of({}) } },
         provideHttpClient(),
         provideHttpClientTesting(),
-        AuthStore,
         provideRouter([]),
       ],
     }).compileComponents();

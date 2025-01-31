@@ -1,17 +1,14 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MockStore, provideMockStore } from '@ngrx/store/testing';
+import { provideMockStore } from '@ngrx/store/testing';
 
-import { LoginComponent } from './login.component';
-import { LoginService } from './login.service';
-import { ToastService } from '../toast/toast.service';
-import { AuthService } from '../../services/auth/auth.service';
+import { signal } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { of, throwError } from 'rxjs';
-import { authActions } from '../../state/auth/auth.actions';
+import { of } from 'rxjs';
 import { AuthStore } from '../../services/auth/auth.store';
 import { AuthStoreService } from '../../services/auth/models';
-import { signal } from '@angular/core';
+import { ToastService } from '../toast/toast.service';
+import { LoginComponent } from './login.component';
 
 describe('LoginComponent', () => {
   let component: LoginComponent;
@@ -91,7 +88,7 @@ describe('LoginComponent', () => {
     expect(component.isInvalid('password')).toBeTruthy();
   });
 
-  it('should call loginService.login() when form is submitted', async () => {
+  it('should call authStore.login() when form is submitted', async () => {
     const loginRequest = { username: 'username', password: 'password' };
     component.loginForm.patchValue(loginRequest);
     mockAuthStore.login.mockResolvedValue(undefined);

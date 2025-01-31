@@ -1,28 +1,31 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { PageHeaderComponent } from './components/page-header/page-header.component';
-import { Store } from '@ngrx/store';
-import { appActions } from './state/actions';
 import { ToastComponent } from './components/toast/toast.component';
-import { authActions } from './state/auth/auth.actions';
+import { AuthStore } from './services/auth/auth.store';
 
 @Component({
-    selector: 'app-root',
-    standalone: true,
-    imports: [RouterOutlet, PageHeaderComponent, ToastComponent],
-    template: `<div class="container mx-auto">
+  selector: 'app-root',
+  standalone: true,
+  imports: [RouterOutlet, PageHeaderComponent, ToastComponent],
+  template: `<div class="container mx-auto">
     <app-page-header />
     <main>
       <router-outlet />
     </main>
     <app-toast />
   </div>`,
-    styles: []
+  styles: [],
 })
 export class AppComponent {
   title = 'BetBot';
-  constructor(store: Store) {
-    store.dispatch(appActions.applicationStarted());
-    store.dispatch(authActions.initializeAuth());
+  private authStore = inject(AuthStore);
+
+  constructor() {
+    this.initializeApplication();
+  }
+
+  private async initializeApplication() {
+    await this.authStore.initializeAuth();
   }
 }

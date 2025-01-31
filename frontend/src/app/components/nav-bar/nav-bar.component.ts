@@ -1,18 +1,14 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LoginComponent } from '../login/login.component';
 import { CommonModule } from '@angular/common';
-import { Observable } from 'rxjs';
-import { ApplicationState } from '../../state';
-import { Store } from '@ngrx/store';
-import { authActions } from '../../state/auth/auth.actions';
-import { AuthService } from '../../services/auth/auth.service';
+import { AuthStore } from '../../services/auth/auth.store';
 
 @Component({
-    selector: 'app-nav-bar',
-    standalone: true,
-    imports: [RouterLink, LoginComponent, CommonModule],
-    template: `<div class="navbar bg-base-100">
+  selector: 'app-nav-bar',
+  standalone: true,
+  imports: [RouterLink, LoginComponent, CommonModule],
+  template: `<div class="navbar bg-base-100">
       <div class="navbar-start">
         <div class="dropdown">
           <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
@@ -76,10 +72,10 @@ import { AuthService } from '../../services/auth/auth.service';
             tabindex="0"
             class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
           >
-            <li *ngIf="!(isAuthenticated$ | async)">
+            <li *ngIf="!authStore.isAuthenticated()">
               <label for="login-modal" class="modal-button">Login</label>
             </li>
-            <li *ngIf="isAuthenticated$ | async">
+            <li *ngIf="authStore.isAuthenticated()">
               <a (click)="logout()">Logout</a>
             </li>
             <li><a>Settings</a></li>
@@ -91,36 +87,23 @@ import { AuthService } from '../../services/auth/auth.service';
       type="checkbox"
       id="login-modal"
       class="modal-toggle"
-      [checked]="showLoginModal$ | async"
+      [checked]="authStore.showLoginModal()"
       (change)="toggleLoginModal($event)"
     />
     <div class="modal">
       <app-login (closeModal)="closeLoginModal()"></app-login>
     </div> `,
-    styles: []
+  styles: [],
 })
 export class NavBarComponent {
-  isAuthenticated$: Observable<boolean>;
-  showLoginModal$: Observable<boolean>;
-
-  constructor(
-    private store: Store<ApplicationState>,
-    private authService: AuthService
-  ) {
-    this.isAuthenticated$ = this.store.select(
-      (state) => state.auth.isAuthenticated
-    );
-    this.showLoginModal$ = this.store.select(
-      (state) => state.auth.showLoginModal
-    );
-  }
+  protected authStore = inject(AuthStore);
 
   openLoginModal() {
-    this.store.dispatch(authActions.showLoginModal());
+    this.authStore.showLoginModal();
   }
 
   closeLoginModal() {
-    this.store.dispatch(authActions.hideLoginModal());
+    this.authStore.hideLoginModal();
   }
 
   toggleLoginModal(event: Event) {
@@ -133,7 +116,6 @@ export class NavBarComponent {
   }
 
   logout() {
-    this.store.dispatch(authActions.logout());
-    this.authService.removeToken();
+    this.authStore.logout();
   }
 }

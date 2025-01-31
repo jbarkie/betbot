@@ -1,10 +1,16 @@
-import { ActionReducerMap } from '@ngrx/store';
-import { authReducer, AuthState } from './auth/auth.reducer';
+export interface AuthState {
+  isAuthenticated: boolean;
+  token: string | null;
+  error: string | null;
+  showLoginModal: boolean;
+}
 
+export const initialAuthState: AuthState = {
+  isAuthenticated: false,
+  token: null,
+  error: null,
+  showLoginModal: false,
+};
 export interface ApplicationState {
   auth: AuthState;
 }
-
-export const reducers: ActionReducerMap<ApplicationState> = {
-  auth: authReducer,
-};

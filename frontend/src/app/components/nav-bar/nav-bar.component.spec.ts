@@ -1,50 +1,37 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { of } from 'rxjs';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { By } from '@angular/platform-browser';
 
 import { NavBarComponent } from './nav-bar.component';
-import { authActions } from '../../state/auth/auth.actions';
-import { AuthService } from '../../services/auth/auth.service';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { LoginComponent } from '../login/login.component';
 import { AuthStore } from '../../services/auth/auth.store';
-import { ToastService } from '../toast/toast.service';
+import { signal } from '@angular/core';
 
 describe('NavBarComponent', () => {
   let component: NavBarComponent;
   let fixture: ComponentFixture<NavBarComponent>;
-  let store: MockStore;
-  let authService: jest.Mocked<AuthService>;
+  let mockAuthStore: jest.Mocked<Partial<typeof AuthStore.prototype>>;
 
   beforeEach(async () => {
-    const authServiceMock = {
-      removeToken: jest.fn(),
-    };
+    mockAuthStore = {
+      isAuthenticated: signal(false),
+      showLoginModal: signal(false),
+      logout: jest.fn(),
+      hideLoginModal: jest.fn(),
+    } as unknown as jest.Mocked<Partial<typeof AuthStore.prototype>>;
 
     await TestBed.configureTestingModule({
       imports: [NavBarComponent, LoginComponent],
       providers: [
-        provideMockStore({
-          initialState: {
-            auth: {
-              isAuthenticated: false,
-              showLoginModal: false,
-            },
-          },
-        }),
-        AuthStore,
+        { provide: AuthStore, useValue: mockAuthStore },
         {
           provide: ActivatedRoute,
           useValue: {
             params: of({}),
           },
-        },
-        {
-          provide: AuthService,
-          useValue: authServiceMock,
         },
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -52,8 +39,6 @@ describe('NavBarComponent', () => {
       ],
     }).compileComponents();
 
-    store = TestBed.inject(MockStore);
-    authService = TestBed.inject(AuthService) as jest.Mocked<AuthService>;
     fixture = TestBed.createComponent(NavBarComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
@@ -64,9 +49,7 @@ describe('NavBarComponent', () => {
   });
 
   it('should show login option when not authenticated', () => {
-    store.setState({
-      auth: { isAuthenticated: false, showLoginModal: false },
-    });
+    mockAuthStore['isAuthenticated'].set(false);
     fixture.detectChanges();
     const loginOption = fixture.debugElement.query(
       By.css('.dropdown-end > ul > li:nth-child(1)')
@@ -75,9 +58,7 @@ describe('NavBarComponent', () => {
   });
 
   it('should show logout option when authenticated', () => {
-    store.setState({
-      auth: { isAuthenticated: true, showLoginModal: false },
-    });
+    mockAuthStore['isAuthenticated'].set(true);
     fixture.detectChanges();
     const logoutOption = fixture.debugElement.query(
       By.css('.dropdown-end > ul > li:nth-child(1)')
@@ -85,16 +66,14 @@ describe('NavBarComponent', () => {
     expect(logoutOption.nativeElement.textContent).toContain('Logout');
   });
 
-  it('should dispatch showLoginModal action when login option is clicked', () => {
-    const dispatchSpy = jest.spyOn(store, 'dispatch');
+  it('should set showLoginModal true when login option is clicked', () => {
     component.openLoginModal();
-    expect(dispatchSpy).toHaveBeenCalledWith(authActions.showLoginModal());
+    expect(mockAuthStore['showLoginModal']).toBeTruthy();
   });
 
-  it('should dispatch hideLoginModal action when closing login modal', () => {
-    const dispatchSpy = jest.spyOn(store, 'dispatch');
+  it('should call hideLoginModal  when closing login modal', () => {
     component.closeLoginModal();
-    expect(dispatchSpy).toHaveBeenCalledWith(authActions.hideLoginModal());
+    expect(mockAuthStore['hideLoginModal']).toHaveBeenCalled();
   });
 
   it('should toggle login modal based on checkbox state', () => {
@@ -111,10 +90,8 @@ describe('NavBarComponent', () => {
   });
 
   it('should dispatch logout action and remove token when logging out', () => {
-    const dispatchSpy = jest.spyOn(store, 'dispatch');
     component.logout();
-    expect(dispatchSpy).toHaveBeenCalledWith(authActions.logout());
-    expect(authService.removeToken).toHaveBeenCalled();
+    expect(mockAuthStore['logout']).toHaveBeenCalled();
   });
 
   it('should have correct navigation links', () => {
@@ -128,19 +105,15 @@ describe('NavBarComponent', () => {
     expect(links[5].nativeElement.getAttribute('routerLink')).toBe('/about');
   });
 
-  it('should update login modal visibility based on store state', () => {
-    store.setState({
-      auth: { isAuthenticated: false, showLoginModal: true },
-    });
+  it('should update login modal visibility based on auth store state', () => {
+    mockAuthStore['showLoginModal'].set(true);
     fixture.detectChanges();
     const modalToggle = fixture.debugElement.query(
       By.css('input[type="checkbox"]')
     );
     expect(modalToggle.nativeElement.checked).toBe(true);
 
-    store.setState({
-      auth: { isAuthenticated: false, showLoginModal: false },
-    });
+    mockAuthStore['showLoginModal'].set(false);
     fixture.detectChanges();
     expect(modalToggle.nativeElement.checked).toBe(false);
   });

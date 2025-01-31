@@ -1,30 +1,22 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { ReactiveFormsModule } from '@angular/forms';
-import { of, throwError } from 'rxjs';
+import { Router } from '@angular/router';
 
-import { RegistrationComponent } from './registration.component';
-import { RegistrationService } from './registration.service';
+import { signal } from '@angular/core';
+import { AuthStore } from '../../services/auth/auth.store';
 import { ToastService } from '../toast/toast.service';
-import { AuthService } from '../../services/auth/auth.service';
-import { authActions } from '../../state/auth/auth.actions';
+import { RegistrationComponent } from './registration.component';
 
 describe('RegistrationComponent', () => {
   let component: RegistrationComponent;
   let fixture: ComponentFixture<RegistrationComponent>;
-  let registrationService: jest.Mocked<RegistrationService>;
   let router: jest.Mocked<Router>;
   let toastService: jest.Mocked<ToastService>;
-  let store: jest.Mocked<Store>;
-  let authService: jest.Mocked<AuthService>;
+  let mockAuthStore: jest.Mocked<typeof AuthStore.prototype>;
 
   beforeEach(async () => {
     jest.spyOn(console, 'error').mockImplementation(jest.fn());
 
-    const registrationServiceMock = {
-      register: jest.fn(),
-    };
     const routerMock = {
       navigate: jest.fn(),
     };
@@ -32,31 +24,25 @@ describe('RegistrationComponent', () => {
       showSuccess: jest.fn(),
       showError: jest.fn(),
     };
-    const storeMock = {
-      dispatch: jest.fn(),
-    };
-    const authServiceMock = {
-      setToken: jest.fn(),
-    };
+    mockAuthStore = {
+      register: jest.fn(),
+      isAuthenticated: signal(false),
+      token: signal(null),
+      error: signal(null),
+      hasError: signal(false),
+    } as unknown as jest.Mocked<typeof AuthStore.prototype>;
 
     await TestBed.configureTestingModule({
       imports: [RegistrationComponent, ReactiveFormsModule],
       providers: [
-        { provide: RegistrationService, useValue: registrationServiceMock },
         { provide: Router, useValue: routerMock },
         { provide: ToastService, useValue: toastServiceMock },
-        { provide: Store, useValue: storeMock },
-        { provide: AuthService, useValue: authServiceMock },
+        { provide: AuthStore, useValue: mockAuthStore },
       ],
     }).compileComponents();
 
-    registrationService = TestBed.inject(
-      RegistrationService
-    ) as jest.Mocked<RegistrationService>;
     router = TestBed.inject(Router) as jest.Mocked<Router>;
     toastService = TestBed.inject(ToastService) as jest.Mocked<ToastService>;
-    store = TestBed.inject(Store) as jest.Mocked<Store>;
-    authService = TestBed.inject(AuthService) as jest.Mocked<AuthService>;
 
     fixture = TestBed.createComponent(RegistrationComponent);
     component = fixture.componentInstance;
@@ -134,7 +120,7 @@ describe('RegistrationComponent', () => {
     expect(component.isInvalid(usernameControl)).toBeTruthy();
   });
 
-  it('should handle successful registration when form is valid', () => {
+  it('should handle successful registration when form is valid', async () => {
     const registrationRequest = {
       username: 'testuser',
       firstName: 'Test',
@@ -153,24 +139,18 @@ describe('RegistrationComponent', () => {
       password: 'password123',
     };
 
-    registrationService.register.mockReturnValue(
-      of({ access_token: 'fake-token', token_type: 'bearer' })
-    );
+    mockAuthStore.register.mockResolvedValue(undefined);
 
-    component.onSubmit();
+    await component.onSubmit();
 
-    expect(registrationService.register).toHaveBeenCalledWith(expectedRequest);
-    expect(store.dispatch).toHaveBeenCalledWith(
-      authActions.registerSuccess({ token: 'fake-token' })
-    );
-    expect(authService.setToken).toHaveBeenCalledWith('fake-token');
+    expect(mockAuthStore.register).toHaveBeenCalledWith(expectedRequest);
     expect(router.navigate).toHaveBeenCalledWith(['/']);
     expect(toastService.showSuccess).toHaveBeenCalledWith(
       'Registration successful'
     );
   });
 
-  it('should handle registration error', () => {
+  it('should handle registration error', async () => {
     const registrationRequest = {
       username: 'testuser',
       firstName: 'Test',
@@ -181,15 +161,16 @@ describe('RegistrationComponent', () => {
     };
     component.registration.patchValue(registrationRequest);
 
-    registrationService.register.mockReturnValue(
-      throwError(() => ({ status: 403 }))
-    );
+    const error = {
+      status: 403,
+      message: 'Username already exists',
+    };
 
-    component.onSubmit();
+    mockAuthStore.register.mockRejectedValue(error);
 
-    expect(store.dispatch).toHaveBeenCalledWith(
-      authActions.registerFailure({ error: 'Username already exists.' })
-    );
+    await component.onSubmit();
+
+    expect(router.navigate).not.toHaveBeenCalled();
     expect(toastService.showError).toHaveBeenCalledWith(
       'Username already exists.'
     );

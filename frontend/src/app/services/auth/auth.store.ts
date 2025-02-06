@@ -11,7 +11,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   token: null,
   error: null,
-  showLoginModal: false,
+  shouldShowLoginModal: false,
 };
 
 export const AuthStore = signalStore(
@@ -32,7 +32,7 @@ export const AuthStore = signalStore(
           isAuthenticated: true,
           token,
           error: null,
-          showLoginModal: false,
+          shouldShowLoginModal: false,
         });
       } else {
         authService.removeToken();
@@ -40,7 +40,7 @@ export const AuthStore = signalStore(
           isAuthenticated: false,
           token: null,
           error: null,
-          showLoginModal: true,
+          shouldShowLoginModal: true,
         });
       }
     },
@@ -55,14 +55,14 @@ export const AuthStore = signalStore(
           isAuthenticated: true,
           token,
           error: null,
-          showLoginModal: false,
+          shouldShowLoginModal: false,
         });
       } catch (error) {
         patchState(store, {
           isAuthenticated: false,
           token: null,
           error: error instanceof Error ? error.message : 'Registration failed',
-          showLoginModal: false,
+          shouldShowLoginModal: false,
         });
       }
     },
@@ -77,14 +77,14 @@ export const AuthStore = signalStore(
           isAuthenticated: true,
           token,
           error: null,
-          showLoginModal: false,
+          shouldShowLoginModal: false,
         });
       } catch (error) {
         patchState(store, {
           isAuthenticated: false,
           token: null,
           error: error instanceof Error ? error.message : 'Login failed',
-          showLoginModal: true,
+          shouldShowLoginModal: true,
         });
       }
     },
@@ -95,11 +95,11 @@ export const AuthStore = signalStore(
     },
 
     showLoginModal() {
-      patchState(store, { showLoginModal: true });
+      patchState(store, { shouldShowLoginModal: true });
     },
 
     hideLoginModal() {
-      patchState(store, { showLoginModal: false });
+      patchState(store, { shouldShowLoginModal: false });
     },
   }))
 );

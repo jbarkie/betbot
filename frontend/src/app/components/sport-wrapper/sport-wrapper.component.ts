@@ -1,16 +1,15 @@
-import { Component, inject, Input, OnInit, Signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { Store } from '@ngrx/store';
-import { GamesListComponent } from '../games-list/games-list.component';
+import { Component, inject, input, OnInit, Signal } from '@angular/core';
+import { AuthStore } from '../../services/auth/auth.store';
 import { AlertMessageComponent } from '../alert-message/alert-message.component';
+import { GamesListComponent } from '../games-list/games-list.component';
 import { Game } from '../models';
-import { ApplicationState } from '../../state';
 
 @Component({
     selector: 'app-sport-wrapper',
     standalone: true,
     template: `
-    <ng-container *ngIf="isAuthenticated$ | async; else unauthenticated">
+    <ng-container *ngIf="authStore.isAuthenticated(); else unauthenticated">
       <div class="join flex justify-center my-5">
         <button
           class="join-item btn"
@@ -28,7 +27,7 @@ import { ApplicationState } from '../../state';
         <app-games-list
           [list]="games()"
           [loaded]="!isLoading()"
-          [error]="error()  || ''"
+          [error]="error() || ''"
         ></app-games-list>
       </ng-container>
     </ng-container>
@@ -39,16 +38,15 @@ import { ApplicationState } from '../../state';
     imports: [DatePipe, CommonModule, GamesListComponent, AlertMessageComponent]
 })
 export class SportWrapperComponent implements OnInit {
-  private readonly store = inject(Store<ApplicationState>);
+  protected readonly authStore = inject(AuthStore);
 
-  @Input() sportName!: string;
-  @Input() games!: Signal<Game[]>;
-  @Input() isLoading!: Signal<boolean>;
-  @Input() error!: Signal<string | null>;
-  @Input() dateChange!: (date: Date) => void;
-  
+  sportName = input.required<string>();
+  games = input.required<Game[]>();
+  isLoading = input.required<() => boolean>();
+  error = input.required<string | null>();
+  dateChange = input<(date: Date) => void>();
+
   selectedDate: Date = new Date();
-  isAuthenticated$ = this.store.select((state) => state.auth.isAuthenticated);
 
   ngOnInit(): void {
     this.loadGames();
@@ -78,6 +76,9 @@ export class SportWrapperComponent implements OnInit {
   }
 
   private loadGames() {
-    this.dateChange(this.selectedDate);
+    const dateChangeHandler = this.dateChange();
+    if (dateChangeHandler) {
+      dateChangeHandler(this.selectedDate);
+    }
   }
 }

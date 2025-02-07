@@ -9,8 +9,8 @@ import { NHLStore } from '../../services/sports/sports.store';
   template: `
     <app-sport-wrapper
       sportName="NHL"
-      [games]="store.games"
-      [error]="store.error"
+      [games]="store.games()"
+      [error]="store.error()"
       [isLoading]="store.isLoading"
       [dateChange]="handleDateChange"
     ></app-sport-wrapper>

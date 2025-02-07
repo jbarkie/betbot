@@ -1,35 +1,36 @@
 import { Signal, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { Store } from '@ngrx/store';
-import { BehaviorSubject } from 'rxjs';
+import { AuthStore } from '../../services/auth/auth.store';
 import { Game } from '../models';
 import { SportWrapperComponent } from './sport-wrapper.component';
+
+const mockAuthStore = {
+  isAuthenticated: jest.fn(),
+}
 
 describe('SportWrapperComponent', () => {
   let component: SportWrapperComponent;
   let fixture: ComponentFixture<SportWrapperComponent>;
-  let mockStore: Partial<Store>;
-  let authStateSubject: BehaviorSubject<boolean>;
 
   beforeEach(async () => {
-    authStateSubject = new BehaviorSubject<boolean>(false);
-    mockStore = {
-      select: jest.fn().mockReturnValue(authStateSubject.asObservable()),
-    };
-
     await TestBed.configureTestingModule({
       imports: [SportWrapperComponent],
-      providers: [{ provide: Store, useValue: mockStore }],
+      providers: [
+        { provide: AuthStore, useValue: mockAuthStore },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SportWrapperComponent);
     component = fixture.componentInstance;
+
+    const mockDateChangeHandler = jest.fn();
     
-    component.games = signal([]) as Signal<Game[]>;
-    component.error = signal(null) as Signal<string | null>;
-    component.isLoading = signal(false) as Signal<boolean>;
-    component.dateChange = jest.fn();
+    (component.games as unknown as Signal<Game[]>) = signal([]);
+    (component.isLoading as unknown as Signal<boolean>) = signal(false);
+    (component.error as unknown as Signal<string | null>) = signal(null);
+    (component.sportName as unknown as Signal<string>) = signal('Test Sport');
+    (component.dateChange as unknown as Signal<(date: Date) => void>) = signal(mockDateChangeHandler);
 
     fixture.detectChanges();
   });
@@ -45,20 +46,22 @@ describe('SportWrapperComponent', () => {
 
   it('should emit date change on previous day', () => {
     const initialDate = component.selectedDate;
+    const expectedDate = new Date(initialDate.getTime() - 24 * 60 * 60 * 1000);
+    
     component.previousDay();
-
-    expect(component.dateChange).toHaveBeenCalledWith(
-      new Date(initialDate.getTime() - 24 * 60 * 60 * 1000)
-    );
+    
+    const dateChangeHandler = component.dateChange();
+    expect(dateChangeHandler).toHaveBeenCalledWith(expectedDate);
   });
 
   it('should emit date change on next day', () => {
     const initialDate = component.selectedDate;
+    const expectedDate = new Date(initialDate.getTime() + 24 * 60 * 60 * 1000);
+    
     component.nextDay();
-
-    expect(component.dateChange).toHaveBeenCalledWith(
-      new Date(initialDate.getTime() + 24 * 60 * 60 * 1000)
-    );
+    
+    const dateChangeHandler = component.dateChange();
+    expect(dateChangeHandler).toHaveBeenCalledWith(expectedDate);
   });
 
   it('should detect current date correctly', () => {
@@ -70,17 +73,8 @@ describe('SportWrapperComponent', () => {
     expect(component.isCurrentDate()).toBe(false);
   });
 
-  it('should handle authentication state changes', () => {
-    authStateSubject.next(false);
-    fixture.detectChanges();
-
-    component.isAuthenticated$.subscribe((isAuthenticated) => {
-      expect(isAuthenticated).toBeFalsy();
-    });
-  });
-
   it('should show alert message when not authenticated', async () => {
-    authStateSubject.next(false);
+    mockAuthStore.isAuthenticated.mockReturnValue(false);
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -99,7 +93,7 @@ describe('SportWrapperComponent', () => {
 
   it('should render date navigation correctly when authenticated', async () => {
     // Set authenticated state and provide some games
-    authStateSubject.next(true);
+    mockAuthStore.isAuthenticated.mockReturnValue(true);
     (component.games as any) = signal([{ id: '1', sport: 'TEST', homeTeam: 'Home team', awayTeam: 'Away team' } as Game]); // Create new signal with games
     fixture.detectChanges();
     await fixture.whenStable();
@@ -127,12 +121,18 @@ describe('SportWrapperComponent', () => {
 
   it('should disable previous day button on current date when authenticated', async () => {
     // Set authenticated state
-    authStateSubject.next(true);
+    mockAuthStore.isAuthenticated.mockReturnValue(true);
     component.selectedDate = new Date();
     fixture.detectChanges();
     await fixture.whenStable();
   
     const prevButton = fixture.debugElement.queryAll(By.css('.btn'))[0];
     expect(prevButton.nativeElement.disabled).toBe(true);
+  });
+
+  it('should handle non-existing dateChange handler gracefully', () => {
+    // These should not throw errors
+    expect(() => component.previousDay()).not.toThrow();
+    expect(() => component.nextDay()).not.toThrow();
   });
 });

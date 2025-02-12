@@ -1,8 +1,7 @@
 import { signal, Signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { Store } from '@ngrx/store';
-import { of } from 'rxjs';
+import { AuthStore } from '../../services/auth/auth.store';
 import { NBAStore } from '../../services/sports/sports.store';
 import { Game } from '../models';
 import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
@@ -19,7 +18,7 @@ describe('NbaComponent', () => {
   let component: NbaComponent;
   let fixture: ComponentFixture<NbaComponent>;
   let mockStore: MockNBAStore;
-  let mockAuthStore: Partial<Store>;
+  let mockAuthStore: Partial<typeof AuthStore.prototype>;
   const mockDate = new Date('2024-01-01T12:00:00Z');
 
   beforeEach(async () => {
@@ -44,14 +43,15 @@ describe('NbaComponent', () => {
     };
 
     mockAuthStore = {
-      select: jest.fn().mockReturnValue(of(true)),
+      isAuthenticated: signal(true),
+      showLoginModal: signal(false),
     };
 
     await TestBed.configureTestingModule({
       imports: [NbaComponent],
       providers: [
         { provide: NBAStore, useValue: mockStore },
-        { provide: Store, useValue: mockAuthStore },
+        { provide: AuthStore, useValue: mockAuthStore },
       ],
     }).compileComponents();
 
@@ -69,7 +69,7 @@ describe('NbaComponent', () => {
       By.directive(SportWrapperComponent)
     );
     expect(sportWrapper).toBeTruthy();
-    expect(sportWrapper.componentInstance.sportName).toBe('NBA');
+    expect(sportWrapper.componentInstance.sportName()).toBe('NBA');
   });
 
   it('should handle date changes', () => {
@@ -118,7 +118,8 @@ describe('NbaComponent', () => {
     const sportWrapper = fixture.debugElement.query(
       By.directive(SportWrapperComponent)
     );
-    expect(sportWrapper.componentInstance.isLoading()).toBe(true);
+    const isLoading = sportWrapper.componentInstance.isLoading();
+    expect(isLoading()).toBe(true);
   }); 
 
   it('should update games when store changes', () => {
@@ -149,7 +150,9 @@ describe('NbaComponent', () => {
     );
     const testDate = new Date('2024-01-01T12:00:00Z');
     
-    sportWrapper.componentInstance.dateChange(testDate);
+    sportWrapper.componentInstance.dateChange = () =>
+      component.handleDateChange(testDate);
+    sportWrapper.componentInstance.loadGames();
     expect(mockStore.loadGames).toHaveBeenCalledWith(testDate);
   });  
 });

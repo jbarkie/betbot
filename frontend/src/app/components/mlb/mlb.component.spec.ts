@@ -1,12 +1,11 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MlbComponent } from './mlb.component';
-import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
-import { MLBStore } from '../../services/sports/sports.store';
-import { Store } from '@ngrx/store';
 import { signal, Signal } from '@angular/core';
-import { Game } from '../../components/models';
-import { of } from 'rxjs';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { Game } from '../../components/models';
+import { AuthStore } from '../../services/auth/auth.store';
+import { MLBStore } from '../../services/sports/sports.store';
+import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
+import { MlbComponent } from './mlb.component';
 
 interface MockMLBStore {
   games: Signal<Game[]>;
@@ -19,7 +18,7 @@ describe('MlbComponent', () => {
   let component: MlbComponent;
   let fixture: ComponentFixture<MlbComponent>;
   let mockStore: MockMLBStore;
-  let mockAuthStore: Partial<Store>;
+  let mockAuthStore: Partial<typeof AuthStore.prototype>;
   const mockDate = new Date('2024-01-01T12:00:00Z');
 
   beforeEach(async () => {
@@ -33,26 +32,27 @@ describe('MlbComponent', () => {
         time: '7:00 PM',
         homeOdds: '+110',
         awayOdds: '+110',
-      } as Game
+      } as Game,
     ];
 
     mockStore = {
       games: signal(mockGames),
       error: signal(''),
       isLoading: signal(false),
-      loadGames: jest.fn()
+      loadGames: jest.fn(),
     };
 
     mockAuthStore = {
-      select: jest.fn().mockReturnValue(of(true))
+      isAuthenticated: signal(true),
+      showLoginModal: signal(false),
     };
 
     await TestBed.configureTestingModule({
       imports: [MlbComponent, SportWrapperComponent],
       providers: [
         { provide: MLBStore, useValue: mockStore },
-        { provide: Store, useValue: mockAuthStore }
-      ]
+        { provide: AuthStore, useValue: mockAuthStore },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(MlbComponent);
@@ -69,7 +69,7 @@ describe('MlbComponent', () => {
       By.directive(SportWrapperComponent)
     );
     expect(sportWrapper).toBeTruthy();
-    expect(sportWrapper.componentInstance.sportName).toBe('MLB');
+    expect(sportWrapper.componentInstance.sportName()).toBe('MLB');
   });
 
   it('should handle date changes', () => {
@@ -88,9 +88,9 @@ describe('MlbComponent', () => {
         time: '7:00 PM',
         homeOdds: '+110',
         awayOdds: '+110',
-      } as Game
+      } as Game,
     ];
-    
+
     (mockStore.games as any).set(testGames);
     fixture.detectChanges();
 
@@ -118,7 +118,8 @@ describe('MlbComponent', () => {
     const sportWrapper = fixture.debugElement.query(
       By.directive(SportWrapperComponent)
     );
-    expect(sportWrapper.componentInstance.isLoading()).toBe(true);
+    const isLoading = sportWrapper.componentInstance.isLoading();
+    expect(isLoading()).toBe(true);
   });
 
   it('should update games when store changes', () => {
@@ -132,7 +133,7 @@ describe('MlbComponent', () => {
         time: '8:00 PM',
         homeOdds: '-110',
         awayOdds: '-110',
-      } as Game
+      } as Game,
     ];
 
     (mockStore.games as any).set(newGames);
@@ -149,8 +150,10 @@ describe('MlbComponent', () => {
       By.directive(SportWrapperComponent)
     );
     const testDate = new Date('2024-02-01');
-    
-    sportWrapper.componentInstance.dateChange(testDate);
+
+    sportWrapper.componentInstance.dateChange = () =>
+      component.handleDateChange(testDate);
+    sportWrapper.componentInstance.loadGames();
     expect(mockStore.loadGames).toHaveBeenCalledWith(testDate);
   });
 });

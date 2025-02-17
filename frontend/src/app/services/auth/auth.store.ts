@@ -18,6 +18,7 @@ export const AuthStore = signalStore(
   withState(initialState),
   withComputed((store) => ({
     hasError: computed(() => !!store.error()),
+    isLoginModalDisplayed: computed(() => store.shouldShowLoginModal()),
   })),
   withMethods((
     store, 

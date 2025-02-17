@@ -87,7 +87,7 @@ import { AuthStore } from '../../services/auth/auth.store';
       type="checkbox"
       id="login-modal"
       class="modal-toggle"
-      [checked]="authStore.showLoginModal()"
+      [checked]="authStore.isLoginModalDisplayed()"
       (change)="toggleLoginModal($event)"
     />
     <div class="modal">

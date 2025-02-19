@@ -10,22 +10,17 @@ import { provideHttpClient } from '@angular/common/http';
 import { AuthStore } from './services/auth/auth.store';
 import { signal } from '@angular/core';
 
+const mockAuthStore = {
+  isAuthenticated: signal(false),
+  initializeAuth: jest.fn().mockResolvedValue(undefined),
+  isLoginModalDisplayed: jest.fn().mockReturnValue(false),
+}
+
 describe('AppComponent', () => {
   let component: AppComponent;
   let fixture: ComponentFixture<AppComponent>;
-  let mockAuthStore: jest.Mocked<typeof AuthStore.prototype>;
 
   beforeEach(async () => {
-    mockAuthStore = {
-      initializeAuth: jest.fn().mockResolvedValue(undefined),
-      logout: jest.fn(),
-      hideLoginModal: jest.fn(),
-      isAuthenticated: signal(false),
-      showLoginModal: signal(false),
-      token: signal(null),
-      error: signal(null),
-      hasError: signal(false),
-    } as unknown as jest.Mocked<typeof AuthStore.prototype>;
 
     await TestBed.configureTestingModule({
       imports: [AppComponent, PageHeaderComponent, ToastComponent],

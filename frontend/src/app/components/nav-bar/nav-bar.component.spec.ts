@@ -1,28 +1,29 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
-import { ActivatedRoute, provideRouter } from '@angular/router';
 import { By } from '@angular/platform-browser';
+import { ActivatedRoute, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 
-import { NavBarComponent } from './nav-bar.component';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { LoginComponent } from '../login/login.component';
-import { AuthStore } from '../../services/auth/auth.store';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
+import { AuthStore } from '../../services/auth/auth.store';
+import { LoginComponent } from '../login/login.component';
+import { NavBarComponent } from './nav-bar.component';
+
+const mockAuthStore = {
+  isAuthenticated: signal(false),
+  isLoginModalDisplayed: jest.fn().mockReturnValue(false),
+  shouldShowLoginModal: signal(false),
+  showLoginModal: signal(false),
+  logout: jest.fn(),
+  hideLoginModal: jest.fn(),
+}
 
 describe('NavBarComponent', () => {
   let component: NavBarComponent;
   let fixture: ComponentFixture<NavBarComponent>;
-  let mockAuthStore: jest.Mocked<Partial<typeof AuthStore.prototype>>;
 
   beforeEach(async () => {
-    mockAuthStore = {
-      isAuthenticated: signal(false),
-      showLoginModal: signal(false),
-      logout: jest.fn(),
-      hideLoginModal: jest.fn(),
-    } as unknown as jest.Mocked<Partial<typeof AuthStore.prototype>>;
-
     await TestBed.configureTestingModule({
       imports: [NavBarComponent, LoginComponent],
       providers: [
@@ -49,7 +50,7 @@ describe('NavBarComponent', () => {
   });
 
   it('should show login option when not authenticated', () => {
-    mockAuthStore['isAuthenticated'].set(false);
+    mockAuthStore.isAuthenticated.set(false);
     fixture.detectChanges();
     const loginOption = fixture.debugElement.query(
       By.css('.dropdown-end > ul > li:nth-child(1)')
@@ -58,7 +59,7 @@ describe('NavBarComponent', () => {
   });
 
   it('should show logout option when authenticated', () => {
-    mockAuthStore['isAuthenticated'].set(true);
+    mockAuthStore.isAuthenticated.set(true);
     fixture.detectChanges();
     const logoutOption = fixture.debugElement.query(
       By.css('.dropdown-end > ul > li:nth-child(1)')
@@ -68,12 +69,12 @@ describe('NavBarComponent', () => {
 
   it('should set showLoginModal true when login option is clicked', () => {
     component.openLoginModal();
-    expect(mockAuthStore['showLoginModal']).toBeTruthy();
+    expect(mockAuthStore.showLoginModal).toBeTruthy();
   });
 
   it('should call hideLoginModal  when closing login modal', () => {
     component.closeLoginModal();
-    expect(mockAuthStore['hideLoginModal']).toHaveBeenCalled();
+    expect(mockAuthStore.hideLoginModal).toHaveBeenCalled();
   });
 
   it('should toggle login modal based on checkbox state', () => {
@@ -91,7 +92,7 @@ describe('NavBarComponent', () => {
 
   it('should dispatch logout action and remove token when logging out', () => {
     component.logout();
-    expect(mockAuthStore['logout']).toHaveBeenCalled();
+    expect(mockAuthStore.logout).toHaveBeenCalled();
   });
 
   it('should have correct navigation links', () => {
@@ -106,14 +107,14 @@ describe('NavBarComponent', () => {
   });
 
   it('should update login modal visibility based on auth store state', () => {
-    mockAuthStore['showLoginModal'].set(true);
+    mockAuthStore.isLoginModalDisplayed.mockReturnValue(true);
     fixture.detectChanges();
     const modalToggle = fixture.debugElement.query(
       By.css('input[type="checkbox"]')
     );
     expect(modalToggle.nativeElement.checked).toBe(true);
 
-    mockAuthStore['showLoginModal'].set(false);
+    mockAuthStore.isLoginModalDisplayed.mockReturnValue(false);
     fixture.detectChanges();
     expect(modalToggle.nativeElement.checked).toBe(false);
   });

@@ -14,11 +14,15 @@ interface MockNBAStore {
   loadGames: jest.Mock;
 }
 
+const mockAuthStore = {
+  isAuthenticated: signal(true),
+  showLoginModal: signal(false),
+}
+
 describe('NbaComponent', () => {
   let component: NbaComponent;
   let fixture: ComponentFixture<NbaComponent>;
   let mockStore: MockNBAStore;
-  let mockAuthStore: Partial<typeof AuthStore.prototype>;
   const mockDate = new Date('2024-01-01T12:00:00Z');
 
   beforeEach(async () => {
@@ -41,12 +45,7 @@ describe('NbaComponent', () => {
       isLoading: signal(false),
       loadGames: jest.fn(),
     };
-
-    mockAuthStore = {
-      isAuthenticated: signal(true),
-      showLoginModal: signal(false),
-    };
-
+    
     await TestBed.configureTestingModule({
       imports: [NbaComponent],
       providers: [

@@ -1,14 +1,11 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MockStore, provideMockStore } from '@ngrx/store/testing';
-import { NhlComponent } from './nhl.component';
 import { signal, Signal } from '@angular/core';
-import { Game } from '../models';
-import { of } from 'rxjs';
-import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
-import { NHLStore } from '../../services/sports/sports.store';
-import { Store } from '@ngrx/store';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { AuthStore } from '../../services/auth/auth.store';
+import { NHLStore } from '../../services/sports/sports.store';
+import { Game } from '../models';
+import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
+import { NhlComponent } from './nhl.component';
 
 interface MockNHLStore {
   games: Signal<Game[]>;
@@ -17,11 +14,15 @@ interface MockNHLStore {
   loadGames: jest.Mock;
 }
 
+const mockAuthStore = {
+  isAuthenticated: signal(true),
+  showLoginModal: signal(false),
+}
+
 describe('NhlComponent', () => {
   let component: NhlComponent;
   let fixture: ComponentFixture<NhlComponent>;
   let mockStore: MockNHLStore;
-  let mockAuthStore: Partial<typeof AuthStore.prototype>;
   const mockDate = new Date('2024-01-01T12:00:00Z');
 
   beforeEach(async () => {
@@ -44,12 +45,7 @@ describe('NhlComponent', () => {
       isLoading: signal(false),
       loadGames: jest.fn(),
     };
-
-    mockAuthStore = {
-      isAuthenticated: signal(true),
-      showLoginModal: signal(false),
-    };
-
+    
     await TestBed.configureTestingModule({
       imports: [NhlComponent, SportWrapperComponent],
       providers: [

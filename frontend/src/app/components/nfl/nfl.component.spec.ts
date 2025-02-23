@@ -1,13 +1,11 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal, Signal } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { Store } from '@ngrx/store';
-import { of } from 'rxjs';
+import { AuthStore } from '../../services/auth/auth.store';
 import { NFLStore } from '../../services/sports/sports.store';
 import { Game } from '../models';
 import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
 import { NflComponent } from './nfl.component';
-import { AuthStore } from '../../services/auth/auth.store';
 
 interface MockNFLStore {
   games: Signal<Game[]>;

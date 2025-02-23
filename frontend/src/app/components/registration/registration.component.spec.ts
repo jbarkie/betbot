@@ -7,12 +7,19 @@ import { AuthStore } from '../../services/auth/auth.store';
 import { ToastService } from '../toast/toast.service';
 import { RegistrationComponent } from './registration.component';
 
+const mockAuthStore = {
+  register: jest.fn(),
+  isAuthenticated: signal(false),
+  token: signal(null),
+  error: signal(null),
+  hasError: signal(false),
+}
+
 describe('RegistrationComponent', () => {
   let component: RegistrationComponent;
   let fixture: ComponentFixture<RegistrationComponent>;
   let router: jest.Mocked<Router>;
   let toastService: jest.Mocked<ToastService>;
-  let mockAuthStore: jest.Mocked<typeof AuthStore.prototype>;
 
   beforeEach(async () => {
     jest.spyOn(console, 'error').mockImplementation(jest.fn());
@@ -24,13 +31,6 @@ describe('RegistrationComponent', () => {
       showSuccess: jest.fn(),
       showError: jest.fn(),
     };
-    mockAuthStore = {
-      register: jest.fn(),
-      isAuthenticated: signal(false),
-      token: signal(null),
-      error: signal(null),
-      hasError: signal(false),
-    } as unknown as jest.Mocked<typeof AuthStore.prototype>;
 
     await TestBed.configureTestingModule({
       imports: [RegistrationComponent, ReactiveFormsModule],

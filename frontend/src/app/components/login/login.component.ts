@@ -1,19 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, inject, Output } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { LoginRequest, LoginResponse } from '../models';
-import { LoginService } from './login.service';
 import { RouterModule } from '@angular/router';
+import { AuthStore } from '../../services/auth/auth.store';
 import { ToastService } from '../toast/toast.service';
-import { ApplicationState } from '../../state';
-import { Store } from '@ngrx/store';
-import { authActions } from '../../state/auth/auth.actions';
-import { AuthService } from '../../services/auth/auth.service';
+import { LoginError } from '../models';
 
 @Component({
   selector: 'app-login',
@@ -76,52 +72,38 @@ export class LoginComponent {
   loginForm: FormGroup;
   @Output() closeModal = new EventEmitter<void>();
 
-  constructor(
-    private formBuilder: FormBuilder,
-    private loginService: LoginService,
-    private toastService: ToastService,
-    private store: Store<ApplicationState>,
-    private authService: AuthService
-  ) {
+  private formBuilder = inject(FormBuilder);
+  private toastService = inject(ToastService);
+  private authStore = inject(AuthStore);
+
+  constructor() {
     this.loginForm = this.formBuilder.group({
       username: ['', Validators.required],
       password: ['', Validators.required],
     });
   }
 
-  onSubmit() {
+  async onSubmit() {
     if (this.loginForm.valid) {
-      const request: LoginRequest = {
-        username: this.loginForm.get('username')?.value,
-        password: this.loginForm.get('password')?.value,
-      };
-
-      this.loginService.login(request).subscribe({
-        next: (response: LoginResponse) => {
-          this.store.dispatch(
-            authActions.loginSuccess({ token: response.access_token })
-          );
-          this.store.dispatch(
-            authActions.hideLoginModal()
-          )
-          this.authService.setToken(response.access_token);
-          this.toastService.showSuccess('Login successful');
-          this.loginForm.reset({ username: '', password: '' });
-        },
-        error: (error) => {
-          this.handleLoginError(error);
-        },
-      });
+      try {
+        await this.authStore.login({
+          username: this.loginForm.get('username')?.value,
+          password: this.loginForm.get('password')?.value,
+        });
+        this.toastService.showSuccess('Login successful');
+        this.loginForm.reset();
+      } catch (error) {
+        this.handleLoginError(error as LoginError);
+      }
     }
   }
 
-  private handleLoginError(error: any) {
+  private handleLoginError(error: LoginError) {
     console.error('Login failed', error);
     let errorMessage = 'Login failed. Please try again.';
     if (error.status === 401) {
       errorMessage = 'Invalid username or password.';
     }
-    this.store.dispatch(authActions.loginFailure({ error: errorMessage }));
     this.toastService.showError(errorMessage);
     this.loginForm.reset();
   }
@@ -135,6 +117,6 @@ export class LoginComponent {
   }
 
   onRegisterLinkClick() {
-    this.store.dispatch(authActions.hideLoginModal());
+    this.authStore.hideLoginModal();
   }
 }

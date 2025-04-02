@@ -1,32 +1,59 @@
+import { signal, Signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideMockStore, MockStore } from '@ngrx/store/testing';
-
+import { By } from '@angular/platform-browser';
+import { Game } from '../../components/models';
+import { AuthStore } from '../../services/auth/auth.store';
+import { MLBStore } from '../../services/sports/sports.store';
+import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
 import { MlbComponent } from './mlb.component';
-import { MLBCommands } from './state/actions';
+
+interface MockMLBStore {
+  games: Signal<Game[]>;
+  error: Signal<string | null>;
+  isLoading: Signal<boolean>;
+  loadGames: jest.Mock;
+}
+
+const mockAuthStore = {
+  isAuthenticated: signal(true),
+  showLoginModal: signal(false),
+}
 
 describe('MlbComponent', () => {
   let component: MlbComponent;
   let fixture: ComponentFixture<MlbComponent>;
-  let store: MockStore;
+  let mockStore: MockMLBStore;
+  const mockDate = new Date('2024-01-01T12:00:00Z');
 
   beforeEach(async () => {
+    const mockGames = [
+      {
+        id: '1',
+        sport: 'MLB',
+        homeTeam: 'Boston Red Sox',
+        awayTeam: 'New York Yankees',
+        date: mockDate.toISOString(),
+        time: '7:00 PM',
+        homeOdds: '+110',
+        awayOdds: '+110',
+      } as Game,
+    ];
+
+    mockStore = {
+      games: signal(mockGames),
+      error: signal(''),
+      isLoading: signal(false),
+      loadGames: jest.fn(),
+    };
+
     await TestBed.configureTestingModule({
-      imports: [MlbComponent],
+      imports: [MlbComponent, SportWrapperComponent],
       providers: [
-        provideMockStore({
-          initialState: {
-            mlb: {
-              entities: {},
-              ids: [],
-              isLoaded: false,
-              error: '',
-            },
-          },
-        }),
+        { provide: MLBStore, useValue: mockStore },
+        { provide: AuthStore, useValue: mockAuthStore },
       ],
     }).compileComponents();
 
-    store = TestBed.inject(MockStore);
     fixture = TestBed.createComponent(MlbComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
@@ -37,67 +64,95 @@ describe('MlbComponent', () => {
   });
 
   it('should use SportWrapperComponent with correct inputs', () => {
-    const sportWrapper =
-      fixture.nativeElement.querySelector('app-sport-wrapper');
+    const sportWrapper = fixture.debugElement.query(
+      By.directive(SportWrapperComponent)
+    );
     expect(sportWrapper).toBeTruthy();
-    expect(sportWrapper.getAttribute('sportName')).toBe('MLB');
+    expect(sportWrapper.componentInstance.sportName()).toBe('MLB');
   });
 
-  it('should select MLB games correctly', () => {
-    const mockDate = new Date().toISOString();
-    const mockState = {
-      mlb: {
-        entities: {
-          '1': {
-            id: '1',
-            sport: 'MLB',
-            homeTeam: 'Boston Red Sox',
-            awayTeam: 'New York Yankees',
-            date: mockDate,
-            time: '7:00 PM',
-            homeOdds: '+110',
-            awayOdds: '+110',
-          },
-        },
-        ids: ['1'],
-      },
-    };
-    const result = component.selectMlbGames(mockState as any);
-    expect(result).toEqual([
+  it('should handle date changes', () => {
+    component.handleDateChange(mockDate);
+    expect(mockStore.loadGames).toHaveBeenCalledWith(mockDate);
+  });
+
+  it('should provide games to sport wrapper', () => {
+    const testGames = [
       {
         id: '1',
         sport: 'MLB',
         homeTeam: 'Boston Red Sox',
         awayTeam: 'New York Yankees',
-        date: mockDate,
+        date: mockDate.toISOString(),
         time: '7:00 PM',
         homeOdds: '+110',
         awayOdds: '+110',
-      },
-    ]);
+      } as Game,
+    ];
+
+    (mockStore.games as any).set(testGames);
+    fixture.detectChanges();
+
+    const sportWrapper = fixture.debugElement.query(
+      By.directive(SportWrapperComponent)
+    );
+    expect(sportWrapper.componentInstance.games()).toEqual(testGames);
   });
 
-  it('should select error correctly', () => {
-    const mockState = {
-      mlb: {
-        error: 'An error occurred',
-      },
-    };
-    const result = component.selectError(mockState as any);
-    expect(result).toBe('An error occurred');
+  it('should handle error states', () => {
+    const testError = 'Test error message';
+    (mockStore.error as any).set(testError);
+    fixture.detectChanges();
+
+    const sportWrapper = fixture.debugElement.query(
+      By.directive(SportWrapperComponent)
+    );
+    expect(sportWrapper.componentInstance.error()).toBe(testError);
   });
 
-  it('should select loaded correctly', () => {
-    const mockState = {
-      mlb: {
-        isLoaded: true,
-      },
-    };
-    const result = component.selectLoaded(mockState as any);
-    expect(result).toBe(true);
+  it('should handle loading states', () => {
+    (mockStore.isLoading as any).set(true);
+    fixture.detectChanges();
+
+    const sportWrapper = fixture.debugElement.query(
+      By.directive(SportWrapperComponent)
+    );
+    const isLoading = sportWrapper.componentInstance.isLoading();
+    expect(isLoading()).toBe(true);
   });
 
-  it('should use correct loadGames action', () => {
-    expect(component.loadGames).toBe(MLBCommands.loadGames);
+  it('should update games when store changes', () => {
+    const newGames = [
+      {
+        id: '2',
+        sport: 'MLB',
+        homeTeam: 'Chicago Cubs',
+        awayTeam: 'St. Louis Cardinals',
+        date: mockDate.toISOString(),
+        time: '8:00 PM',
+        homeOdds: '-110',
+        awayOdds: '-110',
+      } as Game,
+    ];
+
+    (mockStore.games as any).set(newGames);
+    fixture.detectChanges();
+
+    const sportWrapper = fixture.debugElement.query(
+      By.directive(SportWrapperComponent)
+    );
+    expect(sportWrapper.componentInstance.games()).toEqual(newGames);
+  });
+
+  it('should integrate with SportWrapperComponent date handling', () => {
+    const sportWrapper = fixture.debugElement.query(
+      By.directive(SportWrapperComponent)
+    );
+    const testDate = new Date('2024-02-01');
+
+    sportWrapper.componentInstance.dateChange = () =>
+      component.handleDateChange(testDate);
+    sportWrapper.componentInstance.loadGames();
+    expect(mockStore.loadGames).toHaveBeenCalledWith(testDate);
   });
 });

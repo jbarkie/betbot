@@ -1,63 +1,36 @@
+import { Signal, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MockStore, provideMockStore } from '@ngrx/store/testing';
-import { createSelector } from '@ngrx/store';
-
-import { SportWrapperComponent } from './sport-wrapper.component';
+import { By } from '@angular/platform-browser';
+import { AuthStore } from '../../services/auth/auth.store';
 import { Game } from '../models';
-import { ApplicationState } from '../../state';
+import { SportWrapperComponent } from './sport-wrapper.component';
+
+const mockAuthStore = {
+  isAuthenticated: jest.fn(),
+}
 
 describe('SportWrapperComponent', () => {
   let component: SportWrapperComponent;
   let fixture: ComponentFixture<SportWrapperComponent>;
-  let store: MockStore;
-  let mockGames: Game[] = [];
-
-  const mockGamesSelector = createSelector(
-    (state: ApplicationState) => state,
-    () => mockGames
-  );
-
-  const mockErrorSelector = createSelector(
-    (state: ApplicationState) => state,
-    () => ''
-  );
-
-  const mockLoadedSelector = createSelector(
-    (state: ApplicationState) => state,
-    () => true
-  );
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [SportWrapperComponent],
       providers: [
-        provideMockStore({
-          selectors: [
-            {
-              selector: createSelector(
-                (state: ApplicationState) => state.auth.isAuthenticated,
-                (auth) => auth
-              ),
-              value: true,
-            },
-          ],
-        }),
+        { provide: AuthStore, useValue: mockAuthStore },
       ],
     }).compileComponents();
-
-    store = TestBed.inject(MockStore);
-    jest.spyOn(store, 'dispatch');
 
     fixture = TestBed.createComponent(SportWrapperComponent);
     component = fixture.componentInstance;
 
-    component.sportName = 'Baseball';
-    component.gamesSelector = mockGamesSelector;
-    component.errorSelector = mockErrorSelector;
-    component.loadedSelector = mockLoadedSelector;
-    component.loadGamesAction = jest
-      .fn()
-      .mockReturnValue({ type: 'Load Games ' });
+    const mockDateChangeHandler = jest.fn();
+    
+    (component.games as unknown as Signal<Game[]>) = signal([]);
+    (component.isLoading as unknown as Signal<boolean>) = signal(false);
+    (component.error as unknown as Signal<string | null>) = signal(null);
+    (component.sportName as unknown as Signal<string>) = signal('Test Sport');
+    (component.dateChange as unknown as Signal<(date: Date) => void>) = signal(mockDateChangeHandler);
 
     fixture.detectChanges();
   });
@@ -71,76 +44,95 @@ describe('SportWrapperComponent', () => {
     expect(component.selectedDate.getDate()).toBe(today.getDate());
   });
 
-  it('should load games on init', () => {
-    expect(store.dispatch).toHaveBeenCalledWith(
-      component.loadGamesAction({ date: component.selectedDate })
-    );
-  });
-
-  it('should navigate to previous day', () => {
-    const initialDate = new Date(component.selectedDate);
+  it('should emit date change on previous day', () => {
+    const initialDate = component.selectedDate;
+    const expectedDate = new Date(initialDate.getTime() - 24 * 60 * 60 * 1000);
+    
     component.previousDay();
-    const expectedDate = new Date(initialDate);
-    expectedDate.setDate(initialDate.getDate() - 1);
-    expect(component.selectedDate.toISOString()).toBe(expectedDate.toISOString());
-    expect(store.dispatch).toHaveBeenCalledWith(
-      component.loadGamesAction({ date: component.selectedDate })
-    );
+    
+    const dateChangeHandler = component.dateChange();
+    expect(dateChangeHandler).toHaveBeenCalledWith(expectedDate);
   });
 
-  it('should navigate to next day', () => {
-    const initialDate = new Date(component.selectedDate);
+  it('should emit date change on next day', () => {
+    const initialDate = component.selectedDate;
+    const expectedDate = new Date(initialDate.getTime() + 24 * 60 * 60 * 1000);
+    
     component.nextDay();
-    const expectedDate = new Date(initialDate);
-    expectedDate.setDate(initialDate.getDate() + 1);
-    expect(component.selectedDate.toISOString()).toBe(
-      expectedDate.toISOString()
-    );
-    expect(store.dispatch).toHaveBeenCalledWith(
-      component.loadGamesAction({ date: component.selectedDate })
-    );
+    
+    const dateChangeHandler = component.dateChange();
+    expect(dateChangeHandler).toHaveBeenCalledWith(expectedDate);
   });
 
-  it('should correctly identify current date', () => {
+  it('should detect current date correctly', () => {
     const today = new Date();
-
-    expect(component.isCurrentDate()).toBeTruthy();
+    component.selectedDate = today;
+    expect(component.isCurrentDate()).toBe(true);
 
     component.selectedDate = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-    expect(component.isCurrentDate()).toBeFalsy();
+    expect(component.isCurrentDate()).toBe(false);
   });
 
-  it('should handle authentication state changes', () => {
-    store.overrideSelector(
-      createSelector(
-        (state: ApplicationState) => state.auth.isAuthenticated,
-        (auth) => auth
-      ),
-      false
-    );
-    store.refreshState();
+  it('should show alert message when not authenticated', async () => {
+    mockAuthStore.isAuthenticated.mockReturnValue(false);
     fixture.detectChanges();
+    await fixture.whenStable();
 
-    component.isAuthenticated$.subscribe((isAuthenticated) => {
-      expect(isAuthenticated).toBeFalsy();
-    });
-  });
-
-  it('should show alert message when not authenticated', () => {
-    store.overrideSelector(
-      createSelector(
-        (state: ApplicationState) => state.auth.isAuthenticated,
-        (auth) => auth
-      ),
-      false
+    const alertMessage = fixture.debugElement.query(
+      By.css('app-alert-message')
     );
-    store.refreshState();
-    fixture.detectChanges();
-    const alertMessage =
-      fixture.nativeElement.querySelector('app-alert-message');
     expect(alertMessage).toBeTruthy();
-    expect(alertMessage.getAttribute('message')).toBe(
+    expect(alertMessage.attributes['message']).toBe(
       'You must be logged in to access this page.'
     );
+
+    // Verify date navigation is not shown
+    const buttons = fixture.debugElement.queryAll(By.css('.btn'));
+    expect(buttons.length).toBe(0);
+  });
+
+  it('should render date navigation correctly when authenticated', async () => {
+    // Set authenticated state and provide some games
+    mockAuthStore.isAuthenticated.mockReturnValue(true);
+    (component.games as any) = signal([{ id: '1', sport: 'TEST', homeTeam: 'Home team', awayTeam: 'Away team' } as Game]); // Create new signal with games
+    fixture.detectChanges();
+    await fixture.whenStable();
+    
+    // Verify authentication alert is not shown
+    const authAlert = fixture.debugElement.query(
+      By.css('app-alert-message[message="You must be logged in to access this page."]')
+    );
+    expect(authAlert).toBeFalsy();
+    
+    // Verify navigation buttons
+    const buttons = fixture.debugElement.queryAll(By.css('.btn'));
+    expect(buttons.length).toBeGreaterThanOrEqual(3);
+  
+    const dateButton = buttons[1];
+    const today = new Date();
+    expect(dateButton.nativeElement.textContent.trim()).toContain(
+      today.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        month: 'long', 
+        day: 'numeric' 
+      })
+    );
+  });
+
+  it('should disable previous day button on current date when authenticated', async () => {
+    // Set authenticated state
+    mockAuthStore.isAuthenticated.mockReturnValue(true);
+    component.selectedDate = new Date();
+    fixture.detectChanges();
+    await fixture.whenStable();
+  
+    const prevButton = fixture.debugElement.queryAll(By.css('.btn'))[0];
+    expect(prevButton.nativeElement.disabled).toBe(true);
+  });
+
+  it('should handle non-existing dateChange handler gracefully', () => {
+    // These should not throw errors
+    expect(() => component.previousDay()).not.toThrow();
+    expect(() => component.nextDay()).not.toThrow();
   });
 });

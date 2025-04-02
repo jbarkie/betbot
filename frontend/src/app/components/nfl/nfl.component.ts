@@ -1,28 +1,26 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
-import { ApplicationState } from '../../state';
-import { nflFeature } from './state';
-import { NFLCommands } from './state/actions';
+import { NFLStore } from '../../services/sports/sports.store';
 
 @Component({
-  selector: 'app-nfl',
-  standalone: true,
-  imports: [SportWrapperComponent],
-  template: `
+    selector: 'app-nfl',
+    standalone: true,
+    imports: [SportWrapperComponent],
+    template: `
     <app-sport-wrapper
       sportName="NFL"
-      [gamesSelector]="selectNflGames"
-      [errorSelector]="selectError"
-      [loadedSelector]="selectLoaded"
-      [loadGamesAction]="loadGames"
+      [games]="store.games()"
+      [error]="store.error()"
+      [isLoading]="store.isLoading"
+      [dateChange]="handleDateChange"
     ></app-sport-wrapper>
   `,
-  styles: ``,
+    styles: ``
 })
 export class NflComponent {
-  selectNflGames = (state: ApplicationState) =>
-    nflFeature.selectNflGames(state);
-  selectError = (state: ApplicationState) => nflFeature.selectError(state);
-  selectLoaded = (state: ApplicationState) => nflFeature.selectIsLoaded(state);
-  loadGames = NFLCommands.loadGames;
+  protected readonly store = inject(NFLStore);
+
+  public readonly handleDateChange = (date: Date): void => {
+    this.store.loadGames(date);
+  }
 }

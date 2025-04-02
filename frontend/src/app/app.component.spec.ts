@@ -1,33 +1,42 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MockStore } from '@ngrx/store/testing';
-import { provideMockStore } from '@ngrx/store/testing';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { AppComponent } from './app.component';
 import { PageHeaderComponent } from './components/page-header/page-header.component';
 import { ToastComponent } from './components/toast/toast.component';
-import { appActions } from './state/actions';
-import { authActions } from './state/auth/auth.actions';
+import { provideHttpClient } from '@angular/common/http';
+import { AuthStore } from './services/auth/auth.store';
+import { signal } from '@angular/core';
+
+const mockAuthStore = {
+  isAuthenticated: signal(false),
+  initializeAuth: jest.fn().mockResolvedValue(undefined),
+  isLoginModalDisplayed: jest.fn().mockReturnValue(false),
+}
 
 describe('AppComponent', () => {
   let component: AppComponent;
   let fixture: ComponentFixture<AppComponent>;
-  let store: MockStore;
 
   beforeEach(async () => {
+
     await TestBed.configureTestingModule({
-      imports: [AppComponent, PageHeaderComponent, ToastComponent, HttpClientTestingModule],
-      providers: [provideMockStore(),
-        { provide: ActivatedRoute, useValue: {
-          params: of({})
-        }}
+      imports: [AppComponent, PageHeaderComponent, ToastComponent],
+      providers: [
+        { provide: AuthStore, useValue: mockAuthStore },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            params: of({}),
+          },
+        },
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
       ],
     }).compileComponents();
-
-    store = TestBed.inject(MockStore);
-    jest.spyOn(store, 'dispatch');
 
     fixture = TestBed.createComponent(AppComponent);
     component = fixture.componentInstance;
@@ -35,15 +44,11 @@ describe('AppComponent', () => {
   });
 
   it('should create the app', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    const app = fixture.componentInstance;
-    expect(app).toBeTruthy();
+    expect(component).toBeTruthy();
   });
 
   it(`should have the 'BetBot' title`, () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    const app = fixture.componentInstance;
-    expect(app.title).toEqual('BetBot');
+    expect(component.title).toEqual('BetBot');
   });
 
   it('should render the page header', () => {
@@ -61,11 +66,7 @@ describe('AppComponent', () => {
     expect(compiled.querySelector('router-outlet')).toBeTruthy();
   });
 
-  it('should dispatch applicationStarted action on init', () => {
-    expect(store.dispatch).toHaveBeenCalledWith(appActions.applicationStarted());
-  });
-
-  it('should dispatch initializeAuth action on init', () => {
-    expect(store.dispatch).toHaveBeenCalledWith(authActions.initializeAuth());
+  it('should call initializeAuth on construction', () => {
+    expect(mockAuthStore['initializeAuth']).toHaveBeenCalled();
   });
 });

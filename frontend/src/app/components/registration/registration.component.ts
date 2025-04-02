@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import {
   ReactiveFormsModule,
   FormGroup,
@@ -9,14 +9,10 @@ import {
   ValidationErrors,
 } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { RegisterRequest, RegisterResponse } from '../models';
-import { RegistrationService } from './registration.service';
+import { RegisterRequest } from '../models';
 import { Router } from '@angular/router';
 import { ToastService } from '../toast/toast.service';
-import { ApplicationState } from '../../state';
-import { Store } from '@ngrx/store';
-import { authActions } from '../../state/auth/auth.actions';
-import { AuthService } from '../../services/auth/auth.service';
+import { AuthStore } from '../../services/auth/auth.store';
 
 @Component({
   selector: 'app-registration',
@@ -168,13 +164,9 @@ import { AuthService } from '../../services/auth/auth.service';
 export class RegistrationComponent {
   registration!: FormGroup;
 
-  constructor(
-    private registrationService: RegistrationService,
-    private router: Router,
-    private toastService: ToastService,
-    private store: Store<ApplicationState>,
-    private authService: AuthService
-  ) {}
+  private router = inject(Router);
+  private toastService = inject(ToastService);
+  private authStore = inject(AuthStore);
 
   ngOnInit() {
     this.registration = new FormGroup(
@@ -250,29 +242,23 @@ export class RegistrationComponent {
     };
   }
 
-  onSubmit() {
+  async onSubmit() {
     if (this.registration.valid) {
-      const request: RegisterRequest = {
-        username: this.username?.value,
-        first_name: this.firstName?.value,
-        last_name: this.lastName?.value,
-        email: this.email?.value,
-        password: this.password?.value,
-      };
+      try {
+        const request: RegisterRequest = {
+          username: this.username?.value,
+          first_name: this.firstName?.value,
+          last_name: this.lastName?.value,
+          email: this.email?.value,
+          password: this.password?.value,
+        };
 
-      this.registrationService.register(request).subscribe({
-        next: (response: RegisterResponse) => {
-          this.store.dispatch(
-            authActions.registerSuccess({ token: response.access_token })
-          );
-          this.authService.setToken(response.access_token);
-          this.router.navigate(['/']);
-          this.toastService.showSuccess('Registration successful');
-        },
-        error: (error) => {
-          this.handleRegistrationError(error);
-        },
-      });
+        await this.authStore.register(request);
+        this.router.navigate(['/']);
+        this.toastService.showSuccess('Registration successful');
+      } catch (error) {
+        this.handleRegistrationError(error);
+      }
     }
   }
 
@@ -282,7 +268,6 @@ export class RegistrationComponent {
     if (error.status === 403) {
       errorMessage = 'Username already exists.';
     }
-    this.store.dispatch(authActions.registerFailure({ error: errorMessage }));
     this.toastService.showError(errorMessage);
   }
 }

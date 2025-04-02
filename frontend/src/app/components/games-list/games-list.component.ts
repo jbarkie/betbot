@@ -5,9 +5,9 @@ import { GameComponent } from '../game/game.component';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'app-games-list',
-  standalone: true,
-  template: `
+    selector: 'app-games-list',
+    standalone: true,
+    template: `
     <ng-container *ngIf="loaded() && !error()">
       <ng-container *ngIf="list().length === 0">
         <app-alert-message message="No games found for today." />
@@ -22,12 +22,12 @@ import { CommonModule } from '@angular/common';
     <div *ngIf="!loaded() && !error()" class="loading-container">
       <span class="loading loading-bars loading-lg"></span>
     </div>
-    <app-alert-message *ngIf="error()" message="Error loading games." />
+    <app-alert-message *ngIf="error()" [message]="error() || 'An unexpected error occured while loading games.'" />
   `,
-  styles: [
-    '.loading-container { display: flex; justify-content: center; margin-top: 48px }',
-  ],
-  imports: [AlertMessageComponent, GameComponent, CommonModule],
+    styles: [
+        '.loading-container { display: flex; justify-content: center; margin-top: 48px }',
+    ],
+    imports: [AlertMessageComponent, GameComponent, CommonModule]
 })
 export class GamesListComponent {
   list = input.required<Game[]>();

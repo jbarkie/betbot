@@ -4,17 +4,17 @@ import { Toast, ToastService } from './toast.service';
 import { Subscription } from 'rxjs';
 
 @Component({
-  selector: 'app-toast',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
+    selector: 'app-toast',
+    standalone: true,
+    imports: [CommonModule],
+    template: `
     <div *ngIf="toast" class="toast toast-bottom toast-end">
       <div [ngClass]="{'alert-success': toast.type === 'success', 'alert-error': toast.type === 'error'}" class="alert">
         <span>{{ toast.message }}</span>
       </div>
     </div>
   `,
-  styles: ``
+    styles: ``
 })
 export class ToastComponent {
   toast: Toast | null = null;

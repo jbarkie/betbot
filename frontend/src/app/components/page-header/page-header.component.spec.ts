@@ -1,11 +1,20 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideMockStore } from '@ngrx/store/testing';
-import { ActivatedRoute } from '@angular/router';
-import { of } from 'rxjs';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { By } from '@angular/platform-browser';
+import { ActivatedRoute, provideRouter } from '@angular/router';
+import { provideMockStore } from '@ngrx/store/testing';
+import { of } from 'rxjs';
 
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
+import { AuthStore } from '../../services/auth/auth.store';
 import { PageHeaderComponent } from './page-header.component';
+
+const mockAuthStore = {
+  isAuthenticated: jest.fn(),
+  isLoginModalDisplayed: jest.fn().mockReturnValue(false),
+  shouldShowLoginModal: signal(false),
+};
 
 describe('PageHeaderComponent', () => {
   let component: PageHeaderComponent;
@@ -13,10 +22,14 @@ describe('PageHeaderComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [PageHeaderComponent, HttpClientTestingModule],
+      imports: [PageHeaderComponent],
       providers: [
         provideMockStore({}),
+        { provide: AuthStore, useValue: mockAuthStore },
         { provide: ActivatedRoute, useValue: { params: of({}) } },
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
       ],
     }).compileComponents();
 

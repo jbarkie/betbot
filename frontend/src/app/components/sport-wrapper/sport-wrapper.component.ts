@@ -1,17 +1,15 @@
-import { Component, Input, Signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { Store } from '@ngrx/store';
-import { GamesListComponent } from '../games-list/games-list.component';
+import { Component, inject, input, OnInit, Signal } from '@angular/core';
+import { AuthStore } from '../../services/auth/auth.store';
 import { AlertMessageComponent } from '../alert-message/alert-message.component';
+import { GamesListComponent } from '../games-list/games-list.component';
 import { Game } from '../models';
-import { Observable } from 'rxjs';
-import { ApplicationState } from '../../state';
 
 @Component({
-  selector: 'app-sport-wrapper',
-  standalone: true,
-  template: `
-    <ng-container *ngIf="isAuthenticated$ | async; else unauthenticated">
+    selector: 'app-sport-wrapper',
+    standalone: true,
+    template: `
+    <ng-container *ngIf="authStore.isAuthenticated(); else unauthenticated">
       <div class="join flex justify-center my-5">
         <button
           class="join-item btn"
@@ -28,8 +26,8 @@ import { ApplicationState } from '../../state';
       <ng-container *ngIf="games()">
         <app-games-list
           [list]="games()"
-          [loaded]="loaded()"
-          [error]="error()"
+          [loaded]="!isLoading()"
+          [error]="error() || ''"
         ></app-games-list>
       </ng-container>
     </ng-container>
@@ -37,38 +35,20 @@ import { ApplicationState } from '../../state';
       <app-alert-message message="You must be logged in to access this page." />
     </ng-template>
   `,
-  imports: [DatePipe, CommonModule, GamesListComponent, AlertMessageComponent],
+    imports: [DatePipe, CommonModule, GamesListComponent, AlertMessageComponent]
 })
-export class SportWrapperComponent {
-  @Input() sportName!: string;
-  @Input() set gamesSelector(selector: (state: ApplicationState) => Game[]) {
-    this.games = this.store.selectSignal(selector);
-  }
-  @Input() set errorSelector(selector: (state: ApplicationState) => string) {
-    this.error = this.store.selectSignal(selector);
-  }
+export class SportWrapperComponent implements OnInit {
+  protected readonly authStore = inject(AuthStore);
 
-  @Input() set loadedSelector(selector: (state: ApplicationState) => boolean) {
-    this.loaded = this.store.selectSignal(selector);
-  }
-
-  @Input() loadGamesAction!: (props: { date: Date }) => {
-    type: string;
-    date: Date;
-  };
+  sportName = input.required<string>();
+  games = input.required<Game[]>();
+  isLoading = input.required<() => boolean>();
+  error = input.required<string | null>();
+  dateChange = input<(date: Date) => void>();
 
   selectedDate: Date = new Date();
-  games!: Signal<Game[]>;
-  loaded!: Signal<boolean>;
-  error!: Signal<string>;
-  isAuthenticated$!: Observable<boolean>;
 
-  constructor(private store: Store<ApplicationState>) {}
-
-  ngOnInit() {
-    this.isAuthenticated$ = this.store.select(
-      (state) => state.auth.isAuthenticated
-    );
+  ngOnInit(): void {
     this.loadGames();
   }
 
@@ -96,6 +76,9 @@ export class SportWrapperComponent {
   }
 
   private loadGames() {
-    this.store.dispatch(this.loadGamesAction({ date: this.selectedDate }));
+    const dateChangeHandler = this.dateChange();
+    if (dateChangeHandler) {
+      dateChangeHandler(this.selectedDate);
+    }
   }
 }

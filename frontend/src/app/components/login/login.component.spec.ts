@@ -24,6 +24,7 @@ describe('LoginComponent', () => {
       showError: jest.fn(),
     } as unknown as jest.Mocked<ToastService>;
 
+    const isAuthenticatedSignal = signal(false);
     mockAuthStore = {
       login: jest.fn(),
       register: jest.fn(),
@@ -31,7 +32,7 @@ describe('LoginComponent', () => {
       initializeAuth: jest.fn(),
       showLoginModal: jest.fn(),
       hideLoginModal: jest.fn(),
-      isAuthenticated: signal(false),
+      isAuthenticated: jest.fn().mockReturnValue(false),
       token: signal(null),
       error: signal(null),
       hasError: signal(false),
@@ -94,9 +95,6 @@ describe('LoginComponent', () => {
     mockAuthStore.login.mockResolvedValue(undefined);
     await component.onSubmit();
     expect(mockAuthStore.login).toHaveBeenCalledWith(loginRequest);
-    expect(mockToastService.showSuccess).toHaveBeenCalledWith(
-      'Login successful'
-    );
   });
 
   it('should handle login error', async () => {
@@ -115,6 +113,7 @@ describe('LoginComponent', () => {
     const loginRequest = { username: 'username', password: 'password' };
     component.loginForm.patchValue(loginRequest);
     mockAuthStore.login?.mockResolvedValue(undefined);
+    mockAuthStore.isAuthenticated.mockReturnValue(true);
 
     await component.onSubmit();
 

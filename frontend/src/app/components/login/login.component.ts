@@ -90,8 +90,10 @@ export class LoginComponent {
           username: this.loginForm.get('username')?.value,
           password: this.loginForm.get('password')?.value,
         });
-        this.toastService.showSuccess('Login successful');
-        this.loginForm.reset();
+        if (this.authStore.isAuthenticated()) {
+          this.toastService.showSuccess('Login successful');
+          this.loginForm.reset();
+        }
       } catch (error) {
         this.handleLoginError(error as LoginError);
       }
@@ -103,6 +105,9 @@ export class LoginComponent {
     let errorMessage = 'Login failed. Please try again.';
     if (error.status === 401) {
       errorMessage = 'Invalid username or password.';
+    }
+    else {
+      errorMessage = 'Login failed. Please try again.';
     }
     this.toastService.showError(errorMessage);
     this.loginForm.reset();

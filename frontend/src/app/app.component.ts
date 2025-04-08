@@ -7,12 +7,11 @@ import { HomeComponent } from './components/home/home.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, PageHeaderComponent, ToastComponent, HomeComponent],
+  imports: [RouterOutlet, PageHeaderComponent, ToastComponent],
   template: `<div class="container mx-auto">
     <app-page-header />
     <main>
       <router-outlet />
-      <app-home />
     </main>
     <app-toast />
   </div>`,

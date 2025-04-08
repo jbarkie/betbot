@@ -106,9 +106,6 @@ export class LoginComponent {
     if (error.status === 401) {
       errorMessage = 'Invalid username or password.';
     }
-    else {
-      errorMessage = 'Login failed. Please try again.';
-    }
     this.toastService.showError(errorMessage);
     this.loginForm.reset();
   }

@@ -12,6 +12,7 @@ import {
   NHLStore,
 } from './services/sports/sports.store';
 import { HomeComponent } from './components/home/home.component';
+import { SettingsComponent } from './components/settings/settings.component';
 
 export const routes: Routes = [
   {
@@ -46,4 +47,9 @@ export const routes: Routes = [
     canActivate: [authGuard],
     providers: [NFLStore],
   },
+  {
+    path: 'settings',
+    component: SettingsComponent,
+    canActivate: [authGuard],
+  }
 ];

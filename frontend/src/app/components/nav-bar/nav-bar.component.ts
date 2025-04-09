@@ -78,7 +78,7 @@ import { AuthStore } from '../../services/auth/auth.store';
             <li *ngIf="authStore.isAuthenticated()">
               <a (click)="logout()">Logout</a>
             </li>
-            <li><a>Settings</a></li>
+            <li><a routerLink="/settings">Settings</a></li>
           </ul>
         </div>
       </div>

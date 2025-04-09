@@ -11,7 +11,7 @@ import { NHLStore } from '../../services/sports/sports.store';
       sportName="NHL"
       [games]="store.games()"
       [error]="store.error()"
-      [isLoading]="store.isLoading"
+      [isLoading]="store.isLoading()"
       [dateChange]="handleDateChange"
     ></app-sport-wrapper>
   `,

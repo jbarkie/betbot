@@ -11,7 +11,7 @@ import { MLBStore } from '../../services/sports/sports.store';
       sportName="MLB"
       [games]="store.games()"
       [error]="store.error()"
-      [isLoading]="store.isLoading"
+      [isLoading]="store.isLoading()"
       [dateChange]="handleDateChange"
     ></app-sport-wrapper>
   `,

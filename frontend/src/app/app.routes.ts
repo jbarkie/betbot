@@ -13,6 +13,7 @@ import {
 } from './services/sports/sports.store';
 import { HomeComponent } from './components/home/home.component';
 import { SettingsComponent } from './components/settings/settings.component';
+import { AboutComponent } from './components/about/about.component';
 
 export const routes: Routes = [
   {
@@ -51,5 +52,9 @@ export const routes: Routes = [
     path: 'settings',
     component: SettingsComponent,
     canActivate: [authGuard],
-  }
+  },
+  {
+    path: 'about',
+    component: AboutComponent,
+  },
 ];

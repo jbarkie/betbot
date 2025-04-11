@@ -33,7 +33,7 @@ import { AuthStore } from '../../services/auth/auth.store';
             Our platform provides you with powerful tools and real-time data to
             make informed decisions and stay ahead of the game.
           </p>
-          <button class="btn btn-primary btn-lg" (click)="showRegistration()">
+          <button class="btn btn-primary btn-lg" (click)="showRegistration()" [disabled]="showRegistrationDisabled()">
             Login or Register Now!
           </button>
         </div>
@@ -47,5 +47,9 @@ export class HomeComponent {
 
   showRegistration() {
     this.authStore.showLoginModal();
+  }
+
+  showRegistrationDisabled() {
+    return this.authStore.isAuthenticated();
   }
 }

@@ -55,4 +55,12 @@ describe('HomeComponent', () => {
     expect(showRegistrationSpy).toHaveBeenCalled();
     expect(mockAuthStore.showLoginModal).toHaveBeenCalled();
   });
+
+  it('should disable registration button if user already authenticated', () => {
+    mockAuthStore.isAuthenticated.mockReturnValue(true);
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector('button');
+    expect(button.disabled).toBe(true);
+  });
 });

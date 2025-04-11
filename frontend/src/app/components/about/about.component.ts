@@ -29,28 +29,49 @@ import { Component } from '@angular/core';
                 <li>Historical performance data and trends</li>
               </ul>
             </div>
-
+            
             <div>
               <h2 class="text-2xl font-semibold mb-3">Supported Sports</h2>
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="card bg-base-200 p-4">
-                  <h3 class="font-bold">NBA</h3>
-                  <p>National Basketball Association</p>
+                  <div class="flex justify-between items-center">
+                    <div>
+                      <h3 class="font-bold">NBA</h3>
+                      <p>National Basketball Association</p>
+                    </div>
+                    <img src="assets/img/logos/nba-logo.png" alt="NBA logo" class="h-10 w-10 object-contain" />
+                  </div>
                 </div>
                 <div class="card bg-base-200 p-4">
-                  <h3 class="font-bold">NFL</h3>
-                  <p>National Football League</p>
+                  <div class="flex justify-between items-center">
+                    <div>
+                      <h3 class="font-bold">NFL</h3>
+                      <p>National Football League</p>
+                    </div>
+                    <img src="assets/img/logos/nfl-logo.png" alt="NFL logo" class="h-10 w-10 object-contain" />
+                  </div>
                 </div>
                 <div class="card bg-base-200 p-4">
-                  <h3 class="font-bold">MLB</h3>
-                  <p>Major League Baseball</p>
+                  <div class="flex justify-between items-center">
+                    <div>
+                      <h3 class="font-bold">MLB</h3>
+                      <p>Major League Baseball</p>
+                    </div>
+                    <img src="assets/img/logos/mlb-logo.png" alt="MLB logo" class="h-10 w-10 object-contain" />
+                  </div>
                 </div>
                 <div class="card bg-base-200 p-4">
-                  <h3 class="font-bold">NHL</h3>
-                  <p>National Hockey League</p>
+                  <div class="flex justify-between items-center">
+                    <div>
+                      <h3 class="font-bold">NHL</h3>
+                      <p>National Hockey League</p>
+                    </div>
+                    <img src="assets/img/logos/nhl-logo.png" alt="NHL logo" class="h-10 w-10 object-contain" />
+                  </div>
                 </div>
               </div>
             </div>
+
           </div>
         </div>
       </div>

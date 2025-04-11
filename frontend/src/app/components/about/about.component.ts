@@ -39,7 +39,7 @@ import { Component } from '@angular/core';
                       <h3 class="font-bold">NBA</h3>
                       <p>National Basketball Association</p>
                     </div>
-                    <img src="assets/img/logos/nba-logo.png" alt="NBA logo" class="h-10 w-10 object-contain" />
+                    <img src="assets/img/logos/nba.png" alt="NBA logo" class="h-10 w-10 object-contain" />
                   </div>
                 </div>
                 <div class="card bg-base-200 p-4">
@@ -48,7 +48,7 @@ import { Component } from '@angular/core';
                       <h3 class="font-bold">NFL</h3>
                       <p>National Football League</p>
                     </div>
-                    <img src="assets/img/logos/nfl-logo.png" alt="NFL logo" class="h-10 w-10 object-contain" />
+                    <img src="assets/img/logos/nfl.png" alt="NFL logo" class="h-10 w-10 object-contain" />
                   </div>
                 </div>
                 <div class="card bg-base-200 p-4">
@@ -57,7 +57,7 @@ import { Component } from '@angular/core';
                       <h3 class="font-bold">MLB</h3>
                       <p>Major League Baseball</p>
                     </div>
-                    <img src="assets/img/logos/mlb-logo.png" alt="MLB logo" class="h-10 w-10 object-contain" />
+                    <img src="assets/img/logos/mlb.png" alt="MLB logo" class="h-10 w-10 object-contain" />
                   </div>
                 </div>
                 <div class="card bg-base-200 p-4">
@@ -66,7 +66,7 @@ import { Component } from '@angular/core';
                       <h3 class="font-bold">NHL</h3>
                       <p>National Hockey League</p>
                     </div>
-                    <img src="assets/img/logos/nhl-logo.png" alt="NHL logo" class="h-10 w-10 object-contain" />
+                    <img src="assets/img/logos/nhl.png" alt="NHL logo" class="h-10 w-10 object-contain" />
                   </div>
                 </div>
               </div>

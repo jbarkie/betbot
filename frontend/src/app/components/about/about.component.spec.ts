@@ -8,9 +8,8 @@ describe('AboutComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AboutComponent]
-    })
-    .compileComponents();
+      imports: [AboutComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(AboutComponent);
     component = fixture.componentInstance;
@@ -19,5 +18,15 @@ describe('AboutComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('should contain proper headings', () => {
+    const compiled = fixture.nativeElement;
+    expect(compiled.querySelector('h1').textContent).toEqual('About BetBot');
+
+    const h2Elements = compiled.querySelectorAll('h2');
+    expect(h2Elements[0].textContent).toEqual('Our Mission');
+    expect(h2Elements[1].textContent).toEqual('Features');
+    expect(h2Elements[2].textContent).toEqual('Supported Sports');
   });
 });

@@ -1,11 +1,12 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ThemeToggleComponent } from './theme-toggle/theme-toggle.component';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ThemeToggleComponent],
   template: `
     <div class="container mx-auto p-4">
       <!-- Account Settings Section -->
@@ -62,12 +63,7 @@ import { FormsModule } from '@angular/forms';
                 />
               </label>
             </div>
-            <div class="form-control">
-              <label class="label cursor-pointer">
-                <span class="label-text">Dark Mode</span>
-                <input type="checkbox" class="toggle" [(ngModel)]="darkMode" />
-              </label>
-            </div>
+            <app-theme-toggle />
           </div>
         </div>
       </div>
@@ -90,11 +86,10 @@ import { FormsModule } from '@angular/forms';
   ],
 })
 export class SettingsComponent {
-  email = ''; 
-  username = ''; 
+  email = '';
+  username = '';
   password = '';
   emailNotifications = false;
-  darkMode = false;
 
   saveSettings(): void {
     // TODO: Implement settings save functionality

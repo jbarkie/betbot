@@ -3,7 +3,8 @@ import { RouterOutlet } from '@angular/router';
 import { PageHeaderComponent } from './components/page-header/page-header.component';
 import { ToastComponent } from './components/toast/toast.component';
 import { AuthStore } from './services/auth/auth.store';
-import { HomeComponent } from './components/home/home.component';
+import { ThemeService } from './services/theme/theme.service';
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -20,6 +21,7 @@ import { HomeComponent } from './components/home/home.component';
 export class AppComponent {
   title = 'BetBot';
   private authStore = inject(AuthStore);
+  private themeService = inject(ThemeService);
 
   constructor() {
     this.initializeApplication();
@@ -27,5 +29,6 @@ export class AppComponent {
 
   private async initializeApplication() {
     await this.authStore.initializeAuth();
+    // Theme service will automatically initialize from localStorage or system preference
   }
 }

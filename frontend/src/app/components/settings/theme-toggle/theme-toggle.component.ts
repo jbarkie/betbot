@@ -1,15 +1,26 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ThemeService } from '../../../services/theme/theme.service';
 
 @Component({
   selector: 'app-theme-toggle',
-  imports: [],
+  standalone: true,
+  imports: [CommonModule],
   template: `
-    <p>
-      theme-toggle works!
-    </p>
+    <div class="form-control">
+      <label class="label cursor-pointer">
+        <span class="label-text">Dark Mode</span>
+        <input
+          type="checkbox"
+          class="toggle"
+          [checked]="themeService.theme() === 'dark'"
+          (change)="themeService.toggleTheme()"
+        />
+      </label>
+    </div>
   `,
-  styles: ``
+  styles: ``,
 })
 export class ThemeToggleComponent {
-
+  protected themeService = inject(ThemeService);
 }

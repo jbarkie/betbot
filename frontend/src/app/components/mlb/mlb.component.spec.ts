@@ -17,7 +17,7 @@ interface MockMLBStore {
 const mockAuthStore = {
   isAuthenticated: signal(true),
   showLoginModal: signal(false),
-}
+};
 
 describe('MlbComponent', () => {
   let component: MlbComponent;
@@ -117,8 +117,7 @@ describe('MlbComponent', () => {
     const sportWrapper = fixture.debugElement.query(
       By.directive(SportWrapperComponent)
     );
-    const isLoading = sportWrapper.componentInstance.isLoading();
-    expect(isLoading()).toBe(true);
+    expect(sportWrapper.componentInstance.isLoading()).toBe(true);
   });
 
   it('should update games when store changes', () => {

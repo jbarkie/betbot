@@ -17,7 +17,7 @@ interface MockNHLStore {
 const mockAuthStore = {
   isAuthenticated: signal(true),
   showLoginModal: signal(false),
-}
+};
 
 describe('NhlComponent', () => {
   let component: NhlComponent;
@@ -45,7 +45,7 @@ describe('NhlComponent', () => {
       isLoading: signal(false),
       loadGames: jest.fn(),
     };
-    
+
     await TestBed.configureTestingModule({
       imports: [NhlComponent, SportWrapperComponent],
       providers: [
@@ -116,8 +116,7 @@ describe('NhlComponent', () => {
     const sportWrapper = fixture.debugElement.query(
       By.directive(SportWrapperComponent)
     );
-    const isLoading = sportWrapper.componentInstance.isLoading();
-    expect(isLoading()).toBe(true);
+    expect(sportWrapper.componentInstance.isLoading()).toBe(true);
   });
 
   it('should update games when store changes', () => {

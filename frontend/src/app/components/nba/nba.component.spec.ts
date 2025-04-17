@@ -17,7 +17,7 @@ interface MockNBAStore {
 const mockAuthStore = {
   isAuthenticated: signal(true),
   showLoginModal: signal(false),
-}
+};
 
 describe('NbaComponent', () => {
   let component: NbaComponent;
@@ -45,7 +45,7 @@ describe('NbaComponent', () => {
       isLoading: signal(false),
       loadGames: jest.fn(),
     };
-    
+
     await TestBed.configureTestingModule({
       imports: [NbaComponent],
       providers: [
@@ -117,9 +117,8 @@ describe('NbaComponent', () => {
     const sportWrapper = fixture.debugElement.query(
       By.directive(SportWrapperComponent)
     );
-    const isLoading = sportWrapper.componentInstance.isLoading();
-    expect(isLoading()).toBe(true);
-  }); 
+    expect(sportWrapper.componentInstance.isLoading()).toBe(true);
+  });
 
   it('should update games when store changes', () => {
     const newGames = [
@@ -148,10 +147,10 @@ describe('NbaComponent', () => {
       By.directive(SportWrapperComponent)
     );
     const testDate = new Date('2024-01-01T12:00:00Z');
-    
+
     sportWrapper.componentInstance.dateChange = () =>
       component.handleDateChange(testDate);
     sportWrapper.componentInstance.loadGames();
     expect(mockStore.loadGames).toHaveBeenCalledWith(testDate);
-  });  
+  });
 });

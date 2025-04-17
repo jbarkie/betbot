@@ -17,7 +17,7 @@ const mockAuthStore = {
   showLoginModal: signal(false),
   logout: jest.fn(),
   hideLoginModal: jest.fn(),
-}
+};
 
 describe('NavBarComponent', () => {
   let component: NavBarComponent;
@@ -95,15 +95,23 @@ describe('NavBarComponent', () => {
     expect(mockAuthStore.logout).toHaveBeenCalled();
   });
 
-  it('should have correct navigation links', () => {
-    const links = fixture.debugElement.queryAll(By.css('a[routerLink]'));
-    expect(links.length).toBe(8);
-    expect(links[0].nativeElement.getAttribute('routerLink')).toBe('/');
-    expect(links[1].nativeElement.getAttribute('routerLink')).toBe('/nba');
-    expect(links[2].nativeElement.getAttribute('routerLink')).toBe('/mlb');
-    expect(links[3].nativeElement.getAttribute('routerLink')).toBe('/nfl');
-    expect(links[4].nativeElement.getAttribute('routerLink')).toBe('/nhl');
-    expect(links[5].nativeElement.getAttribute('routerLink')).toBe('/about');
+  it('should have correct navigation links in menu', () => {
+    const links = fixture.debugElement.queryAll(By.css('.menu a[routerLink]'));
+    const expectedLinks = [
+      '/',
+      '/nba',
+      '/mlb',
+      '/nfl',
+      '/nhl',
+      '/about',
+      '/settings',
+    ];
+    expect(links.length).toBe(7);
+    links.forEach((link, index) => {
+      expect(link.nativeElement.getAttribute('routerLink')).toBe(
+        expectedLinks[index]
+      );
+    });
   });
 
   it('should update login modal visibility based on auth store state', () => {

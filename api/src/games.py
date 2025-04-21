@@ -1,7 +1,7 @@
 import traceback
 from fastapi import HTTPException
 from api.src.models.tables import Odds
-from api.src.models.nba import Game, GamesResponse
+from api.src.models.games import Game, GamesResponse
 from dateutil import parser
 from datetime import timedelta, datetime
 from api.src.config import ODDS_API_URL

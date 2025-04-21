@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from datetime import datetime, timedelta
 from api.src.games import get_games_by_date, get_games_for_sport, is_data_expired, parse_response_and_store_games, store_odds, update_existing_odds_in_db
 from api.src.main import app
-from api.src.models.nba import Game, GamesResponse
+from api.src.models.games import Game, GamesResponse
 from api.src.login import get_current_user
 from api.src.models.tables import Odds
 

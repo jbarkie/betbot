@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 
 import { SettingsComponent } from './settings.component';
 import { ThemeToggleComponent } from './theme-toggle/theme-toggle.component';
@@ -11,7 +11,7 @@ describe('SettingsComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SettingsComponent, FormsModule, ThemeToggleComponent],
+      imports: [SettingsComponent, ReactiveFormsModule, ThemeToggleComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SettingsComponent);
@@ -24,10 +24,10 @@ describe('SettingsComponent', () => {
   });
 
   it('should initialize with empty form values', () => {
-    expect(component.email).toBe('');
-    expect(component.username).toBe('');
-    expect(component.password).toBe('');
-    expect(component.emailNotifications).toBe(false);
+    expect(component.settingsForm.get('email')?.value).toBe('');
+    expect(component.settingsForm.get('username')?.value).toBe('');
+    expect(component.settingsForm.get('password')?.value).toBe('');
+    expect(component.settingsForm.get('emailNotifications')?.value).toBe(false);
   });
 
   it('should render account settings section', () => {
@@ -52,15 +52,17 @@ describe('SettingsComponent', () => {
 
   it('should toggle email notifications', () => {
     const toggleInput = fixture.debugElement.query(By.css('.toggle'));
+    const emailNotificationsControl =
+      component.settingsForm.get('emailNotifications');
 
     // Initial state should be false
-    expect(component.emailNotifications).toBe(false);
+    expect(emailNotificationsControl?.value).toBe(false);
 
-    // Click the toggle
-    toggleInput.nativeElement.click();
+    // Simulate toggle change
+    emailNotificationsControl?.setValue(true);
     fixture.detectChanges();
 
-    expect(component.emailNotifications).toBe(true);
+    expect(emailNotificationsControl?.value).toBe(true);
   });
 
   it('should include ThemeToggleComponent', () => {
@@ -83,14 +85,19 @@ describe('SettingsComponent', () => {
     const saveButton = fixture.debugElement.query(By.css('.btn-primary'));
 
     // Set up test values
-    component.email = 'test@example.com';
-    component.username = 'testuser';
-    component.password = 'password123';
-    component.emailNotifications = true;
+    component.settingsForm.patchValue({
+      email: 'test@example.com',
+      username: 'testuser',
+      password: 'password123',
+      emailNotifications: true,
+    });
     fixture.detectChanges();
 
     saveButton.nativeElement.click();
 
-    expect(consoleSpy).toHaveBeenCalledWith('Saving settings...');
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Saving settings...',
+      component.settingsForm.value
+    );
   });
 });

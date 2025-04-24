@@ -36,3 +36,18 @@ export interface LoginError {
   status?: number;
   message?: string;
 }
+
+export interface SettingsRequest {
+  username: string;
+  email: string;
+  password?: string;
+  enable_email_notifications: boolean;
+}
+
+export type SettingsResponse = {
+  success: boolean;
+  message: string;
+  username: string;
+  email: string;
+  enable_email_notifications: boolean;
+};

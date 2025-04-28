@@ -14,6 +14,7 @@ import {
 import { HomeComponent } from './components/home/home.component';
 import { SettingsComponent } from './components/settings/settings.component';
 import { AboutComponent } from './components/about/about.component';
+import { SettingsStore } from './components/settings/settings.store';
 
 export const routes: Routes = [
   {
@@ -52,6 +53,7 @@ export const routes: Routes = [
     path: 'settings',
     component: SettingsComponent,
     canActivate: [authGuard],
+    providers: [SettingsStore],
   },
   {
     path: 'about',

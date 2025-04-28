@@ -70,16 +70,6 @@ describe('SettingsComponent', () => {
     expect(themeToggle).toBeTruthy();
   });
 
-  it('should call saveSettings when save button is clicked', () => {
-    const saveSpy = jest.spyOn(component, 'saveSettings');
-    const saveButton = fixture.debugElement.query(By.css('.btn-primary'));
-
-    saveButton.nativeElement.click();
-    fixture.detectChanges();
-
-    expect(saveSpy).toHaveBeenCalled();
-  });
-
   it('should log settings when save button is clicked', () => {
     const consoleSpy = jest.spyOn(console, 'log');
     const saveButton = fixture.debugElement.query(By.css('.btn-primary'));

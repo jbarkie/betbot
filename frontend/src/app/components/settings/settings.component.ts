@@ -1,7 +1,14 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import {
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { ThemeToggleComponent } from './theme-toggle/theme-toggle.component';
+import { SettingsStore } from './settings.store';
+import { SettingsRequest } from '../models';
 
 @Component({
   selector: 'app-settings',
@@ -9,7 +16,7 @@ import { ThemeToggleComponent } from './theme-toggle/theme-toggle.component';
   imports: [CommonModule, ReactiveFormsModule, ThemeToggleComponent],
   template: `
     <div class="container mx-auto p-4">
-      <form [formGroup]="settingsForm">
+      <form [formGroup]="settingsForm" (ngSubmit)="onSubmit()">
         <!-- Account Settings Section -->
         <div class="card bg-base-100 shadow-xl mb-6">
           <div class="card-body">
@@ -24,6 +31,11 @@ import { ThemeToggleComponent } from './theme-toggle/theme-toggle.component';
                   class="input input-bordered w-full max-w-md"
                   formControlName="email"
                 />
+                <div *ngIf="isInvalid('email')" class="text-error mt-1">
+                  <p *ngIf="settingsForm.get('email')?.hasError('email')">
+                    Please enter a valid email address.
+                  </p>
+                </div>
               </div>
               <div class="form-control">
                 <label class="label">
@@ -44,6 +56,13 @@ import { ThemeToggleComponent } from './theme-toggle/theme-toggle.component';
                   class="input input-bordered w-full max-w-md"
                   formControlName="password"
                 />
+                <div *ngIf="isInvalid('password')" class="text-error mt-1">
+                  <p
+                    *ngIf="settingsForm.get('password')?.hasError('minlength')"
+                  >
+                    Password must be at least 8 characters.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -71,39 +90,75 @@ import { ThemeToggleComponent } from './theme-toggle/theme-toggle.component';
 
         <!-- Save Button -->
         <div class="mt-6 flex justify-end">
-          <button class="btn btn-primary" (click)="saveSettings()">
+          <button
+            class="btn btn-primary"
+            type="submit"
+            [disabled]="settingsForm.invalid || settingsStore.isLoading()"
+          >
+            <span
+              *ngIf="settingsStore.isLoading()"
+              class="loading loading-spinner"
+            ></span>
             Save Changes
           </button>
         </div>
       </form>
     </div>
   `,
-  styles: [
-    `
-      :host {
-        display: block;
-        width: 100%;
-      }
-    `,
-  ],
+  styles: [],
+  providers: [SettingsStore],
 })
-export class SettingsComponent {
+export class SettingsComponent implements OnInit {
   settingsForm: FormGroup;
   private formBuilder = inject(FormBuilder);
+  settingsStore = inject(SettingsStore);
 
   constructor() {
     this.settingsForm = this.formBuilder.group({
-      email: [''],
+      email: ['', [Validators.email]],
       username: [''],
-      password: [''],
+      password: ['', [Validators.minLength(8)]],
       emailNotifications: [false],
     });
   }
 
-  saveSettings(): void {
+  ngOnInit() {
+    this.loadSettings();
+  }
+
+  async loadSettings() {
+    if (this.settingsStore.settings()) {
+      const settings = this.settingsStore.settings();
+      this.settingsForm.patchValue({
+        email: settings?.email,
+        username: settings?.username,
+        enable_email_notifications: settings?.enable_email_notifications,
+      });
+    }
+  }
+
+  isInvalid(controlName: string): boolean {
+    const control = this.settingsForm.get(controlName);
+    return !!control && control.invalid && (control.dirty || control.touched);
+  }
+
+  async onSubmit() {
     if (this.settingsForm.valid) {
-      // TODO: Implement settings save functionality
-      console.log('Saving settings...', this.settingsForm.value);
+      const request: SettingsRequest = {
+        email: this.settingsForm.get('email')?.value,
+        username: this.settingsForm.get('username')?.value,
+        enable_email_notifications: this.settingsForm.get(
+          'enable_email_notifications'
+        )?.value,
+      };
+
+      // Only include password if it was changed
+      const password = this.settingsForm.get('password')?.value;
+      if (password) {
+        request.password = password;
+      }
+
+      await this.settingsStore.updateSettings(request);
     }
   }
 }

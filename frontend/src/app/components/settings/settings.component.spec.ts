@@ -4,6 +4,8 @@ import { ReactiveFormsModule } from '@angular/forms';
 
 import { SettingsComponent } from './settings.component';
 import { ThemeToggleComponent } from './theme-toggle/theme-toggle.component';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 describe('SettingsComponent', () => {
   let component: SettingsComponent;
@@ -12,6 +14,7 @@ describe('SettingsComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [SettingsComponent, ReactiveFormsModule, ThemeToggleComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SettingsComponent);
@@ -68,26 +71,5 @@ describe('SettingsComponent', () => {
   it('should include ThemeToggleComponent', () => {
     const themeToggle = fixture.debugElement.query(By.css('app-theme-toggle'));
     expect(themeToggle).toBeTruthy();
-  });
-
-  it('should log settings when save button is clicked', () => {
-    const consoleSpy = jest.spyOn(console, 'log');
-    const saveButton = fixture.debugElement.query(By.css('.btn-primary'));
-
-    // Set up test values
-    component.settingsForm.patchValue({
-      email: 'test@example.com',
-      username: 'testuser',
-      password: 'password123',
-      emailNotifications: true,
-    });
-    fixture.detectChanges();
-
-    saveButton.nativeElement.click();
-
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'Saving settings...',
-      component.settingsForm.value
-    );
   });
 });

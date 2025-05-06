@@ -1,4 +1,7 @@
 from dotenv import load_dotenv
+
+from api.src.models.settings import SettingsRequest, SettingsResponse
+from api.src.settings import update_user_settings
 load_dotenv()
 from fastapi import FastAPI, HTTPException, Query, Depends
 from datetime import timedelta
@@ -49,6 +52,10 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     access_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     response = LoginResponse(access_token=access_token)
     return response
+
+@app.post("/settings", response_model=SettingsResponse)
+async def update_settings(settings_request: SettingsRequest, current_user: Annotated[AuthenticatedUser, Depends(get_current_user)]):
+    return update_user_settings(settings_request)
 
 @app.get("/users/me", response_model=User)
 async def read_users_me(current_user: Annotated[AuthenticatedUser, Depends(get_current_user)]):

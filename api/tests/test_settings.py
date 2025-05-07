@@ -19,7 +19,7 @@ def test_update_settings_success():
     client = get_test_client()
     
     settings_data = {
-        "username": "testuser",
+        "username": "updated",
         "email": "new@example.com",
         "email_notifications_enabled": True
     }
@@ -29,7 +29,7 @@ def test_update_settings_success():
     assert response.status_code == 200
     data = response.json()
     assert "username" in data
-    assert data["username"] == "testuser"
+    assert data["username"] == "updated"
     assert "email" in data
     assert data["email"] == "new@example.com"
     assert "email_notifications_enabled" in data

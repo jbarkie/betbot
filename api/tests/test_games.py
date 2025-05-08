@@ -9,15 +9,19 @@ from api.src.models.games import Game, GamesResponse
 from api.src.login import get_current_user
 from api.src.models.tables import Odds
 
-mock_user = {"username": "testuser"}
-
-async def override_get_current_user():
-    return mock_user
-
-app.dependency_overrides[get_current_user] = override_get_current_user
-
 @pytest.fixture
 def client():
+    """
+    Create a test client for the FastAPI app with dependency overrides.
+    """
+    mock_user = MagicMock()
+    mock_user.username = "testuser"
+
+    async def override_get_current_user():
+        return mock_user
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    
     return TestClient(app)
 
 @pytest.mark.parametrize("endpoint", ["/nba/games", "/mlb/games", "/nfl/games", "/nhl/games"])

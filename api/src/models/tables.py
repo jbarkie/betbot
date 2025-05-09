@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, LargeBinary
+from sqlalchemy import Boolean, Column, String, DateTime, LargeBinary
 
 from shared.database import Base
 
@@ -22,3 +22,4 @@ class Users(Base):
     last_name = Column(String)
     email = Column(String)
     password = Column(LargeBinary)
+    email_notifications_enabled = Column(Boolean, default=False)

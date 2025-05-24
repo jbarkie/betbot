@@ -184,5 +184,7 @@ def main():
 
     logging.info('MLB data collection completed')
 
+    session.close()
+
 if __name__ == '__main__':
     main()

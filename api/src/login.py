@@ -15,6 +15,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 def get_user_by_username(username: str) -> AuthenticatedUser:
     session = connect_to_db()
     user = session.query(Users).filter_by(username=username).first()
+    session.close()
+    
     if user:
         user = AuthenticatedUser(
             username=user.username,

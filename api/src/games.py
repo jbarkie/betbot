@@ -73,7 +73,9 @@ def update_existing_odds_in_db(game_id, home_odds, away_odds):
         existing.away_odds = away_odds
         existing.expires = datetime.now() + timedelta(minutes=72)
         session.commit()
+        session.close()
         return True
+    session.close()
     return False
 
 def store_odds(game: Game):
@@ -90,15 +92,18 @@ def store_odds(game: Game):
     )
     session.add(game)
     session.commit()
+    session.close()
 
 def is_data_expired(sport):
     session = connect_to_db()
     current_time = datetime.now()
     nearest_expiration = session.query(func.min(Odds.expires)).filter(Odds.sport == sport).scalar()
+    session.close()
 
     if nearest_expiration is None:
         return True
     return nearest_expiration <= current_time
+
 
 def get_games_by_date(date, sport, api_sport_param):
     if is_data_expired(sport):
@@ -121,4 +126,5 @@ def get_games_by_date(date, sport, api_sport_param):
             )
             for game in games
         ]
+        session.close()
         return GamesResponse(list=games_list)

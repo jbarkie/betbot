@@ -3,8 +3,10 @@ from fastapi.testclient import TestClient
 from api.src.main import app
 from api.src.login import get_current_user
 from api.src.models.tables import Users
+import pytest
 
-def get_test_client():
+@pytest.fixture
+def test_client():
     mock_user = MagicMock()
     mock_user.username = "testuser"
     
@@ -13,12 +15,16 @@ def get_test_client():
     
     app.dependency_overrides[get_current_user] = mock_get_current_user
     
-    return TestClient(app)
+    client = TestClient(app)
+
+    yield client
+
+    # Cleanup
+    app.dependency_overrides.clear()
 
 @patch("api.src.settings.connect_to_db")
-def test_update_settings_success(mock_connect_to_db):
+def test_update_settings_success(mock_connect_to_db, test_client):
     """Test a successful update of user settings with valid data"""
-    client = get_test_client()
 
     mock_session = MagicMock()
     mock_user = MagicMock(spec=Users)
@@ -35,7 +41,7 @@ def test_update_settings_success(mock_connect_to_db):
         "email_notifications_enabled": True
     }
 
-    response = client.post("/settings", json=settings_data)
+    response = test_client.post("/settings", json=settings_data)
     
     assert response.status_code == 200
     data = response.json()
@@ -54,9 +60,8 @@ def test_update_settings_success(mock_connect_to_db):
     assert mock_user.email_notifications_enabled is True
 
 @patch("api.src.settings.connect_to_db")
-def test_update_settings_partial(mock_connect_to_db):
+def test_update_settings_partial(mock_connect_to_db, test_client):
     """Test the settings endpoint with partial data"""
-    client = get_test_client()
 
     mock_session = MagicMock()
     mock_user = MagicMock(spec=Users)
@@ -73,7 +78,7 @@ def test_update_settings_partial(mock_connect_to_db):
         "email": "partial@example.com"
     }
     
-    response = client.post("/settings", json=settings_data)
+    response = test_client.post("/settings", json=settings_data)
     
     assert response.status_code == 200
     data = response.json()

@@ -37,7 +37,7 @@ export interface LoginError {
   message?: string;
 }
 
-export interface SettingsRequest {
+export type SettingsRequest = {
   username: string;
   email: string;
   password?: string;

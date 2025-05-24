@@ -22,7 +22,12 @@ def client():
 
     app.dependency_overrides[get_current_user] = override_get_current_user
     
-    return TestClient(app)
+    client = TestClient(app)
+
+    yield client
+
+    # Cleanup
+    app.dependency_overrides.clear()
 
 @pytest.mark.parametrize("endpoint", ["/nba/games", "/mlb/games", "/nfl/games", "/nhl/games"])
 def test_games(endpoint, client):

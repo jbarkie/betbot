@@ -41,7 +41,7 @@ export interface SettingsRequest {
   username: string;
   email: string;
   password?: string;
-  enable_email_notifications: boolean;
+  email_notifications_enabled: boolean;
 }
 
 export type SettingsResponse = {
@@ -49,5 +49,5 @@ export type SettingsResponse = {
   message: string;
   username: string;
   email: string;
-  enable_email_notifications: boolean;
+  email_notifications_enabled: boolean;
 };

@@ -1,4 +1,7 @@
+import bcrypt
 from api.src.models.settings import SettingsRequest, SettingsResponse
+from api.src.models.tables import Users
+from shared.database import connect_to_db
 
 def update_user_settings(
     settings_request: SettingsRequest
@@ -6,13 +9,59 @@ def update_user_settings(
     """
     Update user settings.
     """
-    response = SettingsResponse(
-        success=True,
-        message="Settings updated successfully",
-        username=settings_request.username or "current_username",
-        email=settings_request.email or "current_email",
-        email_notifications_enabled=settings_request.email_notifications_enabled or False
-    )
-    # Here you would typically update the user's settings in the database
-    # For now, we will just return the received settings
-    return response
+
+    session = None
+
+    try:
+        session = connect_to_db()
+        user = session.query(Users).filter_by(username=settings_request.username).first()
+
+        if not user:
+            return SettingsResponse(
+                success=False,
+                message="User not found",
+                username=settings_request.username,
+                email=None,
+                email_notifications_enabled=None
+            )
+    
+        if settings_request.username:
+            user.username = settings_request.username
+
+        if settings_request.email:
+            user.email = settings_request.email
+
+        if settings_request.password:
+            hashed = bcrypt.hashpw(settings_request.password.encode('utf-8'), bcrypt.gensalt())
+            user.password = hashed
+            
+        if settings_request.email_notifications_enabled is not None:
+            user.email_notifications_enabled = settings_request.email_notifications_enabled
+
+        session.commit()
+
+        response = SettingsResponse(
+            success=True,
+            message="Settings updated successfully",
+            username=user.username,
+            email=user.email,
+            email_notifications_enabled=user.email_notifications_enabled
+        )
+    
+        return response
+    
+    except Exception as e:
+        if session:
+            session.rollback()
+        return SettingsResponse(
+            success=False,
+            message=f"An error occurred: {str(e)}",
+            username=settings_request.username,
+            email=None,
+            email_notifications_enabled=None
+        )
+    
+    finally:
+        if session:
+            session.close()
+            

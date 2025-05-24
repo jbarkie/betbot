@@ -70,3 +70,43 @@ def test_update_settings_partial(test_client, mock_db):
     data = response.json()
     assert data["success"] is True
     assert data["email"] == "partial@example.com"
+
+def test_update_settings_user_not_found(test_client, monkeypatch):
+    """Test failed update of settings when the user does not exist"""
+    mock_session = MagicMock()
+    mock_session.query.return_value.filter_by.return_value.first.return_value = None
+    monkeypatch.setattr("api.src.settings.connect_to_db", lambda: mock_session)
+
+    settings_data = {
+        "username": "nonexistent",
+        "email": "doesnotexist@example.com"
+    }
+    response = test_client.post("/settings", json=settings_data)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is False
+    assert data["message"] == "User not found"
+    assert data["username"] == "nonexistent"
+    assert data["email"] is None
+    assert data["email_notifications_enabled"] is None
+
+def test_update_settings_exception_handling(test_client, mock_db):
+    """Test updating settings when an exception occurs"""
+    mock_session, mock_user = mock_db
+    mock_session.commit.side_effect = Exception("Database error")
+
+    settings_data = {
+        "username": "testuser",
+        "email": "error@example.com",
+        "email_notifications_enabled": True
+    }
+    response = test_client.post("/settings", json=settings_data)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is False
+    assert "An error occurred: Database error" in data["message"]
+    assert data["username"] == "testuser"
+    assert data["email"] is None
+    assert data["email_notifications_enabled"] is None

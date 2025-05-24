@@ -132,7 +132,7 @@ export class SettingsComponent implements OnInit {
       this.settingsForm.patchValue({
         email: settings?.email,
         username: settings?.username,
-        enable_email_notifications: settings?.enable_email_notifications,
+        email_notifications_enabled: settings?.email_notifications_enabled,
       });
     }
   }
@@ -147,9 +147,8 @@ export class SettingsComponent implements OnInit {
       const request: SettingsRequest = {
         email: this.settingsForm.get('email')?.value,
         username: this.settingsForm.get('username')?.value,
-        enable_email_notifications: this.settingsForm.get(
-          'enable_email_notifications'
-        )?.value,
+        email_notifications_enabled:
+          this.settingsForm.get('emailNotifications')?.value,
       };
 
       // Only include password if it was changed

@@ -10,6 +10,6 @@ class SettingsRequest(BaseModel):
 class SettingsResponse(BaseModel):
     success: bool
     message: str
-    username: str
-    email: str
-    email_notifications_enabled: bool
+    username: str 
+    email: Optional[str] = None
+    email_notifications_enabled: Optional[bool] = None

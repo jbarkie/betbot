@@ -34,6 +34,22 @@ export const SettingsStore = signalStore(
       settingsService = inject(SettingsService),
       toastService = inject(ToastService)
     ) => ({
+      async loadSettings() {
+        try {
+          patchState(store, { isLoading: true, error: null });
+          const settings = await firstValueFrom(settingsService.getSettings());
+          patchState(store, { settings, isLoading: false });
+        } catch (error) {
+          patchState(store, {
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Failed to load settings',
+            isLoading: false,
+          });
+          toastService.showError('Failed to load settings');
+        }
+      },
       async updateSettings(request: SettingsRequest) {
         try {
           patchState(store, { isLoading: true, error: null });

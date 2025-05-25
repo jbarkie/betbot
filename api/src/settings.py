@@ -65,3 +65,49 @@ def update_user_settings(
         if session:
             session.close()
             
+def get_user_settings(
+    username: str
+) -> SettingsResponse:
+    """
+    Get user settings.
+    """
+    
+    session = None
+
+    try:
+        session = connect_to_db()
+        user = session.query(Users).filter_by(username=username).first()
+
+        if not user:
+            return SettingsResponse(
+                success=False,
+                message="User not found",
+                username=username,
+                email=None,
+                email_notifications_enabled=None
+            )
+        
+        response = SettingsResponse(
+            success=True,
+            message="Settings retrieved successfully",
+            username=user.username,
+            email=user.email,
+            email_notifications_enabled=user.email_notifications_enabled
+        )
+        
+        return response
+    
+    except Exception as e:
+        if session:
+            session.rollback()
+        return SettingsResponse(
+            success=False,
+            message=f"An error occurred: {str(e)}",
+            username=username,
+            email=None,
+            email_notifications_enabled=None
+        )
+    
+    finally:
+        if session:
+            session.close()

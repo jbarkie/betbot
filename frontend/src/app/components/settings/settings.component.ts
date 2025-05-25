@@ -127,12 +127,13 @@ export class SettingsComponent implements OnInit {
   }
 
   async loadSettings() {
+    await this.settingsStore.loadSettings();
     if (this.settingsStore.settings()) {
       const settings = this.settingsStore.settings();
       this.settingsForm.patchValue({
         email: settings?.email,
         username: settings?.username,
-        email_notifications_enabled: settings?.email_notifications_enabled,
+        emailNotifications: settings?.email_notifications_enabled,
       });
     }
   }

@@ -72,4 +72,68 @@ describe('SettingsComponent', () => {
     const themeToggle = fixture.debugElement.query(By.css('app-theme-toggle'));
     expect(themeToggle).toBeTruthy();
   });
+
+  it('should load settings on initialization', async () => {
+    const storeLoadSpy = jest.spyOn(component.settingsStore, 'loadSettings').mockResolvedValue();
+    
+    await component.ngOnInit();
+    
+    expect(storeLoadSpy).toHaveBeenCalled();
+  });
+
+  it('should patch form with loaded settings', async () => {
+    jest.spyOn(component.settingsStore, 'loadSettings').mockResolvedValue();
+    const mockSettings = {
+      email: 'test@example.com',
+      username: 'testuser',
+      email_notifications_enabled: true
+    };
+    jest.spyOn(component.settingsStore, 'settings').mockReturnValue(mockSettings);
+
+    await component.loadSettings();
+
+    expect(component.settingsForm.get('email')?.value).toBe(mockSettings.email);
+    expect(component.settingsForm.get('username')?.value).toBe(mockSettings.username);
+    expect(component.settingsForm.get('emailNotifications')?.value).toBe(mockSettings.email_notifications_enabled);
+  });
+
+  it('should submit form with correct values', async () => {
+    const updateSettingsSpy = jest.spyOn(component.settingsStore, 'updateSettings').mockResolvedValue();
+    
+    component.settingsForm.setValue({
+      email: 'new@example.com',
+      username: 'newuser',
+      password: 'newpassword123',
+      emailNotifications: true
+    });
+    
+    await component.onSubmit();
+    
+    expect(updateSettingsSpy).toHaveBeenCalledWith({
+      email: 'new@example.com',
+      username: 'newuser',
+      password: 'newpassword123',
+      email_notifications_enabled: true
+    });
+  });
+
+  it('should not include password in request if empty', async () => {
+    const updateSettingsSpy = jest.spyOn(component.settingsStore, 'updateSettings').mockResolvedValue();
+    
+    component.settingsForm.patchValue({
+      email: 'test@example.com',
+      username: 'testuser',
+      password: '',  
+      emailNotifications: false
+    });
+    
+    await component.onSubmit();
+    
+    expect(updateSettingsSpy).toHaveBeenCalledWith({
+      email: 'test@example.com',
+      username: 'testuser',
+      email_notifications_enabled: false
+      // No password property
+    });
+  });
 });

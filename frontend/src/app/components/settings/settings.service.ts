@@ -12,6 +12,10 @@ export class SettingsService {
 
   constructor(private httpClient: HttpClient) {}
 
+  getSettings(): Observable<SettingsRequest> {
+    return this.httpClient.get<SettingsRequest>(this.settingsUrl);
+  }
+
   updateSettings(request: SettingsRequest): Observable<void> {
     return this.httpClient.post<void>(this.settingsUrl, request);
   }

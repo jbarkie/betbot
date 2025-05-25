@@ -110,3 +110,43 @@ def test_update_settings_exception_handling(test_client, mock_db):
     assert data["username"] == "testuser"
     assert data["email"] is None
     assert data["email_notifications_enabled"] is None
+
+def test_get_settings_success(test_client, mock_db):
+    """Test a successful retrieval of user settings"""
+    mock_session, mock_user = mock_db
+    response = test_client.get("/settings")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["message"] == "Settings retrieved successfully"
+    assert data["username"] == "testuser"
+
+def test_get_settings_user_not_found(test_client, monkeypatch):
+    """Test failed retrieval of settings when the user does not exist"""
+    mock_session = MagicMock()
+    mock_session.query.return_value.filter_by.return_value.first.return_value = None
+    monkeypatch.setattr("api.src.settings.connect_to_db", lambda: mock_session)
+
+    response = test_client.get("/settings")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is False
+    assert data["message"] == "User not found"
+    assert data["username"] == "testuser"
+    assert data["email"] is None
+    assert data["email_notifications_enabled"] is None
+
+def test_get_settings_exception_handling(test_client, mock_db):
+    """Test retrieving settings when an exception occurs"""
+    mock_session, mock_user = mock_db
+    mock_session.query.side_effect = Exception("Database error")
+
+    response = test_client.get("/settings")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is False
+    assert "An error occurred: Database error" in data["message"]
+    assert data["username"] == "testuser"
+    assert data["email"] is None
+    assert data["email_notifications_enabled"] is None

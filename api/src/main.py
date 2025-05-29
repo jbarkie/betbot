@@ -1,5 +1,7 @@
 from dotenv import load_dotenv
 
+from api.src.mlb_analytics import get_mlb_game_analytics
+from api.src.models.mlb_analytics import MlbAnalyticsResponse
 from api.src.models.settings import SettingsRequest, SettingsResponse
 from api.src.settings import get_user_settings, update_user_settings
 load_dotenv()
@@ -92,7 +94,14 @@ async def nhl_games(
     date: str = Query(..., description="Date in YYYY-MM-DD format")
 ):
     return await get_games_for_sport(date, "NHL", "icehockey_nhl")
-    
+
+@app.get("/analytics/mlb/game", response_model=MlbAnalyticsResponse)
+async def mlb_game_analytics(
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    id: str = Query(..., description="Game ID")
+):
+    return await get_mlb_game_analytics(id)
+
 def main():
     configure(app)
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,5 +1,6 @@
-import { Component, input } from '@angular/core';
-import { Game } from '../models';
+import { Component, inject, input } from '@angular/core';
+import { AnalyticsRequest, Game } from '../models';
+import { AnalyticsService } from '../../services/analytics/analytics.service';
 
 @Component({
     selector: 'app-game',
@@ -21,7 +22,7 @@ import { Game } from '../models';
       <p>{{ game().homeTeam }} ML: {{ game().homeOdds }}</p>
     }
     <div class="card-actions justify-end">
-      <button class="btn btn-primary">Analyze</button>
+      <button (click)="analyze()" class="btn btn-primary">Analyze</button>
     </div>
   </div>
   <figure>
@@ -32,6 +33,7 @@ import { Game } from '../models';
 })
 export class GameComponent {
   game = input.required<Game>();
+  private analyticsService = inject(AnalyticsService);
 
   getImageSrc(sport: string, teamString: string) {
     const teamName = this.normalizeTeamName(teamString);
@@ -43,5 +45,17 @@ export class GameComponent {
     return teamName.toLowerCase()
       .replace(/\./g, '') 
       .replace(/\s+/g, '-'); 
+  }
+
+  async analyze() {
+    try {
+      await this.analyticsService.analyze(
+        { gameId: this.game().id } as AnalyticsRequest,
+        this.game().sport
+      );
+    }
+    catch (error) {
+      console.error('Error analyzing game:', error);
+    }
   }
 }

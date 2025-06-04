@@ -51,3 +51,11 @@ export type SettingsResponse = {
   email: string;
   email_notifications_enabled: boolean;
 };
+
+export type AnalyticsRequest = {
+  gameId: string;
+}
+
+export type AnalyticsResponse = {
+  gameId: string;
+}

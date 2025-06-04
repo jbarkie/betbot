@@ -6,6 +6,8 @@ import { NFLStore } from '../../services/sports/sports.store';
 import { Game } from '../models';
 import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
 import { NflComponent } from './nfl.component';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 interface MockNFLStore {
   games: Signal<Game[]>;
@@ -51,6 +53,8 @@ describe('NflComponent', () => {
       providers: [
         { provide: NFLStore, useValue: mockStore },
         { provide: AuthStore, useValue: mockAuthStore },
+        provideHttpClient(),
+        provideHttpClientTesting(),
       ],
     }).compileComponents();
 

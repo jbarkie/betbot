@@ -6,6 +6,8 @@ import { AuthStore } from '../../services/auth/auth.store';
 import { MLBStore } from '../../services/sports/sports.store';
 import { SportWrapperComponent } from '../sport-wrapper/sport-wrapper.component';
 import { MlbComponent } from './mlb.component';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 interface MockMLBStore {
   games: Signal<Game[]>;
@@ -51,6 +53,8 @@ describe('MlbComponent', () => {
       providers: [
         { provide: MLBStore, useValue: mockStore },
         { provide: AuthStore, useValue: mockAuthStore },
+        provideHttpClient(),
+        provideHttpClientTesting(),
       ],
     }).compileComponents();
 

@@ -4,6 +4,8 @@ import { By } from '@angular/platform-browser';
 import { AuthStore } from '../../services/auth/auth.store';
 import { Game } from '../models';
 import { SportWrapperComponent } from './sport-wrapper.component';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 const mockAuthStore = {
   isAuthenticated: jest.fn(),
@@ -18,6 +20,8 @@ describe('SportWrapperComponent', () => {
       imports: [SportWrapperComponent],
       providers: [
         { provide: AuthStore, useValue: mockAuthStore },
+        provideHttpClient(),
+        provideHttpClientTesting(),
       ],
     }).compileComponents();
 

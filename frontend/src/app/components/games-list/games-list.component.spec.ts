@@ -3,6 +3,8 @@ import { Component, Input } from '@angular/core';
 
 import { GamesListComponent } from './games-list.component';
 import { Game } from '../models';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 @Component({
   selector: 'app-game',
@@ -42,6 +44,7 @@ describe('GamesListComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [MockGameComponent, GamesListComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(GamesListComponent);

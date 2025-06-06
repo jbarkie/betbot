@@ -1,35 +1,47 @@
 import { Component, inject, input } from '@angular/core';
 import { AnalyticsRequest, Game } from '../models';
 import { AnalyticsService } from '../../services/analytics/analytics.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
-    selector: 'app-game',
-    standalone: true,
-    imports: [],
-    schemas: [],
-    template: ` 
-  <div class="card card-side bg-base-100 shadow-xl mx-auto my-5 max-w-2xl">
-  <figure>
-    <img [src]="getImageSrc(game().sport, game().awayTeam)" [alt]="game().awayTeam + ' logo'" class="w-28 mx-5" />
-  </figure>
-  <div class="card-body">
-    <h2 class="card-title">{{ game().awayTeam }} &#64; <br/> {{ game().homeTeam }}</h2>
-    @if (game().homeOdds === '' && game().awayOdds === '') {
+  selector: 'app-game',
+  standalone: true,
+  imports: [],
+  schemas: [],
+  template: ` <div
+    class="card card-side bg-base-100 shadow-xl mx-auto my-5 max-w-2xl"
+  >
+    <figure>
+      <img
+        [src]="getImageSrc(game().sport, game().awayTeam)"
+        [alt]="game().awayTeam + ' logo'"
+        class="w-28 mx-5"
+      />
+    </figure>
+    <div class="card-body">
+      <h2 class="card-title">
+        {{ game().awayTeam }} &#64; <br />
+        {{ game().homeTeam }}
+      </h2>
+      @if (game().homeOdds === '' && game().awayOdds === '') {
       <p class="text-md">No odds available</p>
-    }
-    @else {
+      } @else {
       <p>{{ game().awayTeam }} ML: {{ game().awayOdds }}</p>
       <p>{{ game().homeTeam }} ML: {{ game().homeOdds }}</p>
-    }
-    <div class="card-actions justify-end">
-      <button (click)="analyze()" class="btn btn-primary">Analyze</button>
+      }
+      <div class="card-actions justify-end">
+        <button (click)="analyze()" class="btn btn-primary">Analyze</button>
+      </div>
     </div>
-  </div>
-  <figure>
-    <img [src]="getImageSrc(game().sport, game().homeTeam)" [alt]="game().homeTeam + ' logo'" class="w-28 mx-5" />
-  </figure>
-</div>`,
-    styles: []
+    <figure>
+      <img
+        [src]="getImageSrc(game().sport, game().homeTeam)"
+        [alt]="game().homeTeam + ' logo'"
+        class="w-28 mx-5"
+      />
+    </figure>
+  </div>`,
+  styles: [],
 })
 export class GameComponent {
   game = input.required<Game>();
@@ -42,19 +54,20 @@ export class GameComponent {
   }
 
   private normalizeTeamName(teamName: string): string {
-    return teamName.toLowerCase()
-      .replace(/\./g, '') 
-      .replace(/\s+/g, '-'); 
+    return teamName.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
   }
 
   async analyze() {
     try {
-      await this.analyticsService.analyze(
-        { gameId: this.game().id } as AnalyticsRequest,
-        this.game().sport
+      const response = await firstValueFrom(
+        this.analyticsService.analyze(
+          { gameId: this.game().id } as AnalyticsRequest,
+          this.game().sport
+        )
       );
-    }
-    catch (error) {
+      console.log('Analysis response:', response);
+      // Handle the response data here
+    } catch (error) {
       console.error('Error analyzing game:', error);
     }
   }

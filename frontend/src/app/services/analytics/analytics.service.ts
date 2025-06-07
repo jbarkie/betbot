@@ -15,10 +15,10 @@ export class AnalyticsService {
   analyze(
     request: AnalyticsRequest,
     sport: string
-  ): Observable<AnalyticsRequest> {
+  ): Observable<AnalyticsResponse> {
     const analyticsUrlForGame = `${
       this.analyticsUrl
     }/${sport.toLowerCase()}/game?id=${request.gameId}`;
-    return this.httpClient.get<AnalyticsRequest>(analyticsUrlForGame);
+    return this.httpClient.get<AnalyticsResponse>(analyticsUrlForGame);
   }
 }

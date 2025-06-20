@@ -1,10 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
-import { GameComponent } from './game.component';
-import { Game } from '../models';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { of, throwError } from 'rxjs';
+import { AnalyticsService } from '../../services/analytics/analytics.service';
+import { Game } from '../models';
+import { GameComponent } from './game.component';
 
 describe('GameComponent', () => {
   let component: GameComponent;
@@ -24,10 +26,7 @@ describe('GameComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [GameComponent],
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-      ]
+      providers: [provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(GameComponent);
@@ -54,7 +53,9 @@ describe('GameComponent', () => {
 
   it('should display "No odds available" when odds are empty', () => {
     const gameWithoutOdds = { ...mockGame, homeOdds: '', awayOdds: '' };
-    Object.defineProperty(component, 'game', { get: () => () => gameWithoutOdds });
+    Object.defineProperty(component, 'game', {
+      get: () => () => gameWithoutOdds,
+    });
 
     fixture.detectChanges();
 
@@ -64,8 +65,12 @@ describe('GameComponent', () => {
 
   it('should generate correct image source for MLB teams', () => {
     const imgElements = fixture.debugElement.queryAll(By.css('img'));
-    expect(imgElements[0].attributes['src']).toBe('assets/img/mlb/new-york-yankees.svg');
-    expect(imgElements[1].attributes['src']).toBe('assets/img/mlb/boston-red-sox.svg');
+    expect(imgElements[0].attributes['src']).toBe(
+      'assets/img/mlb/new-york-yankees.svg'
+    );
+    expect(imgElements[1].attributes['src']).toBe(
+      'assets/img/mlb/boston-red-sox.svg'
+    );
   });
 
   it('should generate correct image source for non-MLB teams', () => {
@@ -80,8 +85,12 @@ describe('GameComponent', () => {
     fixture.detectChanges();
 
     const imgElements = fixture.debugElement.queryAll(By.css('img'));
-    expect(imgElements[0].attributes['src']).toBe('assets/img/nba/los-angeles-lakers.png');
-    expect(imgElements[1].attributes['src']).toBe('assets/img/nba/boston-celtics.png');
+    expect(imgElements[0].attributes['src']).toBe(
+      'assets/img/nba/los-angeles-lakers.png'
+    );
+    expect(imgElements[1].attributes['src']).toBe(
+      'assets/img/nba/boston-celtics.png'
+    );
   });
 
   it('should have correct alt text for team logos', () => {
@@ -90,18 +99,58 @@ describe('GameComponent', () => {
     expect(imgElements[1].attributes['alt']).toBe('Boston Red Sox logo');
   });
 
-  it('should have an "Analyze" button', () => {
-    const button = fixture.debugElement.query(By.css('button'));
-    expect(button.nativeElement.textContent).toBe('Analyze');  
+  describe('analyze', () => {
+    it('should have an "Analyze" button', () => {
+      const button = fixture.debugElement.query(By.css('button'));
+      expect(button.nativeElement.textContent).toBe('Analyze');
+    });
+
+    it('should call analyze method on button click', () => {
+      jest.spyOn(component, 'analyze');
+      const button = fixture.debugElement.query(By.css('button'));
+      button.nativeElement.click();
+      expect(component.analyze).toHaveBeenCalled();
+    });
+
+    it('should call analyticsService.analyze with correct parameters', async () => {
+      const analyticsService = TestBed.inject(AnalyticsService);
+      jest
+        .spyOn(analyticsService, 'analyze')
+        .mockReturnValue(of({ gameId: '1' }));
+
+      await component.analyze();
+
+      expect(analyticsService.analyze).toHaveBeenCalled();
+    });
+
+    it('should handle errors from analyticsService', async () => {
+      const analyticsService = TestBed.inject(AnalyticsService);
+      const mockError = new Error('Analysis failed');
+      jest
+        .spyOn(analyticsService, 'analyze')
+        .mockReturnValue(throwError(() => mockError));
+      jest.spyOn(console, 'error');
+
+      await component.analyze();
+
+      expect(console.error).toHaveBeenCalledWith(
+        'Error analyzing game:',
+        mockError
+      );
+    });
   });
 
   describe('getImageSrc', () => {
     it('should handle team names with spaces', () => {
-      expect(component.getImageSrc('MLB', 'Boston Red Sox')).toBe('assets/img/mlb/boston-red-sox.svg');
+      expect(component.getImageSrc('MLB', 'Boston Red Sox')).toBe(
+        'assets/img/mlb/boston-red-sox.svg'
+      );
     });
 
     it('should handle team names with periods', () => {
-      expect(component.getImageSrc('MLB', 'St. Louis Cardinals')).toBe('assets/img/mlb/st-louis-cardinals.svg');
+      expect(component.getImageSrc('MLB', 'St. Louis Cardinals')).toBe(
+        'assets/img/mlb/st-louis-cardinals.svg'
+      );
     });
 
     it('should return SVG for MLB and PNG for other sports', () => {

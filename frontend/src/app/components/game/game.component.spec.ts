@@ -45,10 +45,15 @@ describe('GameComponent', () => {
     expect(teamNames[0].textContent).toContain('Boston Red Sox');
   });
 
+  it('should display game time correctly', () => {
+    const timeElement = fixture.nativeElement.querySelector('p');
+    expect(timeElement.textContent).toContain('7:00 PM');
+  });
+
   it('should display odds correctly', () => {
     const odds = fixture.nativeElement.querySelectorAll('p');
-    expect(odds[0].textContent).toContain('New York Yankees ML: +110');
-    expect(odds[1].textContent).toContain('Boston Red Sox ML: +110');
+    expect(odds[1].textContent).toContain('New York Yankees ML: +110');
+    expect(odds[2].textContent).toContain('Boston Red Sox ML: +110');
   });
 
   it('should display "No odds available" when odds are empty', () => {
@@ -60,7 +65,7 @@ describe('GameComponent', () => {
     fixture.detectChanges();
 
     const odds = fixture.nativeElement.querySelectorAll('p');
-    expect(odds[0].textContent).toContain('No odds available');
+    expect(odds[1].textContent).toContain('No odds available');
   });
 
   it('should generate correct image source for MLB teams', () => {

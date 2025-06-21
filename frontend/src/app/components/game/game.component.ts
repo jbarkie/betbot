@@ -23,6 +23,9 @@ import { firstValueFrom } from 'rxjs';
         {{ game().awayTeam }} &#64; <br />
         {{ game().homeTeam }}
       </h2>
+      <div class="text-sm text-base-content/70">
+        <p>{{ game().time }}</p>
+      </div>
       @if (game().homeOdds === '' && game().awayOdds === '') {
       <p class="text-md">No odds available</p>
       } @else {

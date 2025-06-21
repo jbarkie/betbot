@@ -2,11 +2,12 @@ import { Component, inject, input } from '@angular/core';
 import { AnalyticsRequest, Game } from '../models';
 import { AnalyticsService } from '../../services/analytics/analytics.service';
 import { firstValueFrom } from 'rxjs';
+import { GameTimePipe } from '../../pipes/game-time.pipe';
 
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [],
+  imports: [GameTimePipe],
   schemas: [],
   template: ` <div
     class="card card-side bg-base-100 shadow-xl mx-auto my-5 max-w-2xl"
@@ -24,7 +25,7 @@ import { firstValueFrom } from 'rxjs';
         {{ game().homeTeam }}
       </h2>
       <div class="text-sm text-base-content/70">
-        <p>{{ game().time }}</p>
+        <p>{{ game().time | gameTime }}</p>
       </div>
       @if (game().homeOdds === '' && game().awayOdds === '') {
       <p class="text-md">No odds available</p>

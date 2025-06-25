@@ -22,19 +22,40 @@ describe('GameTimePipe', () => {
     // January 15th should be in standard time (EST = UTC-5)
     const testTime = '2025-01-15 19:30:00';
     const result = pipe.transform(testTime);
-    expect(result).toMatch(/\d{1}:\d{2}\s?PM/);
+    // Create expected result based on the actual Eastern time conversion
+    const expectedDate = new Date('2025-01-15T19:30:00-05:00');
+    const expectedTime = expectedDate.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+    expect(result).toBe(expectedTime);
   });
 
   it('should handle morning times correctly', () => {
     const testTime = '2025-06-21 09:15:00';
     const result = pipe.transform(testTime);
-    expect(result).toMatch(/\d{1}:\d{2}\s?AM/);
+    // Create expected result based on the actual Eastern time conversion
+    const expectedDate = new Date('2025-06-21T09:15:00-04:00'); // DST
+    const expectedTime = expectedDate.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+    expect(result).toBe(expectedTime);
   });
 
   it('should handle evening times correctly', () => {
     const testTime = '2025-06-21 21:45:00';
     const result = pipe.transform(testTime);
-    expect(result).toMatch(/\d{1}:\d{2}\s?PM/);
+    // Create expected result based on the actual Eastern time conversion
+    const expectedDate = new Date('2025-06-21T21:45:00-04:00'); // DST
+    const expectedTime = expectedDate.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+    expect(result).toBe(expectedTime);
   });
 
   it('should handle invalid datetime strings gracefully', () => {
@@ -76,7 +97,6 @@ describe('GameTimePipe', () => {
       hour12: true,
     });
     expect(dstResult).toBe(expectedDstResult);
-    expect(dstResult).toMatch(/\d{1}:\d{2}\s?PM/);
 
     // Test a known Standard time date (December)
     const stdTime = '2025-12-15 15:00:00';
@@ -87,6 +107,5 @@ describe('GameTimePipe', () => {
       hour12: true,
     });
     expect(stdResult).toBe(expectedStdResult);
-    expect(stdResult).toMatch(/\d{1}:\d{2}\s?PM/);
   });
 });

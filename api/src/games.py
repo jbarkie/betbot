@@ -80,17 +80,19 @@ def update_existing_odds_in_db(game_id, home_odds, away_odds):
 
 def store_odds(game: Game):
     session = connect_to_db()
-    game = Odds(
+    # Convert time string to datetime object for storage
+    game_time = datetime.strptime(game.time, "%Y-%m-%d %H:%M")
+    odds_record = Odds(
         id=game.id,
         sport=game.sport,
-        time=game.time,
+        time=game_time,
         home_odds=game.homeOdds,
         away_odds=game.awayOdds,
         home_team=game.homeTeam,
         away_team=game.awayTeam,
-        expires=datetime.strptime(game.time, "%Y-%m-%d %H:%M") + timedelta(minutes=72)
+        expires=game_time + timedelta(minutes=72)
     )
-    session.add(game)
+    session.add(odds_record)
     session.commit()
     session.close()
 
@@ -102,7 +104,9 @@ def is_data_expired(sport):
 
     if nearest_expiration is None:
         return True
-    return nearest_expiration <= current_time
+    
+    is_expired = nearest_expiration <= current_time
+    return is_expired
 
 
 def get_games_by_date(date, sport, api_sport_param):
@@ -113,7 +117,9 @@ def get_games_by_date(date, sport, api_sport_param):
         return GamesResponse(list=games_for_date)
     else:
         session = connect_to_db()
-        games = session.query(Odds).filter(cast(Odds.time, Date) == date, Odds.sport == sport).all()
+        # Convert datetime to date for proper comparison
+        target_date = date.date()
+        games = session.query(Odds).filter(cast(Odds.time, Date) == target_date, Odds.sport == sport).all()
         games_list = [
             Game(
                 id=game.id,

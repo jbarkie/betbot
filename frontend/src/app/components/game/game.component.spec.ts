@@ -107,7 +107,7 @@ describe('GameComponent', () => {
   describe('analyze', () => {
     it('should have an "Analyze" button', () => {
       const button = fixture.debugElement.query(By.css('button'));
-      expect(button.nativeElement.textContent).toBe('Analyze');
+      expect(button.nativeElement.textContent.trim()).toBe('Analyze');
     });
 
     it('should call analyze method on button click', () => {

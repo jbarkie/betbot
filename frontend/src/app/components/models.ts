@@ -25,7 +25,7 @@ export type RegisterRequest = {
   last_name: string;
   email: string;
   password: string;
-}
+};
 
 export type RegisterResponse = {
   access_token: string;
@@ -42,7 +42,7 @@ export type SettingsRequest = {
   email: string;
   password?: string;
   email_notifications_enabled: boolean;
-}
+};
 
 export type SettingsResponse = {
   success: boolean;
@@ -54,8 +54,12 @@ export type SettingsResponse = {
 
 export type AnalyticsRequest = {
   gameId: string;
-}
+};
 
 export type AnalyticsResponse = {
-  gameId: string;
-}
+  id: string;
+  home_team: string;
+  away_team: string;
+  predicted_winner: string;
+  win_probability: number;
+};

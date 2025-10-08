@@ -119,9 +119,15 @@ describe('GameComponent', () => {
 
     it('should call analyticsService.analyze with correct parameters', async () => {
       const analyticsService = TestBed.inject(AnalyticsService);
-      jest
-        .spyOn(analyticsService, 'analyze')
-        .mockReturnValue(of({ gameId: '1' }));
+      jest.spyOn(analyticsService, 'analyze').mockReturnValue(
+        of({
+          id: '1',
+          home_team: 'Boston Red Sox',
+          away_team: 'New York Yankees',
+          predicted_winner: 'Boston Red Sox',
+          win_probability: 0.65,
+        })
+      );
 
       await component.analyze();
 

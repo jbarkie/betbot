@@ -219,6 +219,7 @@ class TestEnhancedMLBAnalytics:
         assert confidence_level in ["High", "Medium", "Low"]  # Allow all confidence levels for close matchups
         assert len(key_factors) > 0
     
+    @pytest.mark.asyncio
     @patch('api.src.enhanced_mlb_analytics.connect_to_db')
     async def test_get_enhanced_game_analytics_success(self, mock_connect, analytics_service):
         """Test successful enhanced analytics retrieval."""
@@ -268,6 +269,7 @@ class TestEnhancedMLBAnalytics:
                                 assert result.key_factors is not None
                                 assert result.confidence_level is not None
     
+    @pytest.mark.asyncio
     @patch('api.src.enhanced_mlb_analytics.connect_to_db')
     async def test_get_enhanced_game_analytics_game_not_found(self, mock_connect, analytics_service):
         """Test enhanced analytics when game is not found."""

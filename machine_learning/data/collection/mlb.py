@@ -62,6 +62,7 @@ def fetch_team_records(mlb, session, season):
 def fetch_team_stats(mlb, session, start_date, end_date):
     teams = session.query(MLBTeam).all()
     
+    # Only process dates where games were actually played
     game_dates = session.query(MLBSchedule.date)\
         .filter(MLBSchedule.date.between(start_date, end_date))\
         .filter(MLBSchedule.status == 'Final')\
@@ -71,62 +72,87 @@ def fetch_team_stats(mlb, session, start_date, end_date):
     
     game_dates = [date[0] for date in game_dates]
     
+    if not game_dates:
+        logging.info(f'No completed games found between {start_date} and {end_date}')
+        return
+    
+    logging.info(f'Processing team stats for {len(game_dates)} game dates')
+    
     for current_date in game_dates:
         logging.info(f'Fetching team stats for {current_date}')
         
         for team in teams:
-            offensive_stats = mlb.get_team_stats(
-                team.id, 
-                stats=['season'], 
-                groups=['hitting'], 
-                start_date=start_date, 
-                end_date=current_date
-            )
-            defensive_stats = mlb.get_team_stats(
-                team.id, 
-                stats=['season'], 
-                groups=['pitching'], 
-                start_date=start_date, 
-                end_date=current_date
-            )
+            try:
+                offensive_stats = mlb.get_team_stats(
+                    team.id, 
+                    stats=['season'], 
+                    groups=['hitting'], 
+                    start_date=start_date, 
+                    end_date=current_date
+                )
+            except Exception as e:
+                logging.warning(f"Failed to fetch offensive stats for team {team.id} on {current_date}: {e}")
+                offensive_stats = {'hitting': {'season': {'splits': []}}}
+            
+            try:
+                defensive_stats = mlb.get_team_stats(
+                    team.id, 
+                    stats=['season'], 
+                    groups=['pitching'], 
+                    start_date=start_date, 
+                    end_date=current_date
+                )
+            except Exception as e:
+                logging.warning(f"Failed to fetch defensive stats for team {team.id} on {current_date}: {e}")
+                defensive_stats = {'pitching': {'season': {'splits': []}}}
 
-            if offensive_stats['hitting']['season'].splits:
-                hitting_stats = offensive_stats['hitting']['season'].splits[0].stat
+            if offensive_stats['hitting']['season']['splits']:
+                hitting_stats = offensive_stats['hitting']['season']['splits'][0]['stat']
                 
                 existing_offensive = session.query(MLBOffensiveStats)\
                     .filter_by(team_id=team.id, date=current_date)\
                     .first()
                 
                 if not existing_offensive:
-                    db_offensive_stats = MLBOffensiveStats(
-                        team_id=team.id,
-                        date=current_date,
-                        team_batting_average=hitting_stats.avg,
-                        runs_scored=hitting_stats.runs,
-                        home_runs=hitting_stats.homeruns,
-                        on_base_percentage=hitting_stats.obp,
-                        slugging_percentage=hitting_stats.slg
-                    )
-                    session.add(db_offensive_stats)
+                    # Handle API compatibility issues by safely accessing stats
+                    try:
+                        db_offensive_stats = MLBOffensiveStats(
+                            team_id=team.id,
+                            date=current_date,
+                            team_batting_average=hitting_stats.get('avg', 0.0),
+                            runs_scored=hitting_stats.get('runs', 0),
+                            home_runs=hitting_stats.get('homeruns', 0),
+                            on_base_percentage=hitting_stats.get('obp', 0.0),
+                            slugging_percentage=hitting_stats.get('slg', 0.0)
+                        )
+                        session.add(db_offensive_stats)
+                    except Exception as e:
+                        logging.warning(f"Failed to process offensive stats for team {team.id} on {current_date}: {e}")
+                        continue
 
-            if defensive_stats['pitching']['season'].splits:
-                pitching_stats = defensive_stats['pitching']['season'].splits[0].stat
+            if defensive_stats['pitching']['season']['splits']:
+                pitching_stats = defensive_stats['pitching']['season']['splits'][0]['stat']
                 
                 existing_defensive = session.query(MLBDefensiveStats)\
                     .filter_by(team_id=team.id, date=current_date)\
                     .first()
                 
                 if not existing_defensive:
-                    db_defensive_stats = MLBDefensiveStats(
-                        team_id=team.id,
-                        date=current_date,
-                        team_era=pitching_stats.era,
-                        runs_allowed=pitching_stats.runs,
-                        whip=pitching_stats.whip,
-                        strikeouts=pitching_stats.strikeouts,
-                        avg_against=pitching_stats.avg
-                    )
-                    session.add(db_defensive_stats)
+                    # Handle API compatibility issues by safely accessing stats
+                    try:
+                        db_defensive_stats = MLBDefensiveStats(
+                            team_id=team.id,
+                            date=current_date,
+                            team_era=pitching_stats.get('era', 0.0),
+                            runs_allowed=pitching_stats.get('runs', 0),
+                            whip=pitching_stats.get('whip', 0.0),
+                            strikeouts=pitching_stats.get('strikeouts', 0),
+                            avg_against=pitching_stats.get('avg', 0.0)
+                        )
+                        session.add(db_defensive_stats)
+                    except Exception as e:
+                        logging.warning(f"Failed to process defensive stats for team {team.id} on {current_date}: {e}")
+                        continue
         
         session.commit()
 

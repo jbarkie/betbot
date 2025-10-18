@@ -17,6 +17,8 @@ from api.src.models.tables import Odds
 from machine_learning.data.models.mlb_models import (
     MLBTeam, MLBOffensiveStats, MLBDefensiveStats, MLBSchedule
 )
+from api.src.ml_model_service import get_mlb_model_service
+from api.src.ml_config import MLB_REQUIRED_FEATURES
 
 
 class EnhancedMLBAnalytics:
@@ -67,23 +69,53 @@ class EnhancedMLBAnalytics:
             # Calculate enhanced analytics
             home_analytics = self._calculate_team_analytics(session, home_team, game.time)
             away_analytics = self._calculate_team_analytics(session, away_team, game.time)
-            
-            # Determine prediction and confidence
-            predicted_winner, win_probability, confidence_level, key_factors = self._make_prediction(
-                home_analytics, away_analytics
-            )
-            
-            return MlbAnalyticsResponse(
-                id=game_id,
-                home_team=home_team_name,
-                away_team=away_team_name,
-                predicted_winner=predicted_winner,
-                win_probability=win_probability,
-                home_analytics=home_analytics,
-                away_analytics=away_analytics,
-                key_factors=key_factors,
-                confidence_level=confidence_level
-            )
+
+            # Try ML prediction first, fallback to rule-based
+            ml_prediction = self._try_ml_prediction(session, home_team, away_team, home_analytics, away_analytics, game.time)
+
+            if ml_prediction:
+                # Use ML prediction
+                predicted_winner_type, win_probability, ml_metadata = ml_prediction
+                predicted_winner = home_team_name if predicted_winner_type == 'home' else away_team_name
+
+                # Get key factors from rule-based system for explainability
+                _, _, _, key_factors = self._make_rule_based_prediction(home_analytics, away_analytics)
+
+                return MlbAnalyticsResponse(
+                    id=game_id,
+                    home_team=home_team_name,
+                    away_team=away_team_name,
+                    predicted_winner=predicted_winner,
+                    win_probability=win_probability,
+                    home_analytics=home_analytics,
+                    away_analytics=away_analytics,
+                    key_factors=key_factors,
+                    confidence_level=ml_metadata['model_confidence'],
+                    ml_model_name=ml_metadata['ml_model_name'],
+                    ml_confidence=ml_metadata['model_confidence'],
+                    home_win_probability=ml_metadata['home_win_probability'],
+                    away_win_probability=ml_metadata['away_win_probability'],
+                    prediction_method='machine_learning',
+                    feature_importance=ml_metadata.get('feature_importance')
+                )
+            else:
+                # Fallback to rule-based prediction
+                predicted_winner, win_probability, confidence_level, key_factors = self._make_rule_based_prediction(
+                    home_analytics, away_analytics
+                )
+
+                return MlbAnalyticsResponse(
+                    id=game_id,
+                    home_team=home_team_name,
+                    away_team=away_team_name,
+                    predicted_winner=predicted_winner,
+                    win_probability=win_probability,
+                    home_analytics=home_analytics,
+                    away_analytics=away_analytics,
+                    key_factors=key_factors,
+                    confidence_level=confidence_level,
+                    prediction_method='rule_based'
+                )
             
         finally:
             session.close()
@@ -330,9 +362,211 @@ class EnhancedMLBAnalytics:
         
         return round(momentum_score, 3)
     
-    def _make_prediction(
-        self, 
-        home_analytics: TeamAnalytics, 
+    def _try_ml_prediction(
+        self,
+        session: Session,
+        home_team: MLBTeam,
+        away_team: MLBTeam,
+        home_analytics: TeamAnalytics,
+        away_analytics: TeamAnalytics,
+        game_time: datetime
+    ) -> Optional[Tuple[str, float, Dict]]:
+        """
+        Attempt to make a prediction using the ML model.
+
+        Args:
+            session: Database session
+            home_team: Home team record
+            away_team: Away team record
+            home_analytics: Home team analytics
+            away_analytics: Away team analytics
+            game_time: Game time
+
+        Returns:
+            Tuple of (predicted_winner_type, win_probability, metadata) or None if ML prediction fails
+        """
+        try:
+            # Get the ML model service
+            ml_service = get_mlb_model_service()
+
+            if not ml_service.is_available:
+                return None
+
+            # Prepare features for ML model
+            features = self._prepare_ml_features(
+                session, home_team, away_team, home_analytics, away_analytics, game_time
+            )
+
+            if not features:
+                return None
+
+            # Get prediction from ML model
+            prediction_result = ml_service.predict(features)
+
+            if not prediction_result:
+                return None
+
+            predicted_winner_type, win_probability, metadata = prediction_result
+
+            # Only use ML prediction if confidence is sufficient
+            if metadata.get('use_ml_prediction', False):
+                return predicted_winner_type, win_probability, metadata
+            else:
+                return None
+
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"ML prediction failed: {e}")
+            return None
+
+    def _prepare_ml_features(
+        self,
+        session: Session,
+        home_team: MLBTeam,
+        away_team: MLBTeam,
+        home_analytics: TeamAnalytics,
+        away_analytics: TeamAnalytics,
+        game_time: datetime
+    ) -> Optional[Dict[str, float]]:
+        """
+        Prepare features for ML model prediction.
+
+        Args:
+            session: Database session
+            home_team: Home team record
+            away_team: Away team record
+            home_analytics: Home team analytics
+            away_analytics: Away team analytics
+            game_time: Game time
+
+        Returns:
+            Dictionary of features or None if features cannot be prepared
+        """
+        try:
+            # Get recent games for rolling stats (already calculated in analytics)
+            home_recent_games = self._get_recent_team_games(session, home_team.id, game_time)
+            away_recent_games = self._get_recent_team_games(session, away_team.id, game_time)
+
+            # Calculate rolling runs scored/allowed
+            home_rolling_runs_scored = home_recent_games['home_score'].where(
+                home_recent_games['home_team_id'] == home_team.id,
+                home_recent_games['away_score']
+            ).head(10).mean() if not home_recent_games.empty else 0.0
+
+            home_rolling_runs_allowed = home_recent_games['away_score'].where(
+                home_recent_games['home_team_id'] == home_team.id,
+                home_recent_games['home_score']
+            ).head(10).mean() if not home_recent_games.empty else 0.0
+
+            away_rolling_runs_scored = away_recent_games['home_score'].where(
+                away_recent_games['home_team_id'] == away_team.id,
+                away_recent_games['away_score']
+            ).head(10).mean() if not away_recent_games.empty else 0.0
+
+            away_rolling_runs_allowed = away_recent_games['away_score'].where(
+                away_recent_games['home_team_id'] == away_team.id,
+                away_recent_games['home_score']
+            ).head(10).mean() if not away_recent_games.empty else 0.0
+
+            # Get head-to-head stats
+            h2h_stats = self._get_head_to_head_stats(session, home_team.id, away_team.id, game_time)
+
+            # Get recent offensive/defensive stats
+            home_offensive = session.query(MLBOffensiveStats).filter(
+                MLBOffensiveStats.team_id == home_team.id,
+                MLBOffensiveStats.date <= game_time.date()
+            ).order_by(MLBOffensiveStats.date.desc()).first()
+
+            away_offensive = session.query(MLBOffensiveStats).filter(
+                MLBOffensiveStats.team_id == away_team.id,
+                MLBOffensiveStats.date <= game_time.date()
+            ).order_by(MLBOffensiveStats.date.desc()).first()
+
+            home_defensive = session.query(MLBDefensiveStats).filter(
+                MLBDefensiveStats.team_id == home_team.id,
+                MLBDefensiveStats.date <= game_time.date()
+            ).order_by(MLBDefensiveStats.date.desc()).first()
+
+            away_defensive = session.query(MLBDefensiveStats).filter(
+                MLBDefensiveStats.team_id == away_team.id,
+                MLBDefensiveStats.date <= game_time.date()
+            ).order_by(MLBDefensiveStats.date.desc()).first()
+
+            # Prepare feature dictionary
+            features = {
+                'home_rolling_win_pct': home_analytics.rolling_win_percentage or 0.0,
+                'away_rolling_win_pct': away_analytics.rolling_win_percentage or 0.0,
+                'home_rolling_runs_scored': float(home_rolling_runs_scored),
+                'away_rolling_runs_scored': float(away_rolling_runs_scored),
+                'home_rolling_runs_allowed': float(home_rolling_runs_allowed),
+                'away_rolling_runs_allowed': float(away_rolling_runs_allowed),
+                'home_days_rest': float(home_analytics.days_rest or 1),
+                'away_days_rest': float(away_analytics.days_rest or 1),
+                'home_batting_avg': float(home_offensive.team_batting_average if home_offensive else 0.25),
+                'away_batting_avg': float(away_offensive.team_batting_average if away_offensive else 0.25),
+                'home_obp': float(home_offensive.on_base_percentage if home_offensive else 0.32),
+                'away_obp': float(away_offensive.on_base_percentage if away_offensive else 0.32),
+                'home_slg': float(home_offensive.slugging_percentage if home_offensive else 0.4),
+                'away_slg': float(away_offensive.slugging_percentage if away_offensive else 0.4),
+                'home_era': float(home_defensive.team_era if home_defensive else 4.5),
+                'away_era': float(away_defensive.team_era if away_defensive else 4.5),
+                'home_whip': float(home_defensive.whip if home_defensive else 1.35),
+                'away_whip': float(away_defensive.whip if away_defensive else 1.35),
+                'home_strikeouts': float(home_defensive.strikeouts if home_defensive else 150),
+                'away_strikeouts': float(away_defensive.strikeouts if away_defensive else 150),
+                'h2h_home_win_pct': h2h_stats['home_win_pct'],
+                'h2h_away_win_pct': h2h_stats['away_win_pct'],
+                'h2h_games_played': float(h2h_stats['games_played']),
+                'month': float(game_time.month),
+                'day_of_week': float(game_time.weekday()),
+                'is_weekend': float(1 if game_time.weekday() >= 5 else 0)
+            }
+
+            return features
+
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Feature preparation failed: {e}")
+            return None
+
+    def _get_head_to_head_stats(
+        self,
+        session: Session,
+        home_team_id: int,
+        away_team_id: int,
+        game_time: datetime,
+        window: int = 5
+    ) -> Dict[str, float]:
+        """Get head-to-head statistics between two teams."""
+        h2h_games = session.query(MLBSchedule).filter(
+            (
+                ((MLBSchedule.home_team_id == home_team_id) & (MLBSchedule.away_team_id == away_team_id)) |
+                ((MLBSchedule.home_team_id == away_team_id) & (MLBSchedule.away_team_id == home_team_id))
+            ),
+            MLBSchedule.date < game_time.date(),
+            MLBSchedule.status == 'Final'
+        ).order_by(MLBSchedule.date.desc()).limit(window).all()
+
+        if not h2h_games:
+            return {'home_win_pct': 0.0, 'away_win_pct': 0.0, 'games_played': 0}
+
+        home_wins = sum(
+            1 for game in h2h_games
+            if (game.home_team_id == home_team_id and game.home_score > game.away_score) or
+               (game.away_team_id == home_team_id and game.away_score > game.home_score)
+        )
+
+        games_played = len(h2h_games)
+
+        return {
+            'home_win_pct': round(home_wins / games_played, 3),
+            'away_win_pct': round((games_played - home_wins) / games_played, 3),
+            'games_played': games_played
+        }
+
+    def _make_rule_based_prediction(
+        self,
+        home_analytics: TeamAnalytics,
         away_analytics: TeamAnalytics
     ) -> Tuple[str, float, str, Dict[str, str]]:
         """
@@ -467,7 +701,8 @@ class EnhancedMLBAnalytics:
             away_team=away_team_name,
             predicted_winner=predicted_winner,
             win_probability=win_probability,
-            confidence_level="Low"
+            confidence_level="Low",
+            prediction_method="rule_based"
         )
 
 

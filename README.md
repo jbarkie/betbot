@@ -19,6 +19,7 @@ BetBot is a full-stack sports betting application that allows users to view and 
 This guide assumes you have Python 3.x, Node.js, Docker Desktop, and Git installed.
 
 1. **Clone and setup virtual environment**
+
    ```bash
    git clone https://github.com/jbarkie/betbot.git
    cd betbot
@@ -27,6 +28,7 @@ This guide assumes you have Python 3.x, Node.js, Docker Desktop, and Git install
    ```
 
 2. **Install dependencies**
+
    ```bash
    # Backend
    pip install -r api/requirements.txt
@@ -36,6 +38,7 @@ This guide assumes you have Python 3.x, Node.js, Docker Desktop, and Git install
    ```
 
 3. **Start PostgreSQL database**
+
    ```bash
    cd env
    docker-compose up -d
@@ -43,15 +46,18 @@ This guide assumes you have Python 3.x, Node.js, Docker Desktop, and Git install
    ```
 
 4. **Configure environment variables**
+
    - Create `api/.env` file (see Backend Installation section for details)
    - Add your Odds API key, database URL, and JWT secret key
 
 5. **Run database migrations**
+
    ```bash
    alembic upgrade head
    ```
 
 6. **Start the application**
+
    ```bash
    # Terminal 1 - Backend API
    python3 -m api.src.main
@@ -61,6 +67,7 @@ This guide assumes you have Python 3.x, Node.js, Docker Desktop, and Git install
    ```
 
 7. **Optional: Update MLB data and train ML model**
+
    ```bash
    # Update MLB data (takes 5-10 minutes)
    python machine_learning/scripts/update_mlb_data.py --verbose
@@ -87,7 +94,7 @@ The backend API is responsible for user authentication, fetching the latest odds
 - Docker & Docker Compose
 - pytest & pytest-asyncio
 - bcrypt
-- JWT (python-jose)
+- JWT
 - python-dotenv
 - scikit-learn
 - pandas
@@ -96,21 +103,25 @@ The backend API is responsible for user authentication, fetching the latest odds
 ### API Endpoints
 
 #### Authentication
+
 - `POST /login`: Authenticates an existing user and returns a JWT token
 - `POST /register`: Register a new user account
 - `GET /users/me`: Returns the currently authenticated user
 
 #### Sports Odds
+
 - `GET /nba/games?date={yyyy-mm-dd}`: Returns NBA games and odds for a given date
 - `GET /mlb/games?date={yyyy-mm-dd}`: Returns MLB games and odds for a given date
 - `GET /nfl/games?date={yyyy-mm-dd}`: Returns NFL games and odds for a given date
 - `GET /nhl/games?date={yyyy-mm-dd}`: Returns NHL games and odds for a given date
 
 #### MLB Analytics (Machine Learning)
+
 - `GET /analytics/mlb/game?id={game_id}`: Returns comprehensive analytics and ML prediction for a specific MLB game
 - `GET /analytics/mlb/model-info`: Returns information about the currently loaded ML model (version, accuracy, features)
 
 #### User Settings
+
 - `GET /settings`: Returns current user settings
 - `PATCH /settings`: Update user settings (e.g., email notifications)
 
@@ -171,23 +182,26 @@ The PostgreSQL database includes the following key tables:
    ACCESS_TOKEN_EXPIRE_MINUTES = 30
    ```
 
-9. Run database migrations to create all tables:
+8. Run database migrations to create all tables:
+
    ```bash
    # From the root betbot directory
    alembic upgrade head
    ```
 
-10. From the root `betbot` directory, run the API server: `python3 -m api.src.main`
+9. From the root `betbot` directory, run the API server: `python3 -m api.src.main`
 
 ### Running Tests
 
 From the root `betbot` directory, run the API tests and generate a coverage report:
+
 ```bash
 cd api/tests
 coverage run -m pytest && coverage report -m
 ```
 
 To run a specific test:
+
 ```bash
 pytest api/tests/test_specific_file.py::test_specific_function
 ```
@@ -323,6 +337,7 @@ python machine_learning/scripts/train_mlb_model.py \
 ```
 
 **Requirements**:
+
 - Minimum 100 completed games in the database
 - Recent offensive and defensive stats for all teams
 - Virtual environment with scikit-learn, pandas, joblib installed
@@ -361,6 +376,7 @@ The API serves ML predictions through the `/analytics/mlb/game?id={game_id}` end
 6. Response includes `prediction_method` field ("machine_learning" or "rule_based")
 
 **Key Files**:
+
 - `api/src/ml_model_service.py` - Model loading and serving (singleton pattern)
 - `api/src/ml_config.py` - Model paths, versions, feature definitions
 - `api/src/enhanced_mlb_analytics.py` - ML integration with analytics

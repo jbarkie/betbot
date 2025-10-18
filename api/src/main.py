@@ -1,7 +1,8 @@
 from dotenv import load_dotenv
 
 from api.src.mlb_analytics import get_mlb_game_analytics
-from api.src.models.mlb_analytics import MlbAnalyticsResponse
+from api.src.models.mlb_analytics import MlbAnalyticsResponse, ModelInfoResponse
+from api.src.ml_model_service import get_mlb_model_service
 from api.src.models.settings import SettingsRequest, SettingsResponse
 from api.src.settings import get_user_settings, update_user_settings
 load_dotenv()
@@ -101,6 +102,25 @@ async def mlb_game_analytics(
     id: str = Query(..., description="Game ID")
 ):
     return await get_mlb_game_analytics(id)
+
+@app.get("/analytics/mlb/model-info", response_model=ModelInfoResponse)
+async def mlb_model_info(
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)]
+):
+    """
+    Get information about the current ML model being used for predictions.
+
+    Returns model metadata including:
+    - Model type and version
+    - Training date
+    - Performance metrics
+    - Feature count
+    - Load status
+    """
+    ml_service = get_mlb_model_service()
+    model_info = ml_service.get_model_info()
+
+    return ModelInfoResponse(**model_info)
 
 def main():
     configure(app)

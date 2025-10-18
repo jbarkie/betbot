@@ -6,3 +6,12 @@ __pycache__
 .coverage
 .env
 resources
+
+# Machine learning models (track metadata only, not binary files)
+*.pkl
+*.joblib
+*.h5
+machine_learning/models/**/*.pkl
+machine_learning/models/**/*.joblib
+!machine_learning/models/**/*.json
+!machine_learning/models/**/*.md

@@ -1,0 +1,3 @@
+# This directory stores trained MLB prediction models
+# Model files (*.pkl, *.joblib) are gitignored
+# Only metadata files (*.json) are tracked

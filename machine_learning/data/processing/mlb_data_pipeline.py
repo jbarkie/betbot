@@ -55,11 +55,19 @@ class MLBDataPipeline:
             DataFrame containing training data for the specified date range.
         """
 
+        # Ensure date columns are pandas datetime for proper comparisons
+        schedule_df = schedule_df.copy()
+        schedule_df['date'] = pd.to_datetime(schedule_df['date'])
+        offensive_stats_df = offensive_stats_df.copy()
+        offensive_stats_df['date'] = pd.to_datetime(offensive_stats_df['date'])
+        defensive_stats_df = defensive_stats_df.copy()
+        defensive_stats_df['date'] = pd.to_datetime(defensive_stats_df['date'])
+
         rolling_stats = self.time_series_analyzer.calculate_rolling_stats(schedule_df, teams_df)
 
         training_games = schedule_df[
-            (schedule_df['date'] >= start_date) & 
-            (schedule_df['date'] <= end_date) &
+            (schedule_df['date'] >= pd.Timestamp(start_date)) &
+            (schedule_df['date'] <= pd.Timestamp(end_date)) &
             (schedule_df['status'] == 'Final')
         ].copy()
 
@@ -67,7 +75,7 @@ class MLBDataPipeline:
         for _, game in training_games.iterrows():
             home_team_id = game['home_team_id']
             away_team_id = game['away_team_id']
-            game_date = game['date']
+            game_date = game['date']  # Already a Timestamp after pd.to_datetime conversion
             game_id = game.get('game_id', None)
 
             features = self.feature_generator.generate_game_features(

@@ -19,3 +19,7 @@ python-multipart
 bcrypt
 pyjwt
 python-dotenv
+joblib
+scikit-learn
+pandas
+numpy

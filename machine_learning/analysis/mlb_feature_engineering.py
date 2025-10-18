@@ -247,7 +247,7 @@ class GameFeatureGenerator:
         return stats
     
     def _generate_temporal_features(
-        self, 
+        self,
         game_date: datetime
     ) -> Dict[str, float]:
         """
@@ -259,9 +259,18 @@ class GameFeatureGenerator:
         Returns:
             Dictionary containing temporal features.
         """
+        # Ensure game_date is datetime-like for attribute access
+        import pandas as pd
+        if isinstance(game_date, pd.Timestamp):
+            dt = game_date
+        elif hasattr(game_date, 'to_pydatetime'):
+            dt = game_date.to_pydatetime()
+        else:
+            dt = game_date
+
         return {
-            "month": game_date.month,
+            "month": dt.month,
             # day of week represented by int with value in range of 0-6 (0 being Monday, 6 being Sunday)
-            "day_of_week": game_date.weekday(),
-            "is_weekend": int(game_date.weekday() >= 5)
+            "day_of_week": dt.weekday(),
+            "is_weekend": int(dt.weekday() >= 5)
         }

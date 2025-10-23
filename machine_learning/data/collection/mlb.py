@@ -61,7 +61,7 @@ def fetch_team_records(mlb, session, season):
 
 def fetch_team_stats(mlb, session, start_date, end_date):
     teams = session.query(MLBTeam).all()
-    
+
     # Only process dates where games were actually played
     game_dates = session.query(MLBSchedule.date)\
         .filter(MLBSchedule.date.between(start_date, end_date))\
@@ -69,51 +69,57 @@ def fetch_team_stats(mlb, session, start_date, end_date):
         .distinct()\
         .order_by(MLBSchedule.date)\
         .all()
-    
+
     game_dates = [date[0] for date in game_dates]
-    
+
     if not game_dates:
         logging.info(f'No completed games found between {start_date} and {end_date}')
         return
-    
-    logging.info(f'Processing team stats for {len(game_dates)} game dates')
-    
-    for current_date in game_dates:
-        logging.info(f'Fetching team stats for {current_date}')
-        
-        for team in teams:
-            try:
-                offensive_stats = mlb.get_team_stats(
-                    team.id, 
-                    stats=['season'], 
-                    groups=['hitting'], 
-                    start_date=start_date, 
-                    end_date=current_date
-                )
-            except Exception as e:
-                logging.warning(f"Failed to fetch offensive stats for team {team.id} on {current_date}: {e}")
-                offensive_stats = {'hitting': {'season': {'splits': []}}}
-            
-            try:
-                defensive_stats = mlb.get_team_stats(
-                    team.id, 
-                    stats=['season'], 
-                    groups=['pitching'], 
-                    start_date=start_date, 
-                    end_date=current_date
-                )
-            except Exception as e:
-                logging.warning(f"Failed to fetch defensive stats for team {team.id} on {current_date}: {e}")
-                defensive_stats = {'pitching': {'season': {'splits': []}}}
 
-            if offensive_stats['hitting']['season']['splits']:
-                hitting_stats = offensive_stats['hitting']['season']['splits'][0]['stat']
-                
-                existing_offensive = session.query(MLBOffensiveStats)\
-                    .filter_by(team_id=team.id, date=current_date)\
-                    .first()
-                
-                if not existing_offensive:
+    # Query existing statistics upfront to avoid redundant API calls
+    existing_offensive = set(
+        session.query(MLBOffensiveStats.team_id, MLBOffensiveStats.date)
+        .filter(MLBOffensiveStats.date.between(start_date, end_date))
+        .all()
+    )
+
+    existing_defensive = set(
+        session.query(MLBDefensiveStats.team_id, MLBDefensiveStats.date)
+        .filter(MLBDefensiveStats.date.between(start_date, end_date))
+        .all()
+    )
+
+    logging.info(f'Processing team stats for {len(game_dates)} game dates')
+    logging.info(f'Found {len(existing_offensive)} existing offensive stat records')
+    logging.info(f'Found {len(existing_defensive)} existing defensive stat records')
+
+    stats_fetched = {'offensive': 0, 'defensive': 0}
+    stats_skipped = {'offensive': 0, 'defensive': 0}
+
+    for current_date in game_dates:
+        logging.info(f'Processing team stats for {current_date}')
+
+        for team in teams:
+            # Check if offensive stats already exist before making API call
+            if (team.id, current_date) in existing_offensive:
+                logging.debug(f'Skipping offensive stats for team {team.id} on {current_date} - already exists')
+                stats_skipped['offensive'] += 1
+            else:
+                try:
+                    offensive_stats = mlb.get_team_stats(
+                        team.id,
+                        stats=['season'],
+                        groups=['hitting'],
+                        start_date=start_date,
+                        end_date=current_date
+                    )
+                except Exception as e:
+                    logging.warning(f"Failed to fetch offensive stats for team {team.id} on {current_date}: {e}")
+                    offensive_stats = {'hitting': {'season': {'splits': []}}}
+
+                if offensive_stats['hitting']['season']['splits']:
+                    hitting_stats = offensive_stats['hitting']['season']['splits'][0]['stat']
+
                     # Handle API compatibility issues by safely accessing stats
                     try:
                         db_offensive_stats = MLBOffensiveStats(
@@ -126,18 +132,31 @@ def fetch_team_stats(mlb, session, start_date, end_date):
                             slugging_percentage=hitting_stats.get('slg', 0.0)
                         )
                         session.add(db_offensive_stats)
+                        stats_fetched['offensive'] += 1
                     except Exception as e:
                         logging.warning(f"Failed to process offensive stats for team {team.id} on {current_date}: {e}")
                         continue
 
-            if defensive_stats['pitching']['season']['splits']:
-                pitching_stats = defensive_stats['pitching']['season']['splits'][0]['stat']
-                
-                existing_defensive = session.query(MLBDefensiveStats)\
-                    .filter_by(team_id=team.id, date=current_date)\
-                    .first()
-                
-                if not existing_defensive:
+            # Check if defensive stats already exist before making API call
+            if (team.id, current_date) in existing_defensive:
+                logging.debug(f'Skipping defensive stats for team {team.id} on {current_date} - already exists')
+                stats_skipped['defensive'] += 1
+            else:
+                try:
+                    defensive_stats = mlb.get_team_stats(
+                        team.id,
+                        stats=['season'],
+                        groups=['pitching'],
+                        start_date=start_date,
+                        end_date=current_date
+                    )
+                except Exception as e:
+                    logging.warning(f"Failed to fetch defensive stats for team {team.id} on {current_date}: {e}")
+                    defensive_stats = {'pitching': {'season': {'splits': []}}}
+
+                if defensive_stats['pitching']['season']['splits']:
+                    pitching_stats = defensive_stats['pitching']['season']['splits'][0]['stat']
+
                     # Handle API compatibility issues by safely accessing stats
                     try:
                         db_defensive_stats = MLBDefensiveStats(
@@ -150,11 +169,18 @@ def fetch_team_stats(mlb, session, start_date, end_date):
                             avg_against=pitching_stats.get('avg', 0.0)
                         )
                         session.add(db_defensive_stats)
+                        stats_fetched['defensive'] += 1
                     except Exception as e:
                         logging.warning(f"Failed to process defensive stats for team {team.id} on {current_date}: {e}")
                         continue
-        
+
+
         session.commit()
+
+    # Log summary of stats processing
+    logging.info(f'Stats fetching summary:')
+    logging.info(f'  Offensive stats - Fetched: {stats_fetched["offensive"]}, Skipped: {stats_skipped["offensive"]}')
+    logging.info(f'  Defensive stats - Fetched: {stats_fetched["defensive"]}, Skipped: {stats_skipped["defensive"]}')
 
 def fetch_schedule(mlb, session, start_date, end_date):
     schedule = mlb.get_schedule(start_date=start_date, end_date=end_date, sport_id=1)

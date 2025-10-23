@@ -153,14 +153,14 @@ class MLBDirectAPI:
 
 
 def fetch_team_stats_direct(
-    session: Session, 
-    start_date: str, 
+    session: Session,
+    start_date: str,
     end_date: str,
     api_client: MLBDirectAPI = None
 ) -> None:
     """
     Fetch team statistics using direct API calls.
-    
+
     Args:
         session: Database session
         start_date: Start date in YYYY-MM-DD format
@@ -168,12 +168,12 @@ def fetch_team_stats_direct(
         api_client: Optional API client instance
     """
     from ..models.mlb_models import MLBTeam, MLBSchedule
-    
+
     if api_client is None:
         api_client = MLBDirectAPI()
-    
+
     teams = session.query(MLBTeam).all()
-    
+
     # Only process dates where games were actually played
     game_dates = session.query(MLBSchedule.date)\
         .filter(MLBSchedule.date.between(start_date, end_date))\
@@ -181,33 +181,50 @@ def fetch_team_stats_direct(
         .distinct()\
         .order_by(MLBSchedule.date)\
         .all()
-    
+
     game_dates = [date[0] for date in game_dates]
-    
+
     if not game_dates:
         logging.info(f'No completed games found between {start_date} and {end_date}')
         return
-    
+
+    # Query existing statistics upfront to avoid redundant API calls
+    existing_offensive = set(
+        session.query(MLBOffensiveStats.team_id, MLBOffensiveStats.date)
+        .filter(MLBOffensiveStats.date.between(start_date, end_date))
+        .all()
+    )
+
+    existing_defensive = set(
+        session.query(MLBDefensiveStats.team_id, MLBDefensiveStats.date)
+        .filter(MLBDefensiveStats.date.between(start_date, end_date))
+        .all()
+    )
+
     logging.info(f'Processing team stats for {len(game_dates)} game dates using direct API')
-    
+    logging.info(f'Found {len(existing_offensive)} existing offensive stat records')
+    logging.info(f'Found {len(existing_defensive)} existing defensive stat records')
+
+    stats_fetched = {'offensive': 0, 'defensive': 0}
+    stats_skipped = {'offensive': 0, 'defensive': 0}
+
     for current_date in game_dates:
-        logging.info(f'Fetching team stats for {current_date}')
-        
+        logging.info(f'Processing team stats for {current_date}')
+
         for team in teams:
-            # Fetch hitting stats
-            hitting_data = api_client.get_team_hitting_stats(
-                team.id, start_date, current_date.strftime('%Y-%m-%d')
-            )
-            
-            if hitting_data:
-                hitting_stats = api_client.extract_hitting_stats(hitting_data)
-                if hitting_stats:
-                    # Check if we already have this data
-                    existing_offensive = session.query(MLBOffensiveStats)\
-                        .filter_by(team_id=team.id, date=current_date)\
-                        .first()
-                    
-                    if not existing_offensive:
+            # Check if offensive stats already exist before making API call
+            if (team.id, current_date) in existing_offensive:
+                logging.debug(f'Skipping offensive stats for team {team.id} on {current_date} - already exists')
+                stats_skipped['offensive'] += 1
+            else:
+                # Fetch hitting stats
+                hitting_data = api_client.get_team_hitting_stats(
+                    team.id, start_date, current_date.strftime('%Y-%m-%d')
+                )
+
+                if hitting_data:
+                    hitting_stats = api_client.extract_hitting_stats(hitting_data)
+                    if hitting_stats:
                         try:
                             db_offensive_stats = MLBOffensiveStats(
                                 team_id=team.id,
@@ -219,28 +236,28 @@ def fetch_team_stats_direct(
                                 slugging_percentage=float(hitting_stats.get('slg', 0.0))
                             )
                             session.add(db_offensive_stats)
+                            stats_fetched['offensive'] += 1
                             logging.debug(f'Added offensive stats for team {team.id} on {current_date}')
                         except (ValueError, TypeError) as e:
                             logging.warning(f'Failed to process offensive stats for team {team.id} on {current_date}: {e}')
+                    else:
+                        logging.warning(f'No hitting stats found for team {team.id} on {current_date}')
                 else:
-                    logging.warning(f'No hitting stats found for team {team.id} on {current_date}')
+                    logging.warning(f'Failed to fetch hitting data for team {team.id} on {current_date}')
+
+            # Check if defensive stats already exist before making API call
+            if (team.id, current_date) in existing_defensive:
+                logging.debug(f'Skipping defensive stats for team {team.id} on {current_date} - already exists')
+                stats_skipped['defensive'] += 1
             else:
-                logging.warning(f'Failed to fetch hitting data for team {team.id} on {current_date}')
-            
-            # Fetch pitching stats
-            pitching_data = api_client.get_team_pitching_stats(
-                team.id, start_date, current_date.strftime('%Y-%m-%d')
-            )
-            
-            if pitching_data:
-                pitching_stats = api_client.extract_pitching_stats(pitching_data)
-                if pitching_stats:
-                    # Check if we already have this data
-                    existing_defensive = session.query(MLBDefensiveStats)\
-                        .filter_by(team_id=team.id, date=current_date)\
-                        .first()
-                    
-                    if not existing_defensive:
+                # Fetch pitching stats
+                pitching_data = api_client.get_team_pitching_stats(
+                    team.id, start_date, current_date.strftime('%Y-%m-%d')
+                )
+
+                if pitching_data:
+                    pitching_stats = api_client.extract_pitching_stats(pitching_data)
+                    if pitching_stats:
                         try:
                             db_defensive_stats = MLBDefensiveStats(
                                 team_id=team.id,
@@ -252,17 +269,23 @@ def fetch_team_stats_direct(
                                 avg_against=float(pitching_stats.get('avg', 0.0))
                             )
                             session.add(db_defensive_stats)
+                            stats_fetched['defensive'] += 1
                             logging.debug(f'Added defensive stats for team {team.id} on {current_date}')
                         except (ValueError, TypeError) as e:
                             logging.warning(f'Failed to process defensive stats for team {team.id} on {current_date}: {e}')
+                    else:
+                        logging.warning(f'No pitching stats found for team {team.id} on {current_date}')
                 else:
-                    logging.warning(f'No pitching stats found for team {team.id} on {current_date}')
-            else:
-                logging.warning(f'Failed to fetch pitching data for team {team.id} on {current_date}')
+                    logging.warning(f'Failed to fetch pitching data for team {team.id} on {current_date}')
         
         # Commit after each date to avoid large transactions
         session.commit()
         logging.info(f'Committed stats for {current_date}')
+
+    # Log summary of stats processing
+    logging.info(f'Stats fetching summary:')
+    logging.info(f'  Offensive stats - Fetched: {stats_fetched["offensive"]}, Skipped: {stats_skipped["offensive"]}')
+    logging.info(f'  Defensive stats - Fetched: {stats_fetched["defensive"]}, Skipped: {stats_skipped["defensive"]}')
 
 
 def test_direct_api():

@@ -64,22 +64,6 @@ describe('AnalyticsModalComponent', () => {
     expect(closeSpy).toHaveBeenCalled();
   });
 
-  describe('prediction method badge', () => {
-    it('should show "ML" badge for machine_learning predictions', () => {
-      const fixture = createFixture(mlAnalytics);
-      const badge = fixture.nativeElement.querySelector('[data-testid="prediction-badge"]');
-      expect(badge.textContent.trim()).toBe('ML');
-      expect(badge.classList).toContain('badge-primary');
-    });
-
-    it('should show "Rule-based" badge for rule_based predictions', () => {
-      const fixture = createFixture(ruleBasedAnalytics);
-      const badge = fixture.nativeElement.querySelector('[data-testid="prediction-badge"]');
-      expect(badge.textContent.trim()).toBe('Rule-based');
-      expect(badge.classList).toContain('badge-ghost');
-    });
-  });
-
   describe('win probability display', () => {
     it('should display home and away win percentages from ML response', () => {
       const fixture = createFixture(mlAnalytics);

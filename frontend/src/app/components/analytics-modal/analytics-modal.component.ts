@@ -8,17 +8,7 @@ import { AnalyticsResponse } from '../models';
   imports: [CommonModule],
   template: `
     <div class="modal-box w-11/12 max-w-2xl">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-bold text-lg">Game Analytics</h3>
-        <span
-          class="badge badge-sm"
-          [class.badge-primary]="analytics().prediction_method === 'machine_learning'"
-          [class.badge-ghost]="analytics().prediction_method !== 'machine_learning'"
-          data-testid="prediction-badge"
-        >
-          {{ analytics().prediction_method === 'machine_learning' ? 'ML' : 'Rule-based' }}
-        </span>
-      </div>
+      <h3 class="font-bold text-lg mb-4">Game Analytics</h3>
 
       <div class="space-y-4">
         <!-- Game Info -->

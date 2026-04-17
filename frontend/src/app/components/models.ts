@@ -56,10 +56,30 @@ export type AnalyticsRequest = {
   gameId: string;
 };
 
+export type TeamAnalytics = {
+  name: string;
+  winning_percentage: number;
+  rolling_win_percentage?: number;
+  offensive_rating?: number;
+  defensive_rating?: number;
+  days_rest?: number;
+  momentum_score?: number;
+};
+
 export type AnalyticsResponse = {
   id: string;
   home_team: string;
   away_team: string;
   predicted_winner: string;
   win_probability: number;
+  home_analytics?: TeamAnalytics;
+  away_analytics?: TeamAnalytics;
+  key_factors?: Record<string, string>;
+  confidence_level?: string;
+  ml_model_name?: string;
+  ml_confidence?: string;
+  home_win_probability?: number;
+  away_win_probability?: number;
+  prediction_method?: 'machine_learning' | 'rule_based';
+  feature_importance?: Record<string, number>;
 };

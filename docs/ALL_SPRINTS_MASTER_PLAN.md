@@ -32,6 +32,7 @@
 - [ ] **Rate limiting** — Add per-user rate limiting to external Odds API proxy endpoints
 - [ ] **OpenAPI docs UI** — Enable Swagger UI behind auth in production
 - [ ] **Alembic migration CI check** — Fail CI if unapplied migrations exist on branch
+- [ ] **Stale data behavior investigation** — When DB data is stale, the API still returns analytics for today's games using last-known team stats. Determine whether this is expected behavior or should surface a warning/error when data is older than N days
 
 ---
 
@@ -39,13 +40,16 @@
 
 | Sprint | Dates | Goal | Outcome |
 |--------|-------|------|---------|
-| —      | —     | No sprints yet | — |
+| Sprint 1 | 2026-04-16 | Surface ML win probabilities in the game cards analytics modal | PR #17 open — pending retro |
 
 ---
 
 ## Lessons Learned (Running Log)
 
-_Updated after each retrospective._
+**Sprint 1 (2026-04-17)**
+- Specify which component owns state in AC: container components own loading/error; presentational components own display-only states
+- `data-testid` attributes make tests more resilient to CSS changes — use them for test-facing elements
+- `gh pr edit` is broken in this environment due to GitHub Projects (classic) deprecation; use `gh api repos/{owner}/{repo}/pulls/{n}` instead
 
 ---
 

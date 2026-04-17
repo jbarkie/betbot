@@ -21,4 +21,8 @@ export class AnalyticsService {
     }/${sport.toLowerCase()}/game?id=${request.gameId}`;
     return this.httpClient.get<AnalyticsResponse>(analyticsUrlForGame);
   }
+
+  getMLBAnalytics(gameId: string): Observable<AnalyticsResponse> {
+    return this.analyze({ gameId }, 'MLB');
+  }
 }

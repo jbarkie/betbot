@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AnalyticsResponse } from '../models';
 
@@ -22,40 +22,49 @@ import { AnalyticsResponse } from '../models';
         <!-- Prediction -->
         <div class="bg-base-200 p-4 rounded-lg">
           <h4 class="font-semibold text-base mb-2">Prediction</h4>
-          <div class="text-center">
-            <p class="text-lg font-bold text-primary">
-              {{ analytics().predicted_winner }}
-            </p>
-            <p class="text-sm text-base-content/70">
-              Win Probability:
-              {{ (analytics().win_probability * 100).toFixed(1) }}%
-            </p>
-          </div>
+          <p class="text-lg font-bold text-primary text-center">
+            {{ analytics().predicted_winner }}
+          </p>
         </div>
 
-        <!-- Probability Bar -->
+        <!-- Win Probability Bar -->
         <div class="bg-base-200 p-4 rounded-lg">
-          <h4 class="font-semibold text-base mb-2">Win Probability</h4>
-          <div class="w-full bg-base-300 rounded-full h-4">
+          <h4 class="font-semibold text-base mb-3">Win Probability</h4>
+          <div class="flex justify-between text-sm font-medium mb-1">
+            <span data-testid="away-win-pct">
+              {{ awayPct() }}%
+            </span>
+            <span data-testid="home-win-pct">
+              {{ homePct() }}%
+            </span>
+          </div>
+          <div class="w-full bg-base-300 rounded-full h-4 flex overflow-hidden">
             <div
-              class="bg-primary h-4 rounded-full transition-all duration-500"
-              [style.width.%]="analytics().win_probability * 100"
+              class="bg-secondary h-4 transition-all duration-500"
+              [style.width.%]="awayPct()"
+            ></div>
+            <div
+              class="bg-primary h-4 transition-all duration-500"
+              [style.width.%]="homePct()"
             ></div>
           </div>
-          <div class="flex justify-between text-xs mt-1">
+          <div class="flex justify-between text-xs mt-1 text-base-content/70">
             <span>{{ analytics().away_team }}</span>
             <span>{{ analytics().home_team }}</span>
           </div>
         </div>
 
-        <!-- Additional Insights Placeholder -->
-        <div class="bg-base-200 p-4 rounded-lg">
-          <h4 class="font-semibold text-base mb-2">Insights</h4>
-          <p class="text-sm text-base-content/70">
-            Based on historical performance, team statistics, and current form
-            analysis.
-          </p>
-        </div>
+        <!-- Key Factors -->
+        @if (analytics().key_factors) {
+          <div class="bg-base-200 p-4 rounded-lg">
+            <h4 class="font-semibold text-base mb-2">Key Factors</h4>
+            <ul class="space-y-1">
+              @for (entry of keyFactorEntries(); track entry[0]) {
+                <li class="text-sm text-base-content/70">{{ entry[1] }}</li>
+              }
+            </ul>
+          </div>
+        }
       </div>
 
       <div class="modal-action">
@@ -68,4 +77,26 @@ import { AnalyticsResponse } from '../models';
 export class AnalyticsModalComponent {
   analytics = input.required<AnalyticsResponse>();
   close = output<void>();
+
+  homePct = computed(() => {
+    const a = this.analytics();
+    if (a.home_win_probability !== undefined) {
+      return (a.home_win_probability * 100).toFixed(1);
+    }
+    const prob = a.predicted_winner === a.home_team ? a.win_probability : 1 - a.win_probability;
+    return (prob * 100).toFixed(1);
+  });
+
+  awayPct = computed(() => {
+    const a = this.analytics();
+    if (a.away_win_probability !== undefined) {
+      return (a.away_win_probability * 100).toFixed(1);
+    }
+    const prob = a.predicted_winner === a.away_team ? a.win_probability : 1 - a.win_probability;
+    return (prob * 100).toFixed(1);
+  });
+
+  keyFactorEntries = computed(() =>
+    Object.entries(this.analytics().key_factors ?? {})
+  );
 }

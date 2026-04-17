@@ -158,3 +158,23 @@ session.close()
 5. **Sklearn Versions:** Training and API must use the same scikit-learn version — mismatches cause unpickling errors
 6. **ML Models:** `.joblib` files are gitignored; API falls back to rule-based predictions if model unavailable
 7. **Frontend Linting:** No `npm run lint` script; ESLint runs on save via editor (`.vscode/settings.json`); use `ng build` for type checking
+
+## Sprint Workflow
+
+All development follows a sprint-based Agile/Scrum workflow.
+
+**Startup**: Run `/sprint status` at the start of every session to restore sprint context.
+
+**Branch Policy**:
+- Feature branches: `feature/YYYYMMDD_Sprint_N`
+- All PRs target **main**
+- Never commit directly to main
+
+**Sprint Authority**:
+- Once a sprint plan is approved in Phase 3, all tasks are pre-authorized
+- Only stop for sprint stopping criteria
+
+**Key Documents**:
+- `docs/ALL_SPRINTS_MASTER_PLAN.md` — Authoritative backlog and sprint history
+- `docs/retrospectives/` — Per-sprint retrospective files
+- `.claude/sprint_status.json` — Current sprint state

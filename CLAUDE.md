@@ -178,3 +178,7 @@ All development follows a sprint-based Agile/Scrum workflow.
 - `docs/ALL_SPRINTS_MASTER_PLAN.md` — Authoritative backlog and sprint history
 - `docs/retrospectives/` — Per-sprint retrospective files
 - `.claude/sprint_status.json` — Current sprint state
+
+**Testing Conventions**:
+- Use `data-testid` attributes on elements that tests need to query — prefer over CSS class selectors, which are brittle to style changes
+- When writing acceptance criteria for UI states (loading, error, display), specify which component owns the state: container components own loading/error; presentational components own display-only states

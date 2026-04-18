@@ -76,9 +76,9 @@ class MLBDataUpdater:
         )
         
         self.logger = logging.getLogger(__name__)
-        
-        # Also configure the MLB stats API logger
-        mlb_configure_logging()
+
+        if self.verbose:
+            mlb_configure_logging()
         
     def _connect_to_database(self):
         """Connect to the database."""

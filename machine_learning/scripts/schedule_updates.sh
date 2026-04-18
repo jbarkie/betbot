@@ -68,7 +68,7 @@ log "Starting MLB data update"
 source "$VENV_PATH/bin/activate" || handle_error "Failed to activate virtual environment"
 cd "$PROJECT_ROOT" || handle_error "Failed to change to project root"
 
-python "$UPDATE_SCRIPT" --verbose >> "$LOG_FILE" 2>&1
+python "$UPDATE_SCRIPT" >> "$LOG_FILE" 2>&1
 EXIT_CODE=$?
 
 deactivate

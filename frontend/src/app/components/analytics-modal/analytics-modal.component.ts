@@ -80,7 +80,7 @@ export class AnalyticsModalComponent {
 
   homePct = computed(() => {
     const a = this.analytics();
-    if (a.home_win_probability !== undefined) {
+    if (a.home_win_probability != null) {
       return (a.home_win_probability * 100).toFixed(1);
     }
     const prob = a.predicted_winner === a.home_team ? a.win_probability : 1 - a.win_probability;
@@ -89,7 +89,7 @@ export class AnalyticsModalComponent {
 
   awayPct = computed(() => {
     const a = this.analytics();
-    if (a.away_win_probability !== undefined) {
+    if (a.away_win_probability != null) {
       return (a.away_win_probability * 100).toFixed(1);
     }
     const prob = a.predicted_winner === a.away_team ? a.win_probability : 1 - a.win_probability;

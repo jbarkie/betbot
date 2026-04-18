@@ -44,7 +44,7 @@ load_dotenv(project_root / 'api' / '.env')
 class MLBDataUpdater:
     """Handles updating MLB database tables with fresh data."""
     
-    def __init__(self, verbose=False, dry_run=False, skip_stats=False):
+    def __init__(self, verbose=False, dry_run=False, skip_stats=False, start_date=None, end_date=None):
         """
         Initialize the MLB data updater.
         
@@ -56,6 +56,8 @@ class MLBDataUpdater:
         self.verbose = verbose
         self.dry_run = dry_run
         self.skip_stats = skip_stats
+        self.start_date = start_date
+        self.end_date = end_date
         self.session = None
         self.mlb = None
         
@@ -74,9 +76,9 @@ class MLBDataUpdater:
         )
         
         self.logger = logging.getLogger(__name__)
-        
-        # Also configure the MLB stats API logger
-        mlb_configure_logging()
+
+        if self.verbose:
+            mlb_configure_logging()
         
     def _connect_to_database(self):
         """Connect to the database."""
@@ -182,12 +184,15 @@ class MLBDataUpdater:
             return
             
         try:
-            # Only update recent data (last 30 days) to avoid processing months of data
             from datetime import timedelta
-            start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
-            end_date = datetime.now().strftime('%Y-%m-%d')
-            
-            self.logger.info(f"Fetching team stats from {start_date} to {end_date} (last 30 days only)")
+            if self.start_date and self.end_date:
+                start_date = self.start_date
+                end_date = self.end_date
+                self.logger.info(f"Fetching team stats from {start_date} to {end_date}")
+            else:
+                start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+                end_date = datetime.now().strftime('%Y-%m-%d')
+                self.logger.info(f"Fetching team stats from {start_date} to {end_date} (last 30 days)")
             fetch_team_stats_direct(self.session, start_date, end_date)
             self.logger.info("Successfully updated team statistics")
         except Exception as e:
@@ -270,11 +275,33 @@ Examples:
         action='store_true',
         help='Skip team statistics update (teams, records, and schedule only)'
     )
-    
+
+    parser.add_argument(
+        '--start-date',
+        type=str,
+        default=None,
+        metavar='YYYY-MM-DD',
+        help='Start date for team stats fetch (default: 30 days ago). Use with --end-date for backfills.'
+    )
+
+    parser.add_argument(
+        '--end-date',
+        type=str,
+        default=None,
+        metavar='YYYY-MM-DD',
+        help='End date for team stats fetch (default: today). Use with --start-date for backfills.'
+    )
+
     args = parser.parse_args()
-    
+
     try:
-        updater = MLBDataUpdater(verbose=args.verbose, dry_run=args.dry_run, skip_stats=args.skip_stats)
+        updater = MLBDataUpdater(
+            verbose=args.verbose,
+            dry_run=args.dry_run,
+            skip_stats=args.skip_stats,
+            start_date=args.start_date,
+            end_date=args.end_date,
+        )
         updater.run_update()
         
         if not args.dry_run:

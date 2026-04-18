@@ -12,6 +12,7 @@
 
 ### High Priority
 
+- [ ] **Migrate local database from Docker to native Homebrew PostgreSQL** — Remove Docker as a runtime dependency for local development. Install PostgreSQL via `brew install postgresql@16`, migrate existing data with `pg_dump`/`pg_restore`, update `api/.env` connection string, and strip Docker lifecycle management from the scheduler script entirely. Keeps `docker-compose.yml` for CI and onboarding but removes day-to-day Docker Desktop dependency. Unblocks reliable automated data updates and reduces always-on resource usage. See conversation context: Docker Desktop hangs scheduler for hours on wake; Docker is disproportionate overhead for a single local Postgres instance; production will use a managed Postgres service anyway.
 - [ ] **NFL/NHL parity with MLB analytics** — Add ML-backed game analytics endpoints for NFL and NHL (currently only MLB has the ML prediction pipeline)
 - [ ] **NBA analytics endpoint** — Extend the analytics system to NBA games
 - [ ] **Frontend analytics integration** — Display ML predictions and confidence scores in the game cards UI (currently only available via API)

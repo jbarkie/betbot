@@ -214,13 +214,13 @@ class MLBModelTrainer:
                 min_samples_split=10,
                 min_samples_leaf=4,
                 random_state=42,
-                n_jobs=-1
+                n_jobs=1
             )
         elif self.model_type == 'logistic_regression':
             model = LogisticRegression(
                 max_iter=10000,
                 random_state=42,
-                n_jobs=-1
+                n_jobs=1
             )
         else:
             raise ValueError(f"Unsupported model type: {self.model_type}")
@@ -266,7 +266,7 @@ class MLBModelTrainer:
         tscv = TimeSeriesSplit(n_splits=5)
         cv_scores = cross_val_score(
             self.pipeline, X_train, y_train,
-            cv=tscv, scoring='accuracy', n_jobs=-1
+            cv=tscv, scoring='accuracy', n_jobs=1
         )
 
         self.logger.info(f"Cross-validation scores: {cv_scores}")

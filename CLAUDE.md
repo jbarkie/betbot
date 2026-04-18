@@ -165,7 +165,7 @@ session.close()
 5. **Sklearn Versions:** Training and API must use the same scikit-learn version — mismatches cause unpickling errors
 6. **ML Models:** `.joblib` files are gitignored; API falls back to rule-based predictions if model unavailable
 7. **Frontend Linting:** No `npm run lint` script; ESLint runs on save via editor (`.vscode/settings.json`); use `ng build` for type checking
-8. **MLB Scheduler (launchd):** `com.betbot.mlb-update.plist` must be copied to `~/Library/LaunchAgents/` and loaded with `launchctl load` after a fresh clone — it is not active automatically. The scheduler starts Docker Desktop and the db container if needed, and stops them when done.
+8. **MLB Scheduler (launchd):** `com.betbot.mlb-update.plist` must be copied to `~/Library/LaunchAgents/` and loaded with `launchctl load` after a fresh clone — it is not active automatically. The scheduler requires Docker to already be running; if Docker is not running it logs a SKIP message and exits immediately. The db container must be started manually (`docker compose -f env/docker-compose.yml up -d db`) before the first run — after that `restart: always` keeps it up whenever Docker is running.
 
 ## Sprint Workflow
 

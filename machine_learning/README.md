@@ -90,51 +90,47 @@ python machine_learning/scripts/update_mlb_data.py --verbose --dry-run
 
 ### `schedule_updates.sh`
 
-A bash script for automated scheduling via cron.
+A bash script for automated scheduling via launchd (macOS).
 
 **Features:**
 
+- Starts Docker Desktop if not running, and stops it when done
+- Starts only the `db` container (not adminer) and waits for Postgres to be ready
 - Activates the virtual environment automatically
 - Logs all output with timestamps
-- Handles errors gracefully
-- Can be run manually or via cron
+- Handles errors gracefully with full teardown on failure
+- Can be run manually at any time
 
 ## Automated Scheduling
 
-### Setting Up Cron
+### Setting Up launchd (macOS)
 
-To automatically update MLB data daily, add a cron job:
+The project uses **launchd** instead of cron. Unlike cron, launchd catches up missed runs after the machine wakes from sleep.
 
-1. **Edit your crontab:**
+Install once after cloning:
 
-   ```bash
-   crontab -e
-   ```
+```bash
+cp com.betbot.mlb-update.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.betbot.mlb-update.plist
+```
 
-2. **Add one of these entries:**
+Verify the job is registered:
 
-   **Daily at 6 AM:**
+```bash
+launchctl list | grep betbot
+```
 
-   ```bash
-   0 6 * * * /path/to/betbot/machine_learning/scripts/schedule_updates.sh
-   ```
+Run manually at any time (e.g., to catch up or test):
 
-   **Twice daily (6 AM and 6 PM):**
+```bash
+bash machine_learning/scripts/schedule_updates.sh
+```
 
-   ```bash
-   0 6,18 * * * /path/to/betbot/machine_learning/scripts/schedule_updates.sh
-   ```
+To unload (disable) the scheduler:
 
-   **Every 6 hours:**
-
-   ```bash
-   0 */6 * * * /path/to/betbot/machine_learning/scripts/schedule_updates.sh
-   ```
-
-3. **Make sure the script is executable:**
-   ```bash
-   chmod +x /path/to/betbot/machine_learning/scripts/schedule_updates.sh
-   ```
+```bash
+launchctl unload ~/Library/LaunchAgents/com.betbot.mlb-update.plist
+```
 
 ### Log Files
 
@@ -187,7 +183,7 @@ Failed to initialize MLB Stats API: ...
 Permission denied: ...
 ```
 
-- Make sure the script is executable: `chmod +x schedule_updates.sh`
+- Make sure the script is executable: `chmod +x machine_learning/scripts/schedule_updates.sh`
 - Check file permissions on the project directory
 
 **4. Virtual Environment Issues**

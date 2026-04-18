@@ -1,70 +1,113 @@
 #!/bin/bash
 
 # MLB Data Update Scheduler
-# This script can be used with cron to automatically update MLB data
-# 
-# Usage with cron:
-#   # Update daily at 6 AM
-#   0 6 * * * /path/to/betbot/machine_learning/scripts/schedule_updates.sh
-#
-#   # Update twice daily (6 AM and 6 PM)
-#   0 6,18 * * * /path/to/betbot/machine_learning/scripts/schedule_updates.sh
+# Managed by launchd — see com.betbot.mlb-update.plist in project root.
+# Starts Docker Desktop and the db container if they are not already running,
+# runs the MLB data update, then tears down what it started.
 
-# Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 VENV_PATH="$PROJECT_ROOT/venv"
 LOG_DIR="$PROJECT_ROOT/logs"
 LOG_FILE="$LOG_DIR/mlb_data_update.log"
+COMPOSE_FILE="$PROJECT_ROOT/env/docker-compose.yml"
 
-# Create logs directory if it doesn't exist
+DOCKER_STARTED=false
+CONTAINER_STARTED=false
+
 mkdir -p "$LOG_DIR"
 
-# Function to log with timestamp
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
-# Function to handle errors
 handle_error() {
     log "ERROR: $1"
-    log "MLB data update failed at $(date)"
+    teardown
     exit 1
 }
 
-# Start logging
-log "Starting scheduled MLB data update"
+teardown() {
+    if [ "$CONTAINER_STARTED" = true ]; then
+        log "Stopping Docker containers"
+        docker compose -f "$COMPOSE_FILE" down >> "$LOG_FILE" 2>&1
+    fi
 
-# Check if virtual environment exists
-if [ ! -d "$VENV_PATH" ]; then
-    handle_error "Virtual environment not found at $VENV_PATH"
-fi
+    if [ "$DOCKER_STARTED" = true ]; then
+        log "Quitting Docker Desktop"
+        osascript -e 'quit app "Docker"' >> "$LOG_FILE" 2>&1
+    fi
+}
 
-# Check if the update script exists
-UPDATE_SCRIPT="$SCRIPT_DIR/update_mlb_data.py"
-if [ ! -f "$UPDATE_SCRIPT" ]; then
-    handle_error "Update script not found at $UPDATE_SCRIPT"
-fi
+# ── Docker Desktop ────────────────────────────────────────────────────────────
 
-# Activate virtual environment
-log "Activating virtual environment"
-source "$VENV_PATH/bin/activate" || handle_error "Failed to activate virtual environment"
+if ! docker info > /dev/null 2>&1; then
+    log "Docker Desktop not running — starting it"
+    open -a Docker
 
-# Change to project root directory
-cd "$PROJECT_ROOT" || handle_error "Failed to change to project root directory"
-
-# Run the update script
-log "Running MLB data update script"
-python "$UPDATE_SCRIPT" --verbose >> "$LOG_FILE" 2>&1
-
-# Check if the update was successful
-if [ $? -eq 0 ]; then
-    log "MLB data update completed successfully"
+    DOCKER_STARTED=true
+    WAIT=0
+    until docker info > /dev/null 2>&1; do
+        sleep 3
+        WAIT=$((WAIT + 3))
+        if [ $WAIT -ge 120 ]; then
+            handle_error "Timed out waiting for Docker Desktop to become ready"
+        fi
+    done
+    log "Docker Desktop ready (${WAIT}s)"
 else
-    handle_error "MLB data update script failed with exit code $?"
+    log "Docker Desktop already running"
 fi
 
-# Deactivate virtual environment
+# ── Database container ────────────────────────────────────────────────────────
+
+DB_RUNNING=$(docker compose -f "$COMPOSE_FILE" ps --status running --services 2>/dev/null | grep -c "^db$")
+
+if [ "$DB_RUNNING" -eq 0 ]; then
+    log "Starting db container"
+    docker compose -f "$COMPOSE_FILE" up -d db >> "$LOG_FILE" 2>&1 \
+        || handle_error "Failed to start db container"
+
+    CONTAINER_STARTED=true
+    WAIT=0
+    until docker compose -f "$COMPOSE_FILE" exec -T db pg_isready -U user > /dev/null 2>&1; do
+        sleep 2
+        WAIT=$((WAIT + 2))
+        if [ $WAIT -ge 60 ]; then
+            handle_error "Timed out waiting for Postgres to accept connections"
+        fi
+    done
+    log "Postgres ready (${WAIT}s)"
+else
+    log "db container already running"
+fi
+
+# ── Prerequisites ─────────────────────────────────────────────────────────────
+
+[ -d "$VENV_PATH" ] || handle_error "Virtual environment not found at $VENV_PATH"
+
+UPDATE_SCRIPT="$SCRIPT_DIR/update_mlb_data.py"
+[ -f "$UPDATE_SCRIPT" ] || handle_error "Update script not found at $UPDATE_SCRIPT"
+
+# ── Run update ────────────────────────────────────────────────────────────────
+
+log "Starting MLB data update"
+
+source "$VENV_PATH/bin/activate" || handle_error "Failed to activate virtual environment"
+cd "$PROJECT_ROOT" || handle_error "Failed to change to project root"
+
+python "$UPDATE_SCRIPT" --verbose >> "$LOG_FILE" 2>&1
+EXIT_CODE=$?
+
 deactivate
 
+if [ $EXIT_CODE -eq 0 ]; then
+    log "MLB data update completed successfully"
+else
+    handle_error "Update script failed with exit code $EXIT_CODE"
+fi
+
+# ── Cleanup ───────────────────────────────────────────────────────────────────
+
+teardown
 log "Scheduled MLB data update finished"

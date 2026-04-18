@@ -101,7 +101,7 @@ class MLBDataUpdater:
         """Get current season information."""
         try:
             season_data = fetch_current_season(self.mlb)
-            self.logger.info(f"Current season: {season_data.seasonid}")
+            self.logger.info(f"Current season: {season_data.season_id}")
             return season_data
         except Exception as e:
             self.logger.error(f"Failed to get current season info: {e}")
@@ -148,7 +148,7 @@ class MLBDataUpdater:
             return
             
         try:
-            fetch_team_records(self.mlb, self.session, season_data.seasonid)
+            fetch_team_records(self.mlb, self.session, season_data.season_id)
             self.logger.info("Successfully updated team records")
         except Exception as e:
             self.logger.error(f"Failed to update team records: {e}")
@@ -163,7 +163,7 @@ class MLBDataUpdater:
             return
             
         try:
-            start_date = season_data.regularseasonstartdate
+            start_date = season_data.regular_season_start_date
             end_date = datetime.now().strftime('%Y-%m-%d')
             
             self.logger.info(f"Fetching schedule from {start_date} to {end_date}")

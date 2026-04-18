@@ -346,19 +346,19 @@ python machine_learning/scripts/train_mlb_model.py \
 
 #### Automated Daily Updates
 
-Set up automated daily data updates using cron:
+The scheduler uses **launchd** (macOS-native) instead of cron — launchd catches up missed runs after the machine wakes, whereas cron silently skips jobs fired while the machine is asleep. The script also starts Docker Desktop and the database container automatically if they are not running, and stops them when the update finishes.
+
+Install once after cloning:
 
 ```bash
-# Make the script executable
-chmod +x machine_learning/scripts/schedule_updates.sh
+cp com.betbot.mlb-update.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.betbot.mlb-update.plist
+```
 
-# Test manual execution
-./machine_learning/scripts/schedule_updates.sh
+Run manually at any time:
 
-# Add to crontab for daily updates at 6 AM
-crontab -e
-# Add this line:
-# 0 6 * * * /absolute/path/to/betbot/machine_learning/scripts/schedule_updates.sh
+```bash
+bash machine_learning/scripts/schedule_updates.sh
 ```
 
 ### Production ML Integration
@@ -431,7 +431,7 @@ betbot/
 │   ├── scripts/
 │   │   ├── update_mlb_data.py   # Data update script
 │   │   ├── train_mlb_model.py   # Model training script
-│   │   └── schedule_updates.sh  # Cron wrapper script
+│   │   └── schedule_updates.sh  # launchd wrapper script
 │   ├── analysis/                # Jupyter notebooks
 │   └── models/mlb/              # Trained model storage (.joblib files)
 ├── shared/

@@ -56,6 +56,13 @@ python machine_learning/scripts/update_mlb_data.py --skip-stats  # faster
 # Train model
 python machine_learning/scripts/train_mlb_model.py
 python machine_learning/scripts/train_mlb_model.py --model-type logistic_regression --version 1.1
+
+# Install the automated daily data refresh (run once after cloning)
+cp com.betbot.mlb-update.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.betbot.mlb-update.plist
+
+# Run the scheduler manually (useful for testing or catching up missed days)
+bash machine_learning/scripts/schedule_updates.sh
 ```
 
 ## Architecture
@@ -158,6 +165,7 @@ session.close()
 5. **Sklearn Versions:** Training and API must use the same scikit-learn version — mismatches cause unpickling errors
 6. **ML Models:** `.joblib` files are gitignored; API falls back to rule-based predictions if model unavailable
 7. **Frontend Linting:** No `npm run lint` script; ESLint runs on save via editor (`.vscode/settings.json`); use `ng build` for type checking
+8. **MLB Scheduler (launchd):** `com.betbot.mlb-update.plist` must be copied to `~/Library/LaunchAgents/` and loaded with `launchctl load` after a fresh clone — it is not active automatically. The scheduler starts Docker Desktop and the db container if needed, and stops them when done.
 
 ## Sprint Workflow
 

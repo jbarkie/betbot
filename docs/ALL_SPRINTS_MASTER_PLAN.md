@@ -84,6 +84,9 @@
 
 ## Lessons Learned (Running Log)
 
+**Sprint 2 (2026-04-17)**
+- For Angular major-version upgrades, check `npm show @angular/core version --tag latest` before planning — `ng update` dry-run only steps one major at a time and does not reflect the true latest version on npm
+
 **Sprint 1 (2026-04-17)**
 - Specify which component owns state in AC: container components own loading/error; presentational components own display-only states
 - `data-testid` attributes make tests more resilient to CSS changes — use them for test-facing elements

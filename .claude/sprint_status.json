@@ -1,6 +1,7 @@
 {
   "current_sprint": 2,
-  "phase": "6 - PR Creation",
+  "phase": "complete",
   "branch": "feature/20260417_Sprint_2",
+  "pr": "https://github.com/jbarkie/betbot/pull/20",
   "issues": [18, 19]
 }

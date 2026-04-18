@@ -1,4 +1,4 @@
-python-mlb-statsapi
+python-mlb-statsapi==0.7.2
 colorlog
 sqlalchemy
 jupyter

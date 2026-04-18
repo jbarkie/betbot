@@ -50,13 +50,13 @@ def fetch_teams(mlb, session):
 def fetch_team_records(mlb, session, season):
     standings = mlb.get_standings(league_id="103,104", season=season)  # 103 for the AL, 104 for the NL
     for standing in standings:
-        for team_record in standing.teamrecords:
+        for team_record in standing.team_records:
             db_team = session.query(MLBTeam).filter_by(id=team_record.team.id).first()
             if db_team:
-                db_team.games_played = team_record.gamesplayed
+                db_team.games_played = team_record.games_played
                 db_team.wins = team_record.wins
                 db_team.losses = team_record.losses
-                db_team.winning_percentage = team_record.winningpercentage
+                db_team.winning_percentage = team_record.winning_percentage
     session.commit()
 
 def fetch_team_stats(mlb, session, start_date, end_date):
@@ -191,22 +191,22 @@ def fetch_schedule(mlb, session, start_date, end_date):
             away_team_id = game.teams.away.team.id
 
             if home_team_id in valid_team_ids and away_team_id in valid_team_ids:
-                db_game = session.query(MLBSchedule).filter_by(game_id=str(game.gamepk)).first()
+                db_game = session.query(MLBSchedule).filter_by(game_id=str(game.game_pk)).first()
                 if not db_game:
                     db_game = MLBSchedule(
-                        game_id=str(game.gamepk),
+                        game_id=str(game.game_pk),
                         date=date.date,
                         home_team_id=game.teams.home.team.id,
                         away_team_id=game.teams.away.team.id,
                         home_score=game.teams.home.score,
                         away_score=game.teams.away.score,
-                        status=game.status.detailedstate
+                        status=game.status.detailed_state
                     )
                     session.add(db_game)
-                elif game.status.detailedstate == 'Final':
+                elif game.status.detailed_state == 'Final':
                     db_game.home_score = game.teams.home.score
                     db_game.away_score = game.teams.away.score
-                    db_game.status = game.status.detailedstate
+                    db_game.status = game.status.detailed_state
     session.commit()
 
 def main():
@@ -217,15 +217,15 @@ def main():
     session = connect_to_db()
 
     season_data = fetch_current_season(mlb)
-    logging.info(f'Current season: {season_data.seasonid}')
+    logging.info(f'Current season: {season_data.season_id}')
 
     fetch_teams(mlb, session)
     logging.info('Teams fetched and stored')
 
-    fetch_team_records(mlb, session, season_data.seasonid)
+    fetch_team_records(mlb, session, season_data.season_id)
     logging.info('Team records fetched and stored')
 
-    start_date = season_data.regularseasonstartdate
+    start_date = season_data.regular_season_start_date
     end_date = datetime.now().strftime('%Y-%m-%d')
 
     fetch_team_stats(mlb, session, start_date, end_date)

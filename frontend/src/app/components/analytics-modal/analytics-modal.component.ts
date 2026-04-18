@@ -1,11 +1,11 @@
 import { Component, computed, input, output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { AnalyticsResponse } from '../models';
 
 @Component({
   selector: 'app-analytics-modal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <div class="modal-box w-11/12 max-w-2xl">
       <h3 class="font-bold text-lg mb-4">Game Analytics</h3>

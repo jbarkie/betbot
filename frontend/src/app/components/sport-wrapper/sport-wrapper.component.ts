@@ -9,13 +9,13 @@ import { Game } from '../models';
   selector: 'app-sport-wrapper',
   standalone: true,
   template: `
-    <ng-container *ngIf="authStore.isAuthenticated(); else unauthenticated">
+    @if (authStore.isAuthenticated()) {
       <div class="join flex justify-center my-5">
         <button
           class="join-item btn"
           (click)="previousDay()"
           [disabled]="isCurrentDate()"
-        >
+          >
           «
         </button>
         <button class="join-item btn">
@@ -23,18 +23,17 @@ import { Game } from '../models';
         </button>
         <button class="join-item btn" (click)="nextDay()">»</button>
       </div>
-      <ng-container *ngIf="games()">
+      @if (games()) {
         <app-games-list
           [list]="games()"
           [loaded]="!isLoading()"
           [error]="error() || ''"
         ></app-games-list>
-      </ng-container>
-    </ng-container>
-    <ng-template #unauthenticated>
+      }
+    } @else {
       <app-alert-message message="You must be logged in to access this page." />
-    </ng-template>
-  `,
+    }
+    `,
   imports: [DatePipe, CommonModule, GamesListComponent, AlertMessageComponent],
 })
 export class SportWrapperComponent implements OnInit {

@@ -1,5 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import {
   FormBuilder,
   FormGroup,
@@ -13,7 +13,7 @@ import { SettingsRequest } from '../models';
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ThemeToggleComponent],
+  imports: [ReactiveFormsModule, ThemeToggleComponent],
   template: `
     <div class="container mx-auto p-4">
       <form [formGroup]="settingsForm" (ngSubmit)="onSubmit()">
@@ -30,12 +30,16 @@ import { SettingsRequest } from '../models';
                   type="email"
                   class="input input-bordered w-full max-w-md"
                   formControlName="email"
-                />
-                <div *ngIf="isInvalid('email')" class="text-error mt-1">
-                  <p *ngIf="settingsForm.get('email')?.hasError('email')">
-                    Please enter a valid email address.
-                  </p>
-                </div>
+                  />
+                @if (isInvalid('email')) {
+                  <div class="text-error mt-1">
+                    @if (settingsForm.get('email')?.hasError('email')) {
+                      <p>
+                        Please enter a valid email address.
+                      </p>
+                    }
+                  </div>
+                }
               </div>
               <div class="form-control">
                 <label class="label">
@@ -45,7 +49,7 @@ import { SettingsRequest } from '../models';
                   type="text"
                   class="input input-bordered w-full max-w-md"
                   formControlName="username"
-                />
+                  />
               </div>
               <div class="form-control">
                 <label class="label">
@@ -55,19 +59,22 @@ import { SettingsRequest } from '../models';
                   type="password"
                   class="input input-bordered w-full max-w-md"
                   formControlName="password"
-                />
-                <div *ngIf="isInvalid('password')" class="text-error mt-1">
-                  <p
-                    *ngIf="settingsForm.get('password')?.hasError('minlength')"
-                  >
-                    Password must be at least 8 characters.
-                  </p>
-                </div>
+                  />
+                @if (isInvalid('password')) {
+                  <div class="text-error mt-1">
+                    @if (settingsForm.get('password')?.hasError('minlength')) {
+                      <p
+                        >
+                        Password must be at least 8 characters.
+                      </p>
+                    }
+                  </div>
+                }
               </div>
             </div>
           </div>
         </div>
-
+    
         <!-- Preferences Section -->
         <div class="card bg-base-100 shadow-xl mb-6">
           <div class="card-body">
@@ -80,31 +87,32 @@ import { SettingsRequest } from '../models';
                     type="checkbox"
                     class="toggle"
                     formControlName="emailNotifications"
-                  />
+                    />
                 </label>
               </div>
               <app-theme-toggle />
             </div>
           </div>
         </div>
-
+    
         <!-- Save Button -->
         <div class="mt-6 flex justify-end">
           <button
             class="btn btn-primary"
             type="submit"
             [disabled]="settingsForm.invalid || settingsStore.isLoading()"
-          >
-            <span
-              *ngIf="settingsStore.isLoading()"
-              class="loading loading-spinner"
-            ></span>
+            >
+            @if (settingsStore.isLoading()) {
+              <span
+                class="loading loading-spinner"
+              ></span>
+            }
             Save Changes
           </button>
         </div>
       </form>
     </div>
-  `,
+    `,
   styles: [],
   providers: [SettingsStore],
 })

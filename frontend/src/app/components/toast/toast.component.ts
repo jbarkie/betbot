@@ -8,12 +8,14 @@ import { Subscription } from 'rxjs';
     standalone: true,
     imports: [CommonModule],
     template: `
-    <div *ngIf="toast" class="toast toast-bottom toast-end">
-      <div [ngClass]="{'alert-success': toast.type === 'success', 'alert-error': toast.type === 'error'}" class="alert">
-        <span>{{ toast.message }}</span>
+    @if (toast) {
+      <div class="toast toast-bottom toast-end">
+        <div [ngClass]="{'alert-success': toast.type === 'success', 'alert-error': toast.type === 'error'}" class="alert">
+          <span>{{ toast.message }}</span>
+        </div>
       </div>
-    </div>
-  `,
+    }
+    `,
     styles: ``
 })
 export class ToastComponent {

@@ -8,7 +8,7 @@ import {
   AbstractControl,
   ValidationErrors,
 } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+
 import { RegisterRequest } from '../models';
 import { Router } from '@angular/router';
 import { ToastService } from '../toast/toast.service';
@@ -17,7 +17,7 @@ import { AuthStore } from '../../services/auth/auth.store';
 @Component({
   selector: 'app-registration',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule],
+  imports: [ReactiveFormsModule],
   template: `
     <h3 class="font-bold text-lg mt-2 mb-2 text-center">
       Register for an account
@@ -26,7 +26,7 @@ import { AuthStore } from '../../services/auth/auth.store';
       [formGroup]="registration"
       class="mx-auto w-96"
       (ngSubmit)="onSubmit()"
-    >
+      >
       <div class="form-control">
         <label class="label">
           <span class="label-text">Username</span>
@@ -37,12 +37,16 @@ import { AuthStore } from '../../services/auth/auth.store';
           placeholder="Username"
           class="input input-bordered w-full"
           required
-        />
-        <div *ngIf="isInvalid(username)">
-          <p *ngIf="username?.hasError('required')" class="text-error mt-1">
-            Username is required.
-          </p>
-        </div>
+          />
+        @if (isInvalid(username)) {
+          <div>
+            @if (username?.hasError('required')) {
+              <p class="text-error mt-1">
+                Username is required.
+              </p>
+            }
+          </div>
+        }
       </div>
       <div class="form-control mt-2">
         <label class="label">
@@ -54,12 +58,16 @@ import { AuthStore } from '../../services/auth/auth.store';
           placeholder="Johnny"
           class="input input-bordered w-full mt-2"
           required
-        />
-        <div *ngIf="isInvalid(firstName)">
-          <p *ngIf="firstName?.hasError('required')" class="text-error mt-1">
-            First name is required.
-          </p>
-        </div>
+          />
+        @if (isInvalid(firstName)) {
+          <div>
+            @if (firstName?.hasError('required')) {
+              <p class="text-error mt-1">
+                First name is required.
+              </p>
+            }
+          </div>
+        }
       </div>
       <div class="form-control mt-2">
         <label class="label">
@@ -71,12 +79,16 @@ import { AuthStore } from '../../services/auth/auth.store';
           placeholder="Appleseed"
           class="input input-bordered w-full mt-2"
           required
-        />
-        <div *ngIf="isInvalid(lastName)">
-          <p *ngIf="lastName?.hasError('required')" class="text-error mt-1">
-            Last name is required.
-          </p>
-        </div>
+          />
+        @if (isInvalid(lastName)) {
+          <div>
+            @if (lastName?.hasError('required')) {
+              <p class="text-error mt-1">
+                Last name is required.
+              </p>
+            }
+          </div>
+        }
       </div>
       <div class="form-control mt-2">
         <label class="label">
@@ -88,15 +100,21 @@ import { AuthStore } from '../../services/auth/auth.store';
           placeholder="Email"
           class="input input-bordered w-full mt-2"
           required
-        />
-        <div *ngIf="isInvalid(email)">
-          <p *ngIf="email?.hasError('required')" class="text-error mt-1">
-            Email is required.
-          </p>
-          <p *ngIf="email?.hasError('email')" class="text-error mt-1">
-            Please enter a valid email address.
-          </p>
-        </div>
+          />
+        @if (isInvalid(email)) {
+          <div>
+            @if (email?.hasError('required')) {
+              <p class="text-error mt-1">
+                Email is required.
+              </p>
+            }
+            @if (email?.hasError('email')) {
+              <p class="text-error mt-1">
+                Please enter a valid email address.
+              </p>
+            }
+          </div>
+        }
       </div>
       <div class="form-control mt-2">
         <label class="label">
@@ -108,15 +126,21 @@ import { AuthStore } from '../../services/auth/auth.store';
           placeholder="Password"
           class="input input-bordered w-full mt-2"
           required
-        />
-        <div *ngIf="isInvalid(password)">
-          <p *ngIf="password?.hasError('required')" class="text-error mt-1">
-            Password is required.
-          </p>
-          <p *ngIf="password?.hasError('minlength')" class="text-error mt-1">
-            Password must be at least 8 characters.
-          </p>
-        </div>
+          />
+        @if (isInvalid(password)) {
+          <div>
+            @if (password?.hasError('required')) {
+              <p class="text-error mt-1">
+                Password is required.
+              </p>
+            }
+            @if (password?.hasError('minlength')) {
+              <p class="text-error mt-1">
+                Password must be at least 8 characters.
+              </p>
+            }
+          </div>
+        }
       </div>
       <div class="form-control mt-2">
         <label class="label">
@@ -128,37 +152,42 @@ import { AuthStore } from '../../services/auth/auth.store';
           placeholder="Confirm Password"
           class="input input-bordered w-full mt-2"
           required
-        />
-        <div *ngIf="isInvalid(confirmPassword)">
-          <p
-            *ngIf="confirmPassword?.hasError('required')"
-            class="text-error mt-1"
-          >
-            Password confirmation is required.
-          </p>
-          <p
-            *ngIf="confirmPassword?.hasError('minlength')"
-            class="text-error mt-1"
-          >
-            Password must be at least 8 characters.
-          </p>
-          <p
-            *ngIf="confirmPassword?.hasError('passwordMismatch')"
-            class="text-error mt-1"
-          >
-            Passwords must match.
-          </p>
-        </div>
+          />
+        @if (isInvalid(confirmPassword)) {
+          <div>
+            @if (confirmPassword?.hasError('required')) {
+              <p
+                class="text-error mt-1"
+                >
+                Password confirmation is required.
+              </p>
+            }
+            @if (confirmPassword?.hasError('minlength')) {
+              <p
+                class="text-error mt-1"
+                >
+                Password must be at least 8 characters.
+              </p>
+            }
+            @if (confirmPassword?.hasError('passwordMismatch')) {
+              <p
+                class="text-error mt-1"
+                >
+                Passwords must match.
+              </p>
+            }
+          </div>
+        }
       </div>
       <button
         type="submit"
         class="btn btn-primary mt-6 float-right"
         [disabled]="registration.invalid"
-      >
+        >
         Register
       </button>
     </form>
-  `,
+    `,
   styles: ``,
 })
 export class RegistrationComponent {

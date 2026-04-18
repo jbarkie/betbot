@@ -41,6 +41,44 @@
 | Sprint | Dates | Goal | Outcome |
 |--------|-------|------|---------|
 | Sprint 1 | 2026-04-16 | Surface ML win probabilities in the game cards analytics modal | PR #17 open — pending retro |
+| Sprint 2 | 2026-04-17 | Upgrade Angular from v19 to v21 (via v20), NgRx to v21, jest to v30 | PR open — pending retro |
+
+---
+
+## Sprint 2 — Angular Upgrade (Planned)
+
+**Goal:** Upgrade the frontend from Angular 19 to the latest stable Angular release, keeping all tests green and the app fully functional.
+
+**Background:** The frontend currently runs Angular `^19.0.5` / CLI `^19.0.6`. Angular releases major versions every 6 months; staying current reduces security exposure and ensures access to new signals/control flow APIs. The `ng update` migration tooling handles most mechanical changes, but NgRx Signals and Jest config require manual verification.
+
+### Acceptance Criteria
+
+- [ ] `@angular/core`, `@angular/cli`, and all `@angular/*` packages updated to latest stable
+- [ ] `@ngrx/signals` updated to a version compatible with the new Angular major (check NgRx release notes)
+- [ ] `typescript` version updated to the range required by the new Angular (Angular dictates TS floor/ceiling)
+- [ ] `jest-preset-angular` updated to a version compatible with the new Angular
+- [ ] `ng build` produces a clean production build with no errors or warnings introduced by the upgrade
+- [ ] All frontend tests pass (`npm test`)
+- [ ] Dev server starts and the app is functional end-to-end (auth, game cards, analytics modal, theme toggle)
+- [ ] Any automated migration schematics run by `ng update` are reviewed and committed separately from manual fixes
+
+### Tasks
+
+1. **Research** — Run `ng update` dry-run; review Angular changelog and migration guide for each skipped major; note breaking changes relevant to standalone components, signals, and control flow
+2. **Dependency bump** — Run `ng update @angular/core @angular/cli` (use `--force` only if a peer dep conflict cannot be resolved otherwise); commit schematic output separately
+3. **NgRx update** — Update `@ngrx/signals` to compatible version; review API changes to `signalStore`, `withState`, `withMethods`, `patchState`, `rxMethod`
+4. **TypeScript & tooling** — Update `typescript`, `jest-preset-angular`, and `@types/*` packages to compatible versions; fix any type errors surfaced
+5. **Test suite** — Run `npm test`; fix any broken specs (likely import path or API shape changes)
+6. **Build verification** — Run `ng build`; resolve any template or strict-mode errors
+7. **Manual smoke test** — Start dev server; verify auth flow, game list, analytics modal, and theme toggle work correctly
+8. **esbuild / bundler config** — Check `angular.json` for any builder config changes required by the new version
+
+### Risks
+
+- **NgRx Signals API churn** — NgRx Signals is still stabilizing; minor API renames between versions are common. Check `@ngrx/signals` changelog before upgrading.
+- **Jest / jest-preset-angular compatibility** — New Angular versions sometimes require a matching `jest-preset-angular` release that lags by a few weeks.
+- **TypeScript strictness** — Angular upgrades sometimes raise the minimum TS version, which can surface latent type errors in existing code.
+- **Schematic safety** — `ng update` schematics modify files automatically. Review every schematic change before committing to avoid unintended rewrites.
 
 ---
 

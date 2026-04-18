@@ -12,6 +12,7 @@
 
 ### High Priority
 
+- [ ] **Investigate ML model v2.0 accuracy regression** — v2.0 (53.8% accuracy, 4,322 games) underperforms v1.0 (59.1%, 808 games) despite 5× the data. Likely cause is dataset composition: v1.0 trained on late-season games with lower variance; v2.0 spans two full regular seasons. Investigate whether feature engineering, hyperparameter tuning, or data selection (e.g. minimum games played threshold, season-relative weighting) can recover accuracy. A calendar-based cutoff (e.g. post-All-Star only) is ruled out as a general solution — does not work during April/May when no such data exists yet.
 - [ ] **Migrate local database from Docker to native Homebrew PostgreSQL** — Remove Docker as a runtime dependency for local development. Install PostgreSQL via `brew install postgresql@16`, migrate existing data with `pg_dump`/`pg_restore`, update `api/.env` connection string, and strip Docker lifecycle management from the scheduler script entirely. Keeps `docker-compose.yml` for CI and onboarding but removes day-to-day Docker Desktop dependency. Unblocks reliable automated data updates and reduces always-on resource usage. See conversation context: Docker Desktop hangs scheduler for hours on wake; Docker is disproportionate overhead for a single local Postgres instance; production will use a managed Postgres service anyway.
 - [ ] **NFL/NHL parity with MLB analytics** — Add ML-backed game analytics endpoints for NFL and NHL (currently only MLB has the ML prediction pipeline)
 - [ ] **NBA analytics endpoint** — Extend the analytics system to NBA games
@@ -43,6 +44,7 @@
 |--------|-------|------|---------|
 | Sprint 1 | 2026-04-16 | Surface ML win probabilities in the game cards analytics modal | PR #17 open — pending retro |
 | Sprint 2 | 2026-04-17 | Upgrade Angular from v19 to v21 (via v20), NgRx to v21, jest to v30 | PR open — pending retro |
+| Sprint 3 | 2026-04-18 | Backfill full 2024+2025 MLB dataset and retrain ML model v2.0 | PR #26 open — retro complete |
 
 ---
 
@@ -84,6 +86,12 @@
 ---
 
 ## Lessons Learned (Running Log)
+
+**Sprint 3 (2026-04-18)**
+- More training data does not guarantee better model accuracy — v2.0 trained on 5,403 games scored 53.8% accuracy vs v1.0's 59.1% on 808 games. v1.0 likely benefited from late-season homogeneity (smaller variance); v2.0 faces full two-year regular-season variance. Root cause unresolved — investigate before next retraining sprint
+- A calendar-based data cutoff (e.g. post-All-Star only) is not a viable fix: early in the season (April) there is no post-All-Star data at all. Any solution must work year-round
+- `n_jobs=-1` on sklearn estimators multiplies memory by core count — always set `n_jobs=1` when training on large datasets unless memory headroom is confirmed
+- Retraining ACs should include a model quality floor (e.g. accuracy ≥ previous model on same test set), not just "training completed and version incremented"
 
 **Sprint 2 (2026-04-17)**
 - For Angular major-version upgrades, check `npm show @angular/core version --tag latest` before planning — `ng update` dry-run only steps one major at a time and does not reflect the true latest version on npm

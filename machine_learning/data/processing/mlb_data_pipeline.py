@@ -14,7 +14,8 @@ class MLBDataPipeline:
     def __init__(
         self,
         rolling_window: int = 10,
-        head_to_head_window: int = 5
+        head_to_head_window: int = 5,
+        min_games_threshold: int = 10
     ):
         """
         Initialize the data pipeline.
@@ -22,7 +23,9 @@ class MLBDataPipeline:
         Args:
             rolling_window: Number of games to include in rolling calculations
             head_to_head_window: Number of recent matchups to consider for head-to-head features
+            min_games_threshold: Minimum prior games required for a team to be included in training
         """
+        self.min_games_threshold = min_games_threshold
         self.time_series_analyzer = TeamTimeSeriesAnalyzer(window_size=rolling_window)
         self.feature_generator = GameFeatureGenerator(
             rolling_window=rolling_window,
@@ -77,6 +80,13 @@ class MLBDataPipeline:
             away_team_id = game['away_team_id']
             game_date = game['date']  # Already a Timestamp after pd.to_datetime conversion
             game_id = game.get('game_id', None)
+
+            latest_home_stats = self.feature_generator._get_recent_stats(home_team_id, game_date, rolling_stats)
+            latest_away_stats = self.feature_generator._get_recent_stats(away_team_id, game_date, rolling_stats)
+
+            if (latest_home_stats.get('games_played', 0) < self.min_games_threshold or
+                    latest_away_stats.get('games_played', 0) < self.min_games_threshold):
+                continue
 
             features = self.feature_generator.generate_game_features(
                 home_team_id=home_team_id,

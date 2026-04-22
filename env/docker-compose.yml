@@ -1,3 +1,4 @@
+# For CI and onboarding only. Local development uses native Homebrew PostgreSQL@14 (port 5432).
 services:
   db:
     image: postgres:16.2-bullseye

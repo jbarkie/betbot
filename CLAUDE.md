@@ -29,7 +29,11 @@ alembic revision --autogenerate -m "description"
 alembic upgrade head
 alembic downgrade -1
 
-# Start/stop PostgreSQL (Docker)
+# Start/stop PostgreSQL (native Homebrew — preferred for local dev)
+brew services start postgresql@14
+brew services stop postgresql@14
+
+# Start/stop PostgreSQL (Docker — CI and onboarding only)
 cd env && docker-compose up -d
 cd env && docker-compose down
 ```
@@ -109,13 +113,15 @@ bash machine_learning/scripts/schedule_updates.sh
 Create `api/.env`:
 ```
 ODDS_API_URL=https://api.the-odds-api.com/v4/sports/{sport}/odds/?apiKey={YOUR_API_KEY}&regions=us&markets=h2h&bookmakers=fanduel
-DB_URL=postgresql://user:password@localhost:5439/betbot
+DB_URL=postgresql://user:password@localhost:5432/betbot
 SECRET_KEY=your_secret_key_here
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-Database: update `env/docker-compose.yml` credentials, ensure `alembic.ini` `sqlalchemy.url` matches `DB_URL`. Adminer UI at localhost:9091.
+Database (local dev): install and start native PostgreSQL via Homebrew — `brew install postgresql@14 && brew services start postgresql@14`. Create the role and database: `psql -d postgres -c "CREATE ROLE \"user\" WITH LOGIN PASSWORD 'password';"` then `psql -d postgres -c "CREATE DATABASE betbot OWNER \"user\";"`. Run `alembic upgrade head` to apply migrations. Ensure `alembic.ini` `sqlalchemy.url` matches `DB_URL`.
+
+`docker-compose.yml` in `env/` is retained for CI and onboarding — do not remove it.
 
 ## Important Patterns
 
@@ -159,13 +165,13 @@ session.close()
 ## Gotchas
 
 1. **Virtual Environment:** Activate venv before all Python commands run from project root
-2. **Docker:** Containers must be running before starting API or running migrations
-3. **Port:** PostgreSQL uses port 5439 (non-standard, to avoid local conflicts); CORS expects frontend on localhost:4200
+2. **PostgreSQL (local):** Native Homebrew PostgreSQL@14 on port 5432 is the local dev database. Start with `brew services start postgresql@14`. Docker is only used for CI.
+3. **Port:** PostgreSQL uses port 5432 (standard Homebrew default); CORS expects frontend on localhost:4200
 4. **ML Data Updates:** `--skip-stats` for faster runs; full update takes 5-10 minutes; need 100+ completed games before training
 5. **Sklearn Versions:** Training and API must use the same scikit-learn version — mismatches cause unpickling errors
 6. **ML Models:** `.joblib` files are gitignored; API falls back to rule-based predictions if model unavailable
 7. **Frontend Linting:** No `npm run lint` script; ESLint runs on save via editor (`.vscode/settings.json`); use `ng build` for type checking
-8. **MLB Scheduler (launchd):** `com.betbot.mlb-update.plist` must be copied to `~/Library/LaunchAgents/` and loaded with `launchctl load` after a fresh clone — it is not active automatically. The scheduler requires Docker to already be running; if Docker is not running it logs a SKIP message and exits immediately. The db container must be started manually (`docker compose -f env/docker-compose.yml up -d db`) before the first run — after that `restart: always` keeps it up whenever Docker is running.
+8. **MLB Scheduler (launchd):** `com.betbot.mlb-update.plist` must be copied to `~/Library/LaunchAgents/` and loaded with `launchctl load` after a fresh clone — it is not active automatically. The scheduler requires Homebrew PostgreSQL to be accepting connections on port 5432; if it is not ready it logs a SKIP message and exits immediately.
 
 ## Sprint Workflow
 

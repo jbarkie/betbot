@@ -94,11 +94,10 @@ A bash script for automated scheduling via launchd (macOS).
 
 **Features:**
 
-- Starts Docker Desktop if not running, and stops it when done
-- Starts only the `db` container (not adminer) and waits for Postgres to be ready
+- Fast-fails with a SKIP message if Homebrew PostgreSQL is not accepting connections
 - Activates the virtual environment automatically
 - Logs all output with timestamps
-- Handles errors gracefully with full teardown on failure
+- Handles errors gracefully
 - Can be run manually at any time
 
 ## Automated Scheduling
@@ -163,8 +162,8 @@ tail -f /path/to/betbot/logs/mlb_data_update.log
 Failed to connect to database: ...
 ```
 
-- Check that your `.env` file is properly configured
-- Verify the database is running
+- Check that your `.env` file is properly configured with `DB_URL=postgresql://user:password@localhost:5432/betbot`
+- Verify Homebrew PostgreSQL is running: `brew services start postgresql@14`
 - Ensure database credentials are correct
 
 **2. MLB API Error**

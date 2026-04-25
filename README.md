@@ -10,7 +10,7 @@ BetBot is a full-stack sports betting application that allows users to view and 
 - Machine learning-powered game predictions for MLB (additional sports coming soon)
 - Automated daily data updates for MLB team statistics and schedules
 - Advanced MLB analytics including team momentum, offensive/defensive stats, and head-to-head matchups
-- Trained ML models with 55-60% prediction accuracy using RandomForest and Logistic Regression
+- Trained ML models with 54-60% prediction accuracy using RandomForest, Logistic Regression, and XGBoost
 - User settings management (email notifications, preferences)
 - Responsive UI with dark/light theme support
 
@@ -96,6 +96,7 @@ The backend API is responsible for user authentication, fetching the latest odds
 - JWT
 - python-dotenv
 - scikit-learn
+- XGBoost
 - pandas
 - NumPy
 
@@ -283,8 +284,9 @@ The production ML system follows this flow:
 
 ### Supported Models
 
-- **RandomForestClassifier** (default) - 55-60% accuracy, provides feature importance rankings
+- **RandomForestClassifier** (default) - 54-60% accuracy, provides feature importance rankings
 - **LogisticRegression** - 52-57% accuracy, faster predictions
+- **XGBoostClassifier** - 51-55% accuracy with default parameters; tuning may close the gap with RF
 
 ### Model Features (26 Total)
 
@@ -323,17 +325,26 @@ Train new prediction models using historical game data:
 # Train RandomForest model (default)
 python machine_learning/scripts/train_mlb_model.py
 
-# Train with custom options
+# Train with temporal weighting (recommended — recent games weighted higher)
 python machine_learning/scripts/train_mlb_model.py \
     --model-type random_forest \
-    --version 1.0 \
-    --test-split 0.2 \
+    --temporal-weighting \
+    --half-life 365 \
+    --version 3.0 \
     --verbose
+
+# Train XGBoost model
+python machine_learning/scripts/train_mlb_model.py \
+    --model-type xgboost \
+    --version 3.0-xgb
 
 # Train LogisticRegression model
 python machine_learning/scripts/train_mlb_model.py \
     --model-type logistic_regression \
     --version 1.1
+
+# Run with full diagnostic output (per-month accuracy, learning curve, feature importance)
+python machine_learning/scripts/train_mlb_model.py --diagnostics --verbose
 ```
 
 **Requirements**:
@@ -433,6 +444,7 @@ betbot/
 │   │   ├── train_mlb_model.py   # Model training script
 │   │   └── schedule_updates.sh  # launchd wrapper script
 │   ├── analysis/                # Jupyter notebooks
+│   ├── docs/                    # Diagnostic reports and model analysis
 │   └── models/mlb/              # Trained model storage (.joblib files)
 ├── shared/
 │   └── database.py              # Shared database connection

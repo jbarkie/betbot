@@ -60,6 +60,9 @@ python machine_learning/scripts/update_mlb_data.py --skip-stats  # faster
 # Train model
 python machine_learning/scripts/train_mlb_model.py
 python machine_learning/scripts/train_mlb_model.py --model-type logistic_regression --version 1.1
+python machine_learning/scripts/train_mlb_model.py --model-type xgboost --version 3.0-xgb
+python machine_learning/scripts/train_mlb_model.py --temporal-weighting --half-life 365 --version 3.0
+python machine_learning/scripts/train_mlb_model.py --diagnostics --verbose  # full diagnostic output
 
 # Install the automated daily data refresh (run once after cloning)
 cp com.betbot.mlb-update.plist ~/Library/LaunchAgents/
@@ -99,13 +102,16 @@ bash machine_learning/scripts/schedule_updates.sh
 - **`data/processing/`** - Feature engineering and data transformation
 - **`analysis/`** - Jupyter notebooks for experimentation
 - **`models/mlb/`** - Trained model storage (.joblib binaries gitignored, metadata tracked)
+- **`docs/`** - Sprint diagnostic findings and model analysis reports
 
 ### ML Prediction System
 
 - Served via `/analytics/mlb/game?id={game_id}`; models lazy-loaded and memory-cached
 - 26 engineered features: momentum (rolling win %, runs), rest days, offense (BA/OBP/SLG), defense (ERA/WHIP/K), head-to-head (last 5), temporal (month/day/weekend)
 - Predictions >55% confidence use ML (`prediction_method: "machine_learning"`), else falls back to rule-based
-- Supported: `random_forest` (default), `logistic_regression`
+- Supported: `random_forest` (default), `logistic_regression`, `xgboost`
+- Temporal weighting: `--temporal-weighting --half-life N` applies exponential decay so recent games have higher influence
+- Diagnostic output: `--diagnostics` prints per-month accuracy, learning curve, class balance, full feature importance
 - Model info endpoint: `/analytics/mlb/model-info`
 
 ## Environment Setup

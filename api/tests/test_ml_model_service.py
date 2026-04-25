@@ -377,7 +377,7 @@ class TestMLModelServiceIntegration:
 
     def test_xgboost_pipeline_predict(self, tmp_path):
         """Test that MLModelService works correctly with an XGBoost pipeline."""
-        from xgboost import XGBClassifier
+        XGBClassifier = pytest.importorskip("xgboost", reason="xgboost not installed").XGBClassifier
         from sklearn.impute import SimpleImputer
 
         X_train = np.random.rand(100, len(MLB_REQUIRED_FEATURES))

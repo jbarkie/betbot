@@ -17,10 +17,10 @@ MLB_MODELS_DIR = PROJECT_ROOT / "machine_learning" / "models" / "mlb"
 # Current production model configurations
 MLB_MODEL_CONFIG = {
     "model_name": "mlb_predictor",
-    "version": "2.1",
-    "model_file": "mlb_predictor_v2.1.joblib",
-    "metadata_file": "mlb_predictor_v2.1_metadata.json",
-    "model_type": "RandomForestClassifier",  # or "LogisticRegression", "XGBoost", "Ensemble"
+    "version": "3.0",
+    "model_file": "mlb_predictor_v3.0-rf-tw365.joblib",
+    "metadata_file": "mlb_predictor_v3.0-rf-tw365_metadata.json",
+    "model_type": "RandomForestClassifier",  # also supported: "LogisticRegression", "XGBoostClassifier"
 }
 
 # Model feature configuration

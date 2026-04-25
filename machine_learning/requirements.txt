@@ -8,3 +8,4 @@ matplotlib
 seaborn
 python-dotenv
 scikit-learn
+xgboost>=2.1.2

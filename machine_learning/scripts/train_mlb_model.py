@@ -9,15 +9,19 @@ Usage:
     python train_mlb_model.py [--model-type MODEL] [--start-date DATE] [--end-date DATE] [--verbose]
 
 Options:
-    --model-type    Type of model to train: random_forest, logistic_regression, xgboost, ensemble (default: random_forest)
-    --start-date    Start date for training data (YYYY-MM-DD format, default: season start)
-    --end-date      End date for training data (YYYY-MM-DD format, default: today)
-    --verbose       Enable verbose logging output
-    --test-split    Fraction of data to use for testing (default: 0.2)
+    --model-type         Type of model to train: random_forest, logistic_regression, xgboost (default: random_forest)
+    --start-date         Start date for training data (YYYY-MM-DD format, default: 90 days ago)
+    --end-date           End date for training data (YYYY-MM-DD format, default: today)
+    --verbose            Enable verbose logging output
+    --test-split         Fraction of data to use for testing (default: 0.2)
+    --diagnostics        Print per-month accuracy, class balance, learning curve, and feature importances
+    --temporal-weighting Apply exponential decay sample weights (recent games weighted higher)
+    --half-life          Half-life in days for temporal weighting (default: 365)
 """
 
 import sys
 import argparse
+import calendar
 import logging
 import json
 from datetime import datetime, timedelta
@@ -29,6 +33,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # Import required modules
+import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -56,7 +61,7 @@ class MLBModelTrainer:
         Initialize the model trainer.
 
         Args:
-            model_type: Type of model to train (random_forest, logistic_regression, xgboost, ensemble)
+            model_type: Type of model to train (random_forest, logistic_regression, xgboost)
             verbose: Enable verbose logging
         """
         self.model_type = model_type
@@ -171,12 +176,16 @@ class MLBModelTrainer:
             end_date: End date for training data
 
         Returns:
-            DataFrame with engineered features ready for training
+            DataFrame with engineered features ready for training.
+            Includes game_date column for temporal analysis; train_and_evaluate() handles exclusion.
         """
         self.logger.info(f"Preparing training data from {start_date.date()} to {end_date.date()}...")
 
         pipeline = MLBDataPipeline(rolling_window=10, head_to_head_window=5)
 
+        # game_date is retained here so train_and_evaluate() can use it for temporal weighting
+        # and per-month diagnostics. It is not included in MLB_REQUIRED_FEATURES so it will
+        # not enter the feature matrix X.
         training_data = pipeline.prepare_training_data(
             schedule_df=schedule_df,
             teams_df=teams_df,
@@ -184,7 +193,7 @@ class MLBModelTrainer:
             defensive_stats_df=defensive_df,
             start_date=start_date,
             end_date=end_date,
-            features_to_exclude=['game_id', 'game_date', 'home_team_id', 'away_team_id', 'run_differential']
+            features_to_exclude=['game_id', 'home_team_id', 'away_team_id', 'run_differential']
         )
 
         self.logger.info(f"Prepared {len(training_data)} games for training")
@@ -222,6 +231,23 @@ class MLBModelTrainer:
                 random_state=42,
                 n_jobs=1
             )
+        elif self.model_type == 'xgboost':
+            try:
+                from xgboost import XGBClassifier
+            except ImportError:
+                raise ImportError(
+                    "xgboost is not installed. Run: pip install xgboost"
+                )
+            model = XGBClassifier(
+                n_estimators=200,
+                max_depth=6,
+                learning_rate=0.1,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                random_state=42,
+                eval_metric='logloss',
+                verbosity=0
+            )
         else:
             raise ValueError(f"Unsupported model type: {self.model_type}")
 
@@ -233,15 +259,131 @@ class MLBModelTrainer:
 
         return pipeline
 
-    def train_and_evaluate(self, training_data: pd.DataFrame, test_split: float = 0.2):
+    def _compute_sample_weights(self, game_dates: pd.Series, half_life_days: int) -> np.ndarray:
+        """
+        Compute exponential decay sample weights so recent games have higher influence.
+
+        Weight formula: w_i = exp(ln(2) / half_life * days_elapsed_i)
+        A game played half_life_days before the most recent game has weight 0.5 relative to it.
+
+        Args:
+            game_dates: Series of game dates (datetime or date-like)
+            half_life_days: Number of days for weight to halve
+
+        Returns:
+            Array of weights, same length as game_dates, monotonically non-decreasing with date
+        """
+        dates = pd.to_datetime(game_dates)
+        date_min = dates.min()
+        days_elapsed = (dates - date_min).dt.days.values.astype(float)
+        lam = np.log(2) / half_life_days
+        weights = np.exp(lam * days_elapsed)
+        return weights
+
+    def _compute_per_month_accuracy(
+        self,
+        y_test: pd.Series,
+        y_pred: np.ndarray,
+        test_dates: pd.Series
+    ) -> dict:
+        """
+        Break down test-set accuracy by calendar month.
+
+        Args:
+            y_test: True labels (test set)
+            y_pred: Predicted labels (test set)
+            test_dates: Game dates corresponding to the test set
+
+        Returns:
+            Dict mapping month number → {'accuracy': float, 'game_count': int}
+        """
+        results = {}
+        dates = pd.to_datetime(test_dates).reset_index(drop=True)
+        y_test_arr = np.array(y_test)
+        y_pred_arr = np.array(y_pred)
+
+        for month in sorted(dates.dt.month.unique()):
+            mask = (dates.dt.month == month).values
+            if mask.sum() == 0:
+                continue
+            acc = accuracy_score(y_test_arr[mask], y_pred_arr[mask])
+            results[int(month)] = {'accuracy': float(acc), 'game_count': int(mask.sum())}
+
+        return results
+
+    def _compute_learning_curve(
+        self,
+        X_train: pd.DataFrame,
+        y_train: pd.Series,
+        X_test: pd.DataFrame,
+        y_test: pd.Series,
+        sample_weights: np.ndarray = None
+    ) -> list:
+        """
+        Compute test accuracy at 20/40/60/80/100% of chronological training data.
+
+        Args:
+            X_train: Training features
+            y_train: Training labels
+            X_test: Test features (fixed)
+            y_test: Test labels (fixed)
+            sample_weights: Optional array of weights for the training set (same length as X_train)
+
+        Returns:
+            List of dicts with keys 'fraction', 'train_size', 'test_accuracy'
+        """
+        fractions = [0.2, 0.4, 0.6, 0.8, 1.0]
+        results = []
+
+        for frac in fractions:
+            n = max(10, int(len(X_train) * frac))
+            X_sub = X_train.iloc[:n]
+            y_sub = y_train.iloc[:n]
+            w_sub = sample_weights[:n] if sample_weights is not None else None
+
+            sub_pipeline = self.create_model()
+            if w_sub is not None:
+                sub_pipeline.fit(X_sub, y_sub, model__sample_weight=w_sub)
+            else:
+                sub_pipeline.fit(X_sub, y_sub)
+
+            y_pred = sub_pipeline.predict(X_test)
+            acc = accuracy_score(y_test, y_pred)
+            results.append({
+                'fraction': frac,
+                'train_size': n,
+                'test_accuracy': round(float(acc), 4)
+            })
+
+        return results
+
+    def train_and_evaluate(
+        self,
+        training_data: pd.DataFrame,
+        test_split: float = 0.2,
+        diagnostics: bool = False,
+        sample_weights: np.ndarray = None
+    ):
         """
         Train and evaluate the model using time series cross-validation.
 
         Args:
-            training_data: Prepared training data
+            training_data: Prepared training data (must include home_team_won; game_date if available)
             test_split: Fraction of data to use for final testing
+            diagnostics: If True, print per-month accuracy, learning curve, and full feature importance
+            sample_weights: Optional array of sample weights (same length as training_data rows)
         """
         self.logger.info("Starting model training and evaluation...")
+
+        # Class balance (always reported)
+        home_win_rate = training_data['home_team_won'].astype(int).mean()
+        self.logger.info(
+            f"Class balance — home win rate: {home_win_rate:.2%}  |  "
+            f"away win rate: {1 - home_win_rate:.2%}"
+        )
+
+        # Retain game_date series for diagnostics and temporal weighting
+        game_dates = training_data['game_date'].copy() if 'game_date' in training_data.columns else None
 
         # Separate features and target
         X = training_data[MLB_REQUIRED_FEATURES].copy()
@@ -258,23 +400,48 @@ class MLBModelTrainer:
         self.logger.info(f"Training set: {len(X_train)} games")
         self.logger.info(f"Test set: {len(X_test)} games")
 
-        # Create and train model
+        # Slice sample weights to training portion
+        weights_train = None
+        if sample_weights is not None:
+            weights_train = sample_weights[:split_idx]
+            w_min, w_max = weights_train.min(), weights_train.max()
+            self.logger.info(
+                f"Temporal weights — min: {w_min:.4f}, max: {w_max:.4f}, ratio: {w_max / w_min:.2f}"
+            )
+
+        # Create pipeline
         self.pipeline = self.create_model()
 
-        # Perform time series cross-validation on training data
+        # Time series cross-validation
         self.logger.info("Performing time series cross-validation...")
         tscv = TimeSeriesSplit(n_splits=5)
-        cv_scores = cross_val_score(
-            self.pipeline, X_train, y_train,
-            cv=tscv, scoring='accuracy', n_jobs=1
-        )
+
+        if weights_train is not None:
+            # Manual CV to propagate sample weights
+            cv_scores_list = []
+            for train_idx, val_idx in tscv.split(X_train):
+                X_cv_tr, X_cv_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
+                y_cv_tr, y_cv_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
+                w_cv_tr = weights_train[train_idx]
+                cv_pipe = self.create_model()
+                cv_pipe.fit(X_cv_tr, y_cv_tr, model__sample_weight=w_cv_tr)
+                cv_scores_list.append(accuracy_score(y_cv_val, cv_pipe.predict(X_cv_val)))
+            cv_scores = np.array(cv_scores_list)
+        else:
+            cv_scores = cross_val_score(
+                self.pipeline, X_train, y_train,
+                cv=tscv, scoring='accuracy', n_jobs=1
+            )
 
         self.logger.info(f"Cross-validation scores: {cv_scores}")
         self.logger.info(f"Mean CV accuracy: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
 
         # Train on full training set
         self.logger.info("Training final model on full training set...")
-        self.pipeline.fit(X_train, y_train)
+        if weights_train is not None:
+            self.pipeline.fit(X_train, y_train, model__sample_weight=weights_train)
+        else:
+            self.pipeline.fit(X_train, y_train)
 
         # Evaluate on test set
         self.logger.info("Evaluating on test set...")
@@ -288,8 +455,8 @@ class MLBModelTrainer:
             'recall': recall_score(y_test, y_pred, zero_division=0),
             'f1': f1_score(y_test, y_pred, zero_division=0),
             'roc_auc': roc_auc_score(y_test, y_pred_proba),
-            'cv_mean': cv_scores.mean(),
-            'cv_std': cv_scores.std(),
+            'cv_mean': float(cv_scores.mean()),
+            'cv_std': float(cv_scores.std()),
             'train_size': len(X_train),
             'test_size': len(X_test)
         }
@@ -301,16 +468,51 @@ class MLBModelTrainer:
         self.logger.info(f"  F1 Score:  {self.metrics['f1']:.4f}")
         self.logger.info(f"  ROC AUC:   {self.metrics['roc_auc']:.4f}")
 
-        # Get feature importances (for tree-based models)
-        if self.model_type == 'random_forest':
+        # Feature importances for tree-based models (always shown)
+        if self.model_type in ('random_forest', 'xgboost'):
             importances = self.pipeline.named_steps['model'].feature_importances_
             self.feature_importances = dict(zip(MLB_REQUIRED_FEATURES, importances))
-
-            # Sort and display top features
             sorted_features = sorted(self.feature_importances.items(), key=lambda x: x[1], reverse=True)
-            self.logger.info("\nTop 10 Most Important Features:")
-            for feature, importance in sorted_features[:10]:
-                self.logger.info(f"  {feature}: {importance:.4f}")
+
+            if diagnostics:
+                self.logger.info("\nFeature Importance Ranking (all 26):")
+                for i, (feature, importance) in enumerate(sorted_features, 1):
+                    self.logger.info(f"  {i:2d}. {feature:<35} {importance:.4f}")
+            else:
+                self.logger.info("\nTop 10 Most Important Features:")
+                for feature, importance in sorted_features[:10]:
+                    self.logger.info(f"  {feature}: {importance:.4f}")
+
+        # Diagnostics block
+        if diagnostics:
+            self.logger.info("\n" + "=" * 50)
+            self.logger.info("DIAGNOSTICS")
+            self.logger.info("=" * 50)
+
+            # Per-month accuracy breakdown
+            if game_dates is not None:
+                test_dates = game_dates.iloc[split_idx:].reset_index(drop=True)
+                month_accuracy = self._compute_per_month_accuracy(y_test, y_pred, test_dates)
+                self.logger.info("\nPer-Month Accuracy (test set):")
+                self.logger.info(f"  {'Month':<10} {'Games':>6} {'Accuracy':>10}")
+                self.logger.info(f"  {'-'*28}")
+                for month, data in month_accuracy.items():
+                    month_name = calendar.month_abbr[month]
+                    self.logger.info(
+                        f"  {month_name:<10} {data['game_count']:>6} {data['accuracy']:>10.4f}"
+                    )
+            else:
+                self.logger.warning("game_date not available — skipping per-month breakdown")
+
+            # Learning curve
+            self.logger.info("\nLearning Curve (chronological training subsets → fixed test set):")
+            self.logger.info(f"  {'Fraction':<10} {'Train Size':>12} {'Test Accuracy':>14}")
+            self.logger.info(f"  {'-'*38}")
+            lc_results = self._compute_learning_curve(X_train, y_train, X_test, y_test, weights_train)
+            for point in lc_results:
+                self.logger.info(
+                    f"  {point['fraction']:<10.0%} {point['train_size']:>12} {point['test_accuracy']:>14.4f}"
+                )
 
     def save_model(self, version: str = "1.0"):
         """
@@ -335,14 +537,19 @@ class MLBModelTrainer:
         joblib.dump(self.pipeline, model_path)
         self.logger.info(f"Model saved to: {model_path}")
 
-        # Save metadata
+        # Save metadata — coerce numpy scalar types to Python float for JSON compatibility
+        # (XGBoost feature_importances_ returns float32; json.dump rejects non-native types)
+        safe_importances = (
+            {k: float(v) for k, v in self.feature_importances.items()}
+            if self.feature_importances else None
+        )
         metadata = {
             'model_type': self.model_type,
             'version': version,
             'trained_date': datetime.now().isoformat(),
             'features': MLB_REQUIRED_FEATURES,
             'metrics': self.metrics,
-            'feature_importances': self.feature_importances if self.feature_importances else None,
+            'feature_importances': safe_importances,
             'model_filename': model_filename,
             'sklearn_version': __import__('sklearn').__version__
         }
@@ -362,16 +569,18 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    python train_mlb_model.py                                    # Train default RandomForest model
-    python train_mlb_model.py --model-type logistic_regression   # Train Logistic Regression
-    python train_mlb_model.py --verbose --test-split 0.25        # Verbose with 25% test split
-    python train_mlb_model.py --start-date 2025-04-01            # Specify training start date
+    python train_mlb_model.py                                          # Train default RandomForest
+    python train_mlb_model.py --model-type logistic_regression         # Train Logistic Regression
+    python train_mlb_model.py --model-type xgboost --version 3.0-xgb  # Train XGBoost
+    python train_mlb_model.py --verbose --test-split 0.25             # Verbose with 25% test split
+    python train_mlb_model.py --diagnostics                           # Full diagnostic output
+    python train_mlb_model.py --temporal-weighting --half-life 365    # Exponential decay weights
         """
     )
 
     parser.add_argument(
         '--model-type',
-        choices=['random_forest', 'logistic_regression'],
+        choices=['random_forest', 'logistic_regression', 'xgboost'],
         default='random_forest',
         help='Type of model to train (default: random_forest)'
     )
@@ -408,6 +617,25 @@ Examples:
         help='Version string for the saved model (default: 1.0)'
     )
 
+    parser.add_argument(
+        '--diagnostics',
+        action='store_true',
+        help='Print per-month accuracy breakdown, learning curve, class balance, and full feature importances'
+    )
+
+    parser.add_argument(
+        '--temporal-weighting',
+        action='store_true',
+        help='Apply exponential decay sample weights so recent games influence training more'
+    )
+
+    parser.add_argument(
+        '--half-life',
+        type=int,
+        default=365,
+        help='Half-life in days for temporal weighting decay (default: 365)'
+    )
+
     args = parser.parse_args()
 
     # Parse dates
@@ -433,8 +661,22 @@ Examples:
             print("   Run the data update script first: python machine_learning/scripts/update_mlb_data.py")
             sys.exit(1)
 
+        # Compute temporal sample weights if requested
+        sample_weights = None
+        if args.temporal_weighting:
+            if 'game_date' not in training_data.columns:
+                print("\n❌ game_date column not available for temporal weighting")
+                sys.exit(1)
+            sample_weights = trainer._compute_sample_weights(training_data['game_date'], args.half_life)
+            print(f"   Temporal weighting enabled (half-life: {args.half_life} days)")
+
         # Train and evaluate
-        trainer.train_and_evaluate(training_data, test_split=args.test_split)
+        trainer.train_and_evaluate(
+            training_data,
+            test_split=args.test_split,
+            diagnostics=args.diagnostics,
+            sample_weights=sample_weights
+        )
 
         # Save model
         model_path, metadata_path = trainer.save_model(version=args.version)

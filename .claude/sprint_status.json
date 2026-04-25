@@ -1,7 +1,7 @@
 {
-  "current_sprint": 4,
+  "current_sprint": 5,
   "phase": "7 - Retrospective Complete",
-  "branch": "feature/20260418_Sprint_4",
-  "pr": "https://github.com/jbarkie/betbot/pull/28",
-  "issues": []
+  "branch": "feature/20260424_Sprint_5",
+  "pr": "https://github.com/jbarkie/betbot/pull/33",
+  "issues": [29, 30, 31, 32]
 }

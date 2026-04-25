@@ -194,6 +194,10 @@ All development follows a sprint-based Agile/Scrum workflow.
 - Once a sprint plan is approved in Phase 3, all tasks are pre-authorized
 - Only stop for sprint stopping criteria
 
+**Commit Discipline**:
+- Commit per GitHub issue during development, not one large commit at Phase 6
+- This keeps history bisectable — especially important for ML experiments where individual changes need to be revertable independently
+
 **Key Documents**:
 - `docs/ALL_SPRINTS_MASTER_PLAN.md` — Authoritative backlog and sprint history
 - `docs/retrospectives/` — Per-sprint retrospective files

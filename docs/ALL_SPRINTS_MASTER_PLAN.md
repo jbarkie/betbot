@@ -12,7 +12,9 @@
 
 ### High Priority
 
-- [ ] **Investigate remaining ML accuracy gap (v1.0 vs v2.x)** — Active in Sprint 5 (issues #29–#32). Approach: diagnostic analysis, XGBoost, temporal sample weighting. Target: v3.0 ≥ v1.0 (59.1%) or documented root cause.
+- [ ] **Retrain v4.0 with 2026 season data** — Sprint 5 learning curve shows model is not saturated. Retrain when 2026 season has ≥ 500 completed games (est. late May 2026). v3.0 baseline is 55.09%.
+- [ ] **XGBoost hyperparameter tuning** — Sprint 5 default params scored 51.46% (vs RF 55.09%). Grid search on `max_depth`, `learning_rate`, `n_estimators` needed for a fair comparison.
+- [ ] **Starting pitcher features** — ERA/WHIP/K9 for the day's scheduled starter. Highest-impact player-level feature available pre-game. Requires new DB table, data collection script, and inference-time lookup in `enhanced_mlb_analytics.py`.
 - [ ] **NFL/NHL parity with MLB analytics** — Add ML-backed game analytics endpoints for NFL and NHL (currently only MLB has the ML prediction pipeline)
 - [ ] **NBA analytics endpoint** — Extend the analytics system to NBA games
 - [ ] **Frontend analytics integration** — Display ML predictions and confidence scores in the game cards UI (currently only available via API)
@@ -45,7 +47,7 @@
 | Sprint 2 | 2026-04-17 | Upgrade Angular from v19 to v21 (via v20), NgRx to v21, jest to v30 | Merged — retro complete |
 | Sprint 3 | 2026-04-18 | Backfill full 2024+2025 MLB dataset and retrain ML model v2.0 | PR #26 merged — retro complete |
 | Sprint 4 | 2026-04-22 | Fix early-season ML noise (v2.1) + migrate DB to Homebrew PostgreSQL | PR #28 merged — retro complete |
-| Sprint 5 | 2026-04-24 | Investigate and improve MLB model accuracy: diagnostics, XGBoost, temporal weighting → v3.0 | In progress |
+| Sprint 5 | 2026-04-24 | Investigate and improve MLB model accuracy: diagnostics, XGBoost, temporal weighting → v3.0 | PR #33 open — retro complete |
 
 ---
 
@@ -120,6 +122,14 @@
 ---
 
 ## Lessons Learned (Running Log)
+
+**Sprint 5 (2026-04-24)**
+- v1.0's 59.1% accuracy was never a fair comparison target — it trained on ~800 late-season homogeneous games. The gap vs. v2.x is a dataset composition artifact, not a model deficiency. Always specify the test split and comparison dataset in accuracy-related ACs.
+- XGBoost with default parameters scored 51.46% vs RF 55.09% — the 3.3-point gap is likely hyperparameter-driven, not algorithmic. `max_depth=6` may be too shallow; needs a tuning sprint before XGBoost can be fairly evaluated.
+- The learning curve is the most actionable diagnostic: model accuracy improves monotonically to 80% of training data, confirming the model is not saturated. More 2026 data is the clearest path to higher accuracy.
+- Temporal weighting (365-day half-life) gave only +0.52% — directionally correct but small. Aggressive weighting (180-day) hurts (-1.40%): discards useful 2024 signal.
+- Test the CI environment (Python 3.9, only `api/requirements.txt`) mentally at test-writing time. Optional ML dependencies like xgboost must use `pytest.importorskip` to skip gracefully rather than fail.
+- Commit per GitHub issue during development, not one large commit at Phase 6 — adopted as CLAUDE.md workflow policy.
 
 **Sprint 4 (2026-04-22)**
 - Match `min_games_threshold` to the rolling window size — any threshold below the window size still includes games where rolling features are partially populated (NaN→0). Threshold=10 (matching `rolling_window=10`) was correct; the initially proposed threshold=5 had minimal impact

@@ -16,7 +16,7 @@ BetBot is a full-stack sports betting application that allows users to view and 
 
 ## Quick Start
 
-This guide assumes you have Python 3.x, Node.js, Docker Desktop, and Git installed.
+This guide assumes you have Python 3.x, Node.js, Homebrew (macOS), and Git installed.
 
 1. **Clone and setup virtual environment**
 
@@ -40,9 +40,10 @@ This guide assumes you have Python 3.x, Node.js, Docker Desktop, and Git install
 3. **Start PostgreSQL database**
 
    ```bash
-   cd env
-   docker-compose up -d
-   cd ..
+   brew install postgresql@14
+   brew services start postgresql@14
+   psql -d postgres -c "CREATE ROLE \"user\" WITH LOGIN PASSWORD 'password';"
+   psql -d postgres -c "CREATE DATABASE betbot OWNER \"user\";"
    ```
 
 4. **Configure environment variables**
@@ -90,8 +91,6 @@ The backend API is responsible for user authentication, fetching the latest odds
 - SQLAlchemy
 - Alembic
 - PostgreSQL
-- Adminer
-- Docker & Docker Compose
 - pytest & pytest-asyncio
 - bcrypt
 - JWT
@@ -146,18 +145,19 @@ The PostgreSQL database includes the following key tables:
 3. Navigate to the `api` directory: `cd betbot/api`
 4. Install the dependencies: `pip install -r requirements.txt`
 5. Set up the database:
-   - Install Docker Desktop and Docker Compose.
-   - Start Docker Desktop.
-   - Navigate to the `env` directory: `cd betbot/env`
-   - Update the `docker-compose.yml` file to reflect whatever username and password will be used to access the PostgreSQL database.
-   - Start the PostgreSQL database and Adminer: `docker-compose up -d`
-   - The PostgreSQL databse should be accessible at `localhost:5439` and Adminer should be accessible at `localhost:9091`
+   - Install and start native PostgreSQL: `brew install postgresql@14 && brew services start postgresql@14`
+   - Create the role and database:
+     ```bash
+     psql -d postgres -c "CREATE ROLE \"user\" WITH LOGIN PASSWORD 'password';"
+     psql -d postgres -c "CREATE DATABASE betbot OWNER \"user\";"
+     ```
+   - The PostgreSQL database will be accessible at `localhost:5432`
 6. Set up environment variables:
    - Create new file `betbot/api/.env`
    - Add the following environment variables:
    ```python
    ODDS_API_URL = 'https://api.the-odds-api.com/v4/sports/{sport}/odds/?apiKey={YOUR_API_KEY}&regions=us&markets=h2h&bookmakers=fanduel'
-   DB_URL = 'postgresql://user:password@localhost:5439/betbot'
+   DB_URL = 'postgresql://user:password@localhost:5432/betbot'
    ```
    - Replace `user`, `password`, `{YOUR_API_KEY}` accordingly.
 7. Configure tokenization:
@@ -346,7 +346,7 @@ python machine_learning/scripts/train_mlb_model.py \
 
 #### Automated Daily Updates
 
-The scheduler uses **launchd** (macOS-native) instead of cron — launchd catches up missed runs after the machine wakes, whereas cron silently skips jobs fired while the machine is asleep. The script also starts Docker Desktop and the database container automatically if they are not running, and stops them when the update finishes.
+The scheduler uses **launchd** (macOS-native) instead of cron — launchd catches up missed runs after the machine wakes, whereas cron silently skips jobs fired while the machine is asleep. The script requires native Homebrew PostgreSQL to be running and fast-fails with a SKIP message if it is not accepting connections.
 
 Install once after cloning:
 

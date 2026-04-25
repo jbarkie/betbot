@@ -12,8 +12,7 @@
 
 ### High Priority
 
-- [ ] **Investigate ML model v2.0 accuracy regression** — v2.0 (53.8% accuracy, 4,322 games) underperforms v1.0 (59.1%, 808 games) despite 5× the data. Likely cause is dataset composition: v1.0 trained on late-season games with lower variance; v2.0 spans two full regular seasons. Investigate whether feature engineering, hyperparameter tuning, or data selection (e.g. minimum games played threshold, season-relative weighting) can recover accuracy. A calendar-based cutoff (e.g. post-All-Star only) is ruled out as a general solution — does not work during April/May when no such data exists yet.
-- [ ] **Migrate local database from Docker to native Homebrew PostgreSQL** — Remove Docker as a runtime dependency for local development. Install PostgreSQL via `brew install postgresql@16`, migrate existing data with `pg_dump`/`pg_restore`, update `api/.env` connection string, and strip Docker lifecycle management from the scheduler script entirely. Keeps `docker-compose.yml` for CI and onboarding but removes day-to-day Docker Desktop dependency. Unblocks reliable automated data updates and reduces always-on resource usage. See conversation context: Docker Desktop hangs scheduler for hours on wake; Docker is disproportionate overhead for a single local Postgres instance; production will use a managed Postgres service anyway.
+- [ ] **Investigate remaining ML accuracy gap (v1.0 vs v2.x)** — v2.1 (54.57%, 5,304 games after min-games filter) remains below v1.0 (59.1%, 808 games). The early-season noise fix recovered 0.77% but the core gap is unresolved. v1.0 trained on low-variance late-season data; v2.x spans full regular seasons with higher variance. Investigate season-relative weighting or feature normalization; calendar cutoff (post-All-Star) is ruled out — fails in April/May when no such data exists.
 - [ ] **NFL/NHL parity with MLB analytics** — Add ML-backed game analytics endpoints for NFL and NHL (currently only MLB has the ML prediction pipeline)
 - [ ] **NBA analytics endpoint** — Extend the analytics system to NBA games
 - [ ] **Frontend analytics integration** — Display ML predictions and confidence scores in the game cards UI (currently only available via API)
@@ -44,7 +43,8 @@
 |--------|-------|------|---------|
 | Sprint 1 | 2026-04-16 | Surface ML win probabilities in the game cards analytics modal | PR #17 open — pending retro |
 | Sprint 2 | 2026-04-17 | Upgrade Angular from v19 to v21 (via v20), NgRx to v21, jest to v30 | PR open — pending retro |
-| Sprint 3 | 2026-04-18 | Backfill full 2024+2025 MLB dataset and retrain ML model v2.0 | PR #26 open — retro complete |
+| Sprint 3 | 2026-04-18 | Backfill full 2024+2025 MLB dataset and retrain ML model v2.0 | PR #26 merged — retro complete |
+| Sprint 4 | 2026-04-22 | Fix early-season ML noise (v2.1) + migrate DB to Homebrew PostgreSQL | PR #28 open — retro complete |
 
 ---
 
@@ -87,6 +87,12 @@
 
 ## Lessons Learned (Running Log)
 
+**Sprint 4 (2026-04-22)**
+- Match `min_games_threshold` to the rolling window size — any threshold below the window size still includes games where rolling features are partially populated (NaN→0). Threshold=10 (matching `rolling_window=10`) was correct; the initially proposed threshold=5 had minimal impact
+- Verify actual DB names before migrating — `POSTGRES_DB` in docker-compose sets the default DB for the role, not necessarily what the application uses; always run `\l` in psql to confirm
+- Use `brew --prefix <formula>` to resolve Homebrew binary paths — hardcoding `/opt/homebrew` or `/usr/local` breaks on cross-architecture installs
+- The v1.0 vs v2.x accuracy gap remains open after the min-games fix — the residual variance is from full-season dataset composition, not early-season noise alone
+
 **Sprint 3 (2026-04-18)**
 - More training data does not guarantee better model accuracy — v2.0 trained on 5,403 games scored 53.8% accuracy vs v1.0's 59.1% on 808 games. v1.0 likely benefited from late-season homogeneity (smaller variance); v2.0 faces full two-year regular-season variance. Root cause unresolved — investigate before next retraining sprint
 - A calendar-based data cutoff (e.g. post-All-Star only) is not a viable fix: early in the season (April) there is no post-All-Star data at all. Any solution must work year-round
@@ -106,5 +112,5 @@
 ## Notes
 
 - ML `.joblib` model files are gitignored; always retrain after a fresh clone
-- PostgreSQL runs on port **5439** (non-standard)
+- PostgreSQL runs on port **5432** (standard Homebrew default); local dev uses Homebrew postgresql@14
 - Frontend at `localhost:4200`; API CORS is configured for that origin only

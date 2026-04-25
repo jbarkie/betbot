@@ -7,8 +7,8 @@ This directory stores trained machine learning models for predicting MLB game ou
 ```
 mlb/
 ├── README.md                           # This file
-├── mlb_predictor_v2.0.joblib          # Model binary (gitignored)
-├── mlb_predictor_v2.0_metadata.json   # Model metadata (tracked in git)
+├── mlb_predictor_v2.1.joblib          # Model binary (gitignored)
+├── mlb_predictor_v2.1_metadata.json   # Model metadata (tracked in git)
 └── .gitkeep                            # Ensures directory is tracked
 ```
 
@@ -184,7 +184,7 @@ Recommended retraining frequency:
 ## Troubleshooting
 
 ### Model Not Loading
-1. Check file exists: `machine_learning/models/mlb/mlb_predictor_v2.0.joblib`
+1. Check file exists: `machine_learning/models/mlb/mlb_predictor_v2.1.joblib`
 2. Verify config in `api/src/ml_config.py` matches filename
 3. Check API logs for error messages
 4. Ensure scikit-learn version matches training version

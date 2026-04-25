@@ -90,6 +90,7 @@ class TeamTimeSeriesAnalyzer:
         rolling_stats = pd.DataFrame({
             'team_id': team_id,
             'date': team_games['date'],
+            'games_played': range(1, len(team_games) + 1),
             'rolling_win_pct': round(team_games['is_win'].rolling(window=self.window_size).mean(), 3),
             'rolling_runs_scored': team_games['runs_scored'].rolling(window=self.window_size).mean(),
             'rolling_runs_allowed': team_games['runs_allowed'].rolling(window=self.window_size).mean(),

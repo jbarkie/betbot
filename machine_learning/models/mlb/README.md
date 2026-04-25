@@ -35,12 +35,15 @@ python machine_learning/scripts/train_mlb_model.py \
 
 ### Training Options
 
-- `--model-type`: Type of model (random_forest, logistic_regression)
+- `--model-type`: Type of model (random_forest, logistic_regression, xgboost)
 - `--version`: Version string for the model (default: 1.0)
 - `--start-date`: Start date for training data (YYYY-MM-DD)
 - `--end-date`: End date for training data (YYYY-MM-DD)
 - `--test-split`: Fraction for test set (default: 0.2)
 - `--verbose`: Enable detailed logging
+- `--diagnostics`: Print per-month accuracy, learning curve, class balance, full feature importances
+- `--temporal-weighting`: Apply exponential decay weights (recent games weighted higher)
+- `--half-life`: Half-life in days for temporal decay (default: 365)
 
 ### Training Requirements
 
@@ -137,10 +140,19 @@ Each trained model has an accompanying JSON metadata file containing:
    - Falls back to rule-based system
    - Sets `prediction_method: "rule_based"`
 
+## Model Version History
+
+| Version | Type | Accuracy | Train Games | Trained | Notes |
+|---------|------|----------|-------------|---------|-------|
+| v1.0 | RandomForestClassifier | 59.11% | 808 | 2025-10-15 | Late-season data only (low variance) |
+| v2.0 | RandomForestClassifier | 53.84% | 4,322 | 2026-04-17 | Full 2024+2025 seasons |
+| v2.1 | RandomForestClassifier | 54.57% | 4,243 | 2026-04-21 | Min-games threshold fix |
+| v3.0 | RandomForestClassifier | 55.09% | 3,968 (train) | 2026-04-24 | Temporal weighting (365-day half-life) |
+
 ## Model Performance Expectations
 
 ### RandomForestClassifier
-- **Typical Accuracy**: 55-60%
+- **Typical Accuracy**: 54-60%
 - **Training Time**: 2-5 minutes
 - **Prediction Time**: <10ms
 - **Pros**: Handles non-linear relationships, provides feature importance
@@ -152,6 +164,13 @@ Each trained model has an accompanying JSON metadata file containing:
 - **Prediction Time**: <5ms
 - **Pros**: Fast, interpretable, small model size
 - **Cons**: Assumes linear relationships
+
+### XGBoostClassifier
+- **Typical Accuracy**: 51-55% (default params; needs tuning)
+- **Training Time**: 1-3 minutes
+- **Prediction Time**: <5ms
+- **Pros**: Built-in missing value handling, strong regularization
+- **Cons**: Default params underperform RF on this dataset without tuning
 
 ## Model Versioning
 
@@ -184,7 +203,7 @@ Recommended retraining frequency:
 ## Troubleshooting
 
 ### Model Not Loading
-1. Check file exists: `machine_learning/models/mlb/mlb_predictor_v2.1.joblib`
+1. Check file exists: `machine_learning/models/mlb/mlb_predictor_v3.0-rf-tw365.joblib`
 2. Verify config in `api/src/ml_config.py` matches filename
 3. Check API logs for error messages
 4. Ensure scikit-learn version matches training version
@@ -214,10 +233,10 @@ Recommended retraining frequency:
 
 Potential improvements:
 - Ensemble models combining multiple algorithms
-- XGBoost or LightGBM for better performance
+- XGBoost hyperparameter tuning (default params underperform RF; tuning may close the gap)
 - Neural networks for complex patterns
 - Real-time model retraining pipeline
 - A/B testing different model versions
-- Pitcher-specific features
+- Starting pitcher features (ERA, WHIP, K/9 for the day's starter)
 - Weather and ballpark factors
 - Betting market integration

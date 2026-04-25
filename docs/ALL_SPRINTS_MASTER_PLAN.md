@@ -12,7 +12,7 @@
 
 ### High Priority
 
-- [ ] **Investigate remaining ML accuracy gap (v1.0 vs v2.x)** — v2.1 (54.57%, 5,304 games after min-games filter) remains below v1.0 (59.1%, 808 games). The early-season noise fix recovered 0.77% but the core gap is unresolved. v1.0 trained on low-variance late-season data; v2.x spans full regular seasons with higher variance. Investigate season-relative weighting or feature normalization; calendar cutoff (post-All-Star) is ruled out — fails in April/May when no such data exists.
+- [ ] **Investigate remaining ML accuracy gap (v1.0 vs v2.x)** — Active in Sprint 5 (issues #29–#32). Approach: diagnostic analysis, XGBoost, temporal sample weighting. Target: v3.0 ≥ v1.0 (59.1%) or documented root cause.
 - [ ] **NFL/NHL parity with MLB analytics** — Add ML-backed game analytics endpoints for NFL and NHL (currently only MLB has the ML prediction pipeline)
 - [ ] **NBA analytics endpoint** — Extend the analytics system to NBA games
 - [ ] **Frontend analytics integration** — Display ML predictions and confidence scores in the game cards UI (currently only available via API)
@@ -41,10 +41,11 @@
 
 | Sprint | Dates | Goal | Outcome |
 |--------|-------|------|---------|
-| Sprint 1 | 2026-04-16 | Surface ML win probabilities in the game cards analytics modal | PR #17 open — pending retro |
-| Sprint 2 | 2026-04-17 | Upgrade Angular from v19 to v21 (via v20), NgRx to v21, jest to v30 | PR open — pending retro |
+| Sprint 1 | 2026-04-16 | Surface ML win probabilities in the game cards analytics modal | Merged — retro complete |
+| Sprint 2 | 2026-04-17 | Upgrade Angular from v19 to v21 (via v20), NgRx to v21, jest to v30 | Merged — retro complete |
 | Sprint 3 | 2026-04-18 | Backfill full 2024+2025 MLB dataset and retrain ML model v2.0 | PR #26 merged — retro complete |
-| Sprint 4 | 2026-04-22 | Fix early-season ML noise (v2.1) + migrate DB to Homebrew PostgreSQL | PR #28 open — retro complete |
+| Sprint 4 | 2026-04-22 | Fix early-season ML noise (v2.1) + migrate DB to Homebrew PostgreSQL | PR #28 merged — retro complete |
+| Sprint 5 | 2026-04-24 | Investigate and improve MLB model accuracy: diagnostics, XGBoost, temporal weighting → v3.0 | In progress |
 
 ---
 
@@ -82,6 +83,39 @@
 - **Jest / jest-preset-angular compatibility** — New Angular versions sometimes require a matching `jest-preset-angular` release that lags by a few weeks.
 - **TypeScript strictness** — Angular upgrades sometimes raise the minimum TS version, which can surface latent type errors in existing code.
 - **Schematic safety** — `ng update` schematics modify files automatically. Review every schematic change before committing to avoid unintended rewrites.
+
+---
+
+## Sprint 5 — MLB ML Accuracy Investigation (Active)
+
+**Goal:** Diagnose the v1.0→v2.1 accuracy regression, implement and evaluate XGBoost and temporal sample weighting, and promote the best-performing approach to v3.0.
+
+**Background:** v2.1 (RandomForestClassifier) achieves 54.57% on 5,304 full-season games vs v1.0's 59.1% on 808 late-season games. Root cause hypothesis: full-season variance (high early-season noise) suppresses accuracy. No temporal weighting, hyperparameter tuning, or gradient boosting has been tried. XGBoost is already installed in the venv.
+
+### Acceptance Criteria
+
+- [ ] `--diagnostics` flag prints per-month accuracy table, home win rate, learning curve (5 data points), and feature importance ranking
+- [ ] `--model-type xgboost` trains to completion; accuracy logged vs v2.1 baseline
+- [ ] `--temporal-weighting --half-life N` trains with exponential decay weights; running without flag is identical to current behavior
+- [ ] `_compute_sample_weights()` unit tests pass (monotonically non-decreasing, ratio check)
+- [ ] v3.0 model promoted in `ml_config.py`; accuracy ≥ 54.57%; root-cause doc committed
+- [ ] All API tests pass after version bump
+
+### Issues
+
+| # | Title |
+|---|-------|
+| #29 | MLB Diagnostic Analysis: Per-Month Accuracy, Class Balance, and Learning Curves |
+| #30 | Add XGBoost as a Supported MLB Model Type |
+| #31 | Add Temporal Sample Weighting to MLB Model Training |
+| #32 | Promote Best MLB Model Candidate to v3.0 |
+
+### Scope Boundaries
+
+- No pitcher/lineup player data (separate sprint)
+- No hyperparameter grid search
+- No LightGBM (XGBoost covers gradient boosting hypothesis)
+- No frontend accuracy dashboard
 
 ---
 

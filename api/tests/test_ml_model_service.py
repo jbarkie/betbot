@@ -375,5 +375,64 @@ class TestMLModelServiceIntegration:
                     assert abs(meta['home_win_probability'] + meta['away_win_probability'] - 1.0) < 0.01
 
 
+    def test_xgboost_pipeline_predict(self, tmp_path):
+        """Test that MLModelService works correctly with an XGBoost pipeline."""
+        from xgboost import XGBClassifier
+        from sklearn.impute import SimpleImputer
+
+        X_train = np.random.rand(100, len(MLB_REQUIRED_FEATURES))
+        y_train = np.random.randint(0, 2, 100)
+
+        pipeline = Pipeline([
+            ('preprocessor', Pipeline([
+                ('imputer', SimpleImputer(strategy='mean')),
+                ('scaler', StandardScaler()),
+            ])),
+            ('model', XGBClassifier(n_estimators=10, random_state=42, verbosity=0, eval_metric='logloss'))
+        ])
+        pipeline.fit(X_train, y_train)
+
+        model_path = tmp_path / 'test_xgb_model.joblib'
+        metadata_path = tmp_path / 'test_xgb_metadata.json'
+
+        joblib.dump(pipeline, model_path)
+
+        metadata = {
+            'model_type': 'XGBClassifier',
+            'version': '3.0-xgb',
+            'trained_date': '2026-04-24T10:00:00',
+            'features': MLB_REQUIRED_FEATURES,
+            'metrics': {'accuracy': 0.55}
+        }
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f)
+
+        config = {
+            'model_name': 'mlb_predictor',
+            'version': '3.0-xgb',
+            'model_file': 'test_xgb_model.joblib',
+            'metadata_file': 'test_xgb_metadata.json',
+            'model_type': 'XGBClassifier'
+        }
+
+        with patch('api.src.ml_model_service.get_model_path', return_value=model_path):
+            with patch('api.src.ml_model_service.get_metadata_path', return_value=metadata_path):
+                with patch('api.src.ml_model_service.model_exists', return_value=True):
+                    service = MLModelService(model_config=config)
+                    features = {feature: np.random.rand() for feature in MLB_REQUIRED_FEATURES}
+                    result = service.predict(features)
+
+        assert result is not None, "XGBoost predict() must return a result"
+        winner, probability, meta = result
+        assert winner in ['home', 'away']
+        assert 0 <= probability <= 1
+        assert 'ml_model_name' in meta
+        assert 0 <= meta['home_win_probability'] <= 1
+        assert 0 <= meta['away_win_probability'] <= 1
+        # feature_importances_ is available on XGBClassifier — top-5 should be populated
+        assert meta['feature_importance'] is not None
+        assert isinstance(meta['feature_importance'], dict)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, '-v'])

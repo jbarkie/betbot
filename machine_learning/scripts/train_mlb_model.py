@@ -264,7 +264,7 @@ class MLBModelTrainer:
         Compute exponential decay sample weights so recent games have higher influence.
 
         Weight formula: w_i = exp(ln(2) / half_life * days_elapsed_i)
-        A game played half_life_days before the most recent game has weight 0.5 relative to it.
+        The most recent game's weight is 2× a game played half_life_days earlier.
 
         Args:
             game_dates: Series of game dates (datetime or date-like)
@@ -665,7 +665,11 @@ Examples:
         sample_weights = None
         if args.temporal_weighting:
             if 'game_date' not in training_data.columns:
-                print("\n❌ game_date column not available for temporal weighting")
+                print("\nERROR: game_date column not available for temporal weighting")
+                sys.exit(1)
+            null_count = training_data['game_date'].isna().sum()
+            if null_count > 0:
+                print(f"\nERROR: game_date has {null_count} null values — cannot compute temporal weights")
                 sys.exit(1)
             sample_weights = trainer._compute_sample_weights(training_data['game_date'], args.half_life)
             print(f"   Temporal weighting enabled (half-life: {args.half_life} days)")

@@ -194,17 +194,17 @@ The PostgreSQL database includes the following key tables:
 
 ### Running Tests
 
-From the root `betbot` directory, run the API tests and generate a coverage report:
+From the root `betbot` directory, run all tests and generate a coverage report:
 
 ```bash
-cd api/tests
-coverage run -m pytest && coverage report -m
+coverage run -m pytest api/tests/ machine_learning/tests/ && coverage report -m
 ```
 
-To run a specific test:
+To run a specific test file or function:
 
 ```bash
 pytest api/tests/test_specific_file.py::test_specific_function
+pytest machine_learning/tests/test_train_mlb_model.py -v
 ```
 
 ## Frontend Client

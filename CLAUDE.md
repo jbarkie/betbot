@@ -18,11 +18,12 @@ BetBot is a full-stack sports betting application displaying and analyzing odds 
 # Run API server (from project root with venv activated)
 python3 -m api.src.main
 
-# Run tests with coverage
-cd api/tests && coverage run -m pytest && coverage report -m
+# Run tests with coverage (from project root)
+coverage run -m pytest api/tests/ machine_learning/tests/ && coverage report -m
 
-# Run specific test
+# Run a specific test file or function
 pytest api/tests/test_specific_file.py::test_specific_function
+pytest machine_learning/tests/test_train_mlb_model.py -v
 
 # Database migrations
 alembic revision --autogenerate -m "description"

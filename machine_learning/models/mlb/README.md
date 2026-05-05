@@ -147,7 +147,8 @@ Each trained model has an accompanying JSON metadata file containing:
 | v1.0 | RandomForestClassifier | 59.11% | 808 | 2025-10-15 | Late-season data only (low variance) |
 | v2.0 | RandomForestClassifier | 53.84% | 4,322 | 2026-04-17 | Full 2024+2025 seasons |
 | v2.1 | RandomForestClassifier | 54.57% | 4,243 | 2026-04-21 | Min-games threshold fix |
-| v3.0 | RandomForestClassifier | 55.09% | 3,968 (train) | 2026-04-24 | Temporal weighting (365-day half-life) |
+| v3.0 ⭐ | RandomForestClassifier | 55.09% | 3,968 (train) | 2026-04-24 | Temporal weighting (365-day half-life); current production model |
+| v4.0 | XGBClassifier | 50.49% (CV: 56.47%) | 409 (train) | 2026-05-04 | Best params from randomized search (n_iter=50); CV inflated due to small dataset; below RF baseline — not promoted to production |
 
 ## Model Performance Expectations
 
@@ -166,11 +167,11 @@ Each trained model has an accompanying JSON metadata file containing:
 - **Cons**: Assumes linear relationships
 
 ### XGBoostClassifier
-- **Typical Accuracy**: 51-55% (default params; needs tuning)
-- **Training Time**: 1-3 minutes
+- **Typical Accuracy**: 50-55% (tuned params; see v4.0 findings)
+- **Training Time**: 1-3 minutes (+ 5-10 min for `--hyperparameter-search`)
 - **Prediction Time**: <5ms
-- **Pros**: Built-in missing value handling, strong regularization
-- **Cons**: Default params underperform RF on this dataset without tuning
+- **Pros**: Built-in missing value handling, strong regularization, supports `--hyperparameter-search`
+- **Cons**: Underperforms RF on this dataset at current data volume; re-evaluate when ≥ 2,000 games available
 
 ## Model Versioning
 
@@ -233,7 +234,7 @@ Recommended retraining frequency:
 
 Potential improvements:
 - Ensemble models combining multiple algorithms
-- XGBoost hyperparameter tuning (default params underperform RF; tuning may close the gap)
+- XGBoost re-evaluation once ≥ 2,000 games available (Sprint 6 tuning found CV accuracy 56.47% but test accuracy 50.49% — small dataset inflates CV scores)
 - Neural networks for complex patterns
 - Real-time model retraining pipeline
 - A/B testing different model versions

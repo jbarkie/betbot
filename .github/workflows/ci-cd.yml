@@ -30,7 +30,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r api/requirements.txt
     - name: Run tests and generate coverage report
-      run: cd api/tests && coverage run -m pytest && coverage report -m
+      run: coverage run -m pytest api/tests/ machine_learning/tests/ && coverage report -m
 
   frontend-tests:
     runs-on: ubuntu-latest

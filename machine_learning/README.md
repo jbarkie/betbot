@@ -221,6 +221,28 @@ print(f"Schedule entries: {session.query(MLBSchedule).count()}")
 session.close()
 ```
 
+## Running Tests
+
+ML unit tests live in `machine_learning/tests/`. Run from the project root with the venv active:
+
+```bash
+# ML tests only
+pytest machine_learning/tests/ -v
+
+# Full suite (API + ML)
+coverage run -m pytest api/tests/ machine_learning/tests/ && coverage report -m
+```
+
+Current coverage:
+
+| Test class | What it covers |
+|------------|---------------|
+| `TestComputeSampleWeights` | Exponential decay formula, monotonicity, half-life ratio |
+| `TestComputePerMonthAccuracy` | Month keys, game counts, accuracy edge cases |
+| `TestComputeLearningCurve` | Output structure, fraction values, weighted training path |
+
+---
+
 ## Dependencies
 
 The scripts require the following packages (already in `requirements.txt`):

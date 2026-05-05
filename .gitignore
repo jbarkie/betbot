@@ -1,7 +1,6 @@
 venv/
 .DS_Store
 alembic.ini
-pytest.ini
 __pycache__
 .coverage
 .env

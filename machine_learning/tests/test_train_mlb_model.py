@@ -265,10 +265,11 @@ class TestRunHyperparameterSearch:
         """Search must pass TimeSeriesSplit(n_splits=5) as the cv argument."""
         from sklearn.model_selection import TimeSeriesSplit
 
-        with patch(
-            'machine_learning.scripts.train_mlb_model.RandomizedSearchCV',
-            return_value=mock_search,
-        ) as mock_rscv_cls:
+        with patch.object(xgb_trainer, 'create_model', return_value=MagicMock()), \
+             patch(
+                 'machine_learning.scripts.train_mlb_model.RandomizedSearchCV',
+                 return_value=mock_search,
+             ) as mock_rscv_cls:
             xgb_trainer._run_hyperparameter_search(_make_training_data(200), n_iter=2)
 
         _, call_kwargs = mock_rscv_cls.call_args
@@ -280,14 +281,16 @@ class TestRunHyperparameterSearch:
         """After search, _xgboost_override_params must contain best params without 'model__' prefix."""
         expected = {k.replace('model__', ''): v for k, v in _MOCK_BEST_PARAMS.items()}
 
-        with patch('machine_learning.scripts.train_mlb_model.RandomizedSearchCV', return_value=mock_search):
+        with patch.object(xgb_trainer, 'create_model', return_value=MagicMock()), \
+             patch('machine_learning.scripts.train_mlb_model.RandomizedSearchCV', return_value=mock_search):
             xgb_trainer._run_hyperparameter_search(_make_training_data(200), n_iter=2)
 
         assert xgb_trainer._xgboost_override_params == expected
 
     def test_return_value_structure(self, xgb_trainer, mock_search):
         """Return value must have 'params' dict and 'best_cv_score' float."""
-        with patch('machine_learning.scripts.train_mlb_model.RandomizedSearchCV', return_value=mock_search):
+        with patch.object(xgb_trainer, 'create_model', return_value=MagicMock()), \
+             patch('machine_learning.scripts.train_mlb_model.RandomizedSearchCV', return_value=mock_search):
             result = xgb_trainer._run_hyperparameter_search(_make_training_data(200), n_iter=2)
 
         assert 'params' in result
@@ -297,7 +300,8 @@ class TestRunHyperparameterSearch:
 
     def test_return_params_strip_model_prefix(self, xgb_trainer, mock_search):
         """Returned 'params' must not contain the 'model__' pipeline prefix."""
-        with patch('machine_learning.scripts.train_mlb_model.RandomizedSearchCV', return_value=mock_search):
+        with patch.object(xgb_trainer, 'create_model', return_value=MagicMock()), \
+             patch('machine_learning.scripts.train_mlb_model.RandomizedSearchCV', return_value=mock_search):
             result = xgb_trainer._run_hyperparameter_search(_make_training_data(200), n_iter=2)
 
         for key in result['params']:

@@ -114,7 +114,7 @@ bash machine_learning/scripts/schedule_updates.sh
 - Predictions >55% confidence use ML (`prediction_method: "machine_learning"`), else falls back to rule-based
 - Supported: `random_forest` (default), `logistic_regression`, `xgboost`
 - Temporal weighting: `--temporal-weighting --half-life N` applies exponential decay so recent games have higher influence
-- Hyperparameter search: `--hyperparameter-search` (XGBoost only) runs `RandomizedSearchCV` with `TimeSeriesSplit(n_splits=5)`; `--search-iter N` controls breadth (default 50); best params apply automatically to the trained model
+- Hyperparameter search: `--hyperparameter-search` (XGBoost only) runs `RandomizedSearchCV` with `TimeSeriesSplit(n_splits=5)`; `--search-iter N` controls breadth (default 50); best params apply automatically to the trained model; always compare CV accuracy to holdout test accuracy — CV scores on small datasets (< ~1,500 games) are optimistic
 - Diagnostic output: `--diagnostics` prints per-month accuracy, learning curve, class balance, full feature importance
 - Model info endpoint: `/analytics/mlb/model-info`
 

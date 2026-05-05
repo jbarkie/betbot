@@ -6,6 +6,7 @@ import pytest
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
+from unittest.mock import patch, MagicMock
 
 
 def _make_game_dates(n: int, start: datetime = None) -> pd.Series:
@@ -200,3 +201,104 @@ class TestComputeLearningCurve:
         assert len(result) == 5
         for point in result:
             assert 0.0 <= point['test_accuracy'] <= 1.0
+
+
+def _make_training_data(n: int) -> pd.DataFrame:
+    """Generate a minimal training DataFrame for hyperparameter search tests."""
+    from api.src.ml_config import MLB_REQUIRED_FEATURES
+    rng = np.random.default_rng(42)
+    data = {feat: rng.standard_normal(n) for feat in MLB_REQUIRED_FEATURES}
+    data['home_team_won'] = rng.integers(0, 2, n)
+    data['game_date'] = _make_game_dates(n)
+    return pd.DataFrame(data)
+
+
+_MOCK_BEST_PARAMS = {
+    'model__max_depth': 4,
+    'model__learning_rate': 0.05,
+    'model__n_estimators': 300,
+    'model__subsample': 0.8,
+    'model__colsample_bytree': 0.7,
+    'model__min_child_weight': 3,
+    'model__gamma': 0.1,
+}
+_MOCK_BEST_SCORE = 0.5421
+
+
+class TestRunHyperparameterSearch:
+    """Tests for MLBModelTrainer._run_hyperparameter_search()."""
+
+    @pytest.fixture
+    def xgb_trainer(self):
+        from machine_learning.scripts.train_mlb_model import MLBModelTrainer
+        return MLBModelTrainer(model_type='xgboost', verbose=False)
+
+    @pytest.fixture
+    def rf_trainer(self):
+        from machine_learning.scripts.train_mlb_model import MLBModelTrainer
+        return MLBModelTrainer(model_type='random_forest', verbose=False)
+
+    @pytest.fixture
+    def lr_trainer(self):
+        from machine_learning.scripts.train_mlb_model import MLBModelTrainer
+        return MLBModelTrainer(model_type='logistic_regression', verbose=False)
+
+    @pytest.fixture
+    def mock_search(self):
+        """Pre-configured RandomizedSearchCV mock."""
+        mock = MagicMock()
+        mock.best_params_ = _MOCK_BEST_PARAMS
+        mock.best_score_ = _MOCK_BEST_SCORE
+        return mock
+
+    def test_raises_value_error_for_random_forest(self, rf_trainer):
+        """_run_hyperparameter_search must reject model_type != 'xgboost'."""
+        with pytest.raises(ValueError, match="xgboost"):
+            rf_trainer._run_hyperparameter_search(_make_training_data(200))
+
+    def test_raises_value_error_for_logistic_regression(self, lr_trainer):
+        """_run_hyperparameter_search must reject model_type 'logistic_regression'."""
+        with pytest.raises(ValueError, match="xgboost"):
+            lr_trainer._run_hyperparameter_search(_make_training_data(200))
+
+    def test_uses_time_series_split_with_five_folds(self, xgb_trainer, mock_search):
+        """Search must pass TimeSeriesSplit(n_splits=5) as the cv argument."""
+        from sklearn.model_selection import TimeSeriesSplit
+
+        with patch(
+            'machine_learning.scripts.train_mlb_model.RandomizedSearchCV',
+            return_value=mock_search,
+        ) as mock_rscv_cls:
+            xgb_trainer._run_hyperparameter_search(_make_training_data(200), n_iter=2)
+
+        _, call_kwargs = mock_rscv_cls.call_args
+        cv_arg = call_kwargs['cv']
+        assert isinstance(cv_arg, TimeSeriesSplit), "cv must be a TimeSeriesSplit instance"
+        assert cv_arg.n_splits == 5
+
+    def test_sets_override_params_after_search(self, xgb_trainer, mock_search):
+        """After search, _xgboost_override_params must contain best params without 'model__' prefix."""
+        expected = {k.replace('model__', ''): v for k, v in _MOCK_BEST_PARAMS.items()}
+
+        with patch('machine_learning.scripts.train_mlb_model.RandomizedSearchCV', return_value=mock_search):
+            xgb_trainer._run_hyperparameter_search(_make_training_data(200), n_iter=2)
+
+        assert xgb_trainer._xgboost_override_params == expected
+
+    def test_return_value_structure(self, xgb_trainer, mock_search):
+        """Return value must have 'params' dict and 'best_cv_score' float."""
+        with patch('machine_learning.scripts.train_mlb_model.RandomizedSearchCV', return_value=mock_search):
+            result = xgb_trainer._run_hyperparameter_search(_make_training_data(200), n_iter=2)
+
+        assert 'params' in result
+        assert 'best_cv_score' in result
+        assert isinstance(result['params'], dict)
+        assert result['best_cv_score'] == pytest.approx(_MOCK_BEST_SCORE)
+
+    def test_return_params_strip_model_prefix(self, xgb_trainer, mock_search):
+        """Returned 'params' must not contain the 'model__' pipeline prefix."""
+        with patch('machine_learning.scripts.train_mlb_model.RandomizedSearchCV', return_value=mock_search):
+            result = xgb_trainer._run_hyperparameter_search(_make_training_data(200), n_iter=2)
+
+        for key in result['params']:
+            assert not key.startswith('model__'), f"Key '{key}' still has 'model__' prefix"

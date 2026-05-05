@@ -9,14 +9,16 @@ Usage:
     python train_mlb_model.py [--model-type MODEL] [--start-date DATE] [--end-date DATE] [--verbose]
 
 Options:
-    --model-type         Type of model to train: random_forest, logistic_regression, xgboost (default: random_forest)
-    --start-date         Start date for training data (YYYY-MM-DD format, default: 90 days ago)
-    --end-date           End date for training data (YYYY-MM-DD format, default: today)
-    --verbose            Enable verbose logging output
-    --test-split         Fraction of data to use for testing (default: 0.2)
-    --diagnostics        Print per-month accuracy, class balance, learning curve, and feature importances
-    --temporal-weighting Apply exponential decay sample weights (recent games weighted higher)
-    --half-life          Half-life in days for temporal weighting (default: 365)
+    --model-type            Type of model to train: random_forest, logistic_regression, xgboost (default: random_forest)
+    --start-date            Start date for training data (YYYY-MM-DD format, default: 90 days ago)
+    --end-date              End date for training data (YYYY-MM-DD format, default: today)
+    --verbose               Enable verbose logging output
+    --test-split            Fraction of data to use for testing (default: 0.2)
+    --diagnostics           Print per-month accuracy, class balance, learning curve, and feature importances
+    --temporal-weighting    Apply exponential decay sample weights (recent games weighted higher)
+    --half-life             Half-life in days for temporal weighting (default: 365)
+    --hyperparameter-search Run RandomizedSearchCV over XGBoost params (requires --model-type xgboost)
+    --search-iter           Number of parameter settings sampled in search (default: 50)
 """
 
 import sys
@@ -37,7 +39,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import TimeSeriesSplit, cross_val_score
+from sklearn.model_selection import TimeSeriesSplit, cross_val_score, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
@@ -70,6 +72,7 @@ class MLBModelTrainer:
         self.pipeline = None
         self.feature_importances = {}
         self.metrics = {}
+        self._xgboost_override_params = {}
 
         # Set up logging
         self._setup_logging()
@@ -238,7 +241,7 @@ class MLBModelTrainer:
                 raise ImportError(
                     "xgboost is not installed. Run: pip install xgboost"
                 )
-            model = XGBClassifier(
+            xgb_params = dict(
                 n_estimators=200,
                 max_depth=6,
                 learning_rate=0.1,
@@ -248,6 +251,8 @@ class MLBModelTrainer:
                 eval_metric='logloss',
                 verbosity=0
             )
+            xgb_params.update(self._xgboost_override_params)
+            model = XGBClassifier(**xgb_params)
         else:
             raise ValueError(f"Unsupported model type: {self.model_type}")
 
@@ -356,6 +361,86 @@ class MLBModelTrainer:
             })
 
         return results
+
+    def _run_hyperparameter_search(
+        self,
+        training_data: pd.DataFrame,
+        test_split: float = 0.2,
+        n_iter: int = 50
+    ) -> dict:
+        """
+        Run RandomizedSearchCV over XGBoost hyperparameters using TimeSeriesSplit.
+
+        Sets self._xgboost_override_params to the best-found params so that a
+        subsequent call to create_model() (and therefore train_and_evaluate()) uses
+        them automatically.  Only valid when model_type == 'xgboost'.
+
+        Args:
+            training_data: Prepared training data (same format as train_and_evaluate expects)
+            test_split: Fraction held out as test set — search runs only on the training portion
+            n_iter: Number of parameter settings sampled by RandomizedSearchCV
+
+        Returns:
+            dict with keys 'params' (best param dict, 'model__' prefix stripped) and
+            'best_cv_score' (mean CV accuracy of the best candidate)
+        """
+        if self.model_type != 'xgboost':
+            raise ValueError(
+                f"--hyperparameter-search is only supported for model_type 'xgboost', "
+                f"got '{self.model_type}'"
+            )
+
+        self.logger.info(
+            f"Running randomized hyperparameter search "
+            f"(n_iter={n_iter}, cv=TimeSeriesSplit(n_splits=5))..."
+        )
+        self.logger.info("This may take several minutes.")
+
+        X = training_data[MLB_REQUIRED_FEATURES].copy().fillna(0)
+        y = training_data['home_team_won'].astype(int)
+        split_idx = int(len(X) * (1 - test_split))
+        X_train = X.iloc[:split_idx]
+        y_train = y.iloc[:split_idx]
+
+        param_distributions = {
+            'model__max_depth': [3, 4, 5, 6, 7, 8],
+            'model__learning_rate': [0.01, 0.05, 0.08, 0.1, 0.15, 0.2],
+            'model__n_estimators': [100, 200, 300, 500],
+            'model__subsample': [0.6, 0.7, 0.8, 0.9, 1.0],
+            'model__colsample_bytree': [0.6, 0.7, 0.8, 0.9, 1.0],
+            'model__min_child_weight': [1, 3, 5, 7],
+            'model__gamma': [0, 0.1, 0.2, 0.5],
+        }
+
+        tscv = TimeSeriesSplit(n_splits=5)
+        search = RandomizedSearchCV(
+            estimator=self.create_model(),
+            param_distributions=param_distributions,
+            n_iter=n_iter,
+            cv=tscv,
+            scoring='accuracy',
+            n_jobs=1,
+            random_state=42,
+            verbose=2 if self.verbose else 0,
+        )
+
+        search.fit(X_train, y_train)
+
+        best_params = {
+            k.replace('model__', ''): v
+            for k, v in search.best_params_.items()
+        }
+
+        self.logger.info(f"\nSearch complete.")
+        self.logger.info(f"Best CV accuracy: {search.best_score_:.4f}")
+        self.logger.info(f"Best params:\n{json.dumps(best_params, indent=2)}")
+
+        self._xgboost_override_params = best_params
+
+        return {
+            'params': best_params,
+            'best_cv_score': float(search.best_score_),
+        }
 
     def train_and_evaluate(
         self,
@@ -569,12 +654,14 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    python train_mlb_model.py                                          # Train default RandomForest
-    python train_mlb_model.py --model-type logistic_regression         # Train Logistic Regression
-    python train_mlb_model.py --model-type xgboost --version 3.0-xgb  # Train XGBoost
-    python train_mlb_model.py --verbose --test-split 0.25             # Verbose with 25% test split
-    python train_mlb_model.py --diagnostics                           # Full diagnostic output
-    python train_mlb_model.py --temporal-weighting --half-life 365    # Exponential decay weights
+    python train_mlb_model.py                                                        # Train default RandomForest
+    python train_mlb_model.py --model-type logistic_regression                       # Train Logistic Regression
+    python train_mlb_model.py --model-type xgboost --version 3.0-xgb               # Train XGBoost (defaults)
+    python train_mlb_model.py --model-type xgboost --hyperparameter-search          # Search + train best XGBoost
+    python train_mlb_model.py --model-type xgboost --hyperparameter-search --search-iter 100  # Wider search
+    python train_mlb_model.py --verbose --test-split 0.25                           # Verbose with 25% test split
+    python train_mlb_model.py --diagnostics                                         # Full diagnostic output
+    python train_mlb_model.py --temporal-weighting --half-life 365                  # Exponential decay weights
         """
     )
 
@@ -636,6 +723,19 @@ Examples:
         help='Half-life in days for temporal weighting decay (default: 365)'
     )
 
+    parser.add_argument(
+        '--hyperparameter-search',
+        action='store_true',
+        help='Run RandomizedSearchCV over XGBoost hyperparameters (requires --model-type xgboost)'
+    )
+
+    parser.add_argument(
+        '--search-iter',
+        type=int,
+        default=50,
+        help='Number of parameter settings sampled in hyperparameter search (default: 50)'
+    )
+
     args = parser.parse_args()
 
     # Parse dates
@@ -660,6 +760,26 @@ Examples:
             print("   Need at least 100 completed games to train a model.")
             print("   Run the data update script first: python machine_learning/scripts/update_mlb_data.py")
             sys.exit(1)
+
+        # Hyperparameter search (XGBoost only)
+        if args.hyperparameter_search:
+            if args.model_type != 'xgboost':
+                print(f"\n❌ --hyperparameter-search requires --model-type xgboost (got '{args.model_type}')")
+                sys.exit(1)
+            search_result = trainer._run_hyperparameter_search(
+                training_data,
+                test_split=args.test_split,
+                n_iter=args.search_iter,
+            )
+            print(f"\n{'='*55}")
+            print("HYPERPARAMETER SEARCH RESULTS")
+            print(f"{'='*55}")
+            print(f"  Best CV accuracy:              {search_result['best_cv_score']:.4f}")
+            print(f"  Sprint 5 baseline (defaults):  0.5146")
+            print(f"  Best params (JSON):")
+            print(json.dumps(search_result['params'], indent=4))
+            print(f"{'='*55}")
+            print(f"\nContinuing to train final model with best params...")
 
         # Compute temporal sample weights if requested
         sample_weights = None

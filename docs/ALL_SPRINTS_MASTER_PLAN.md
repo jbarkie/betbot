@@ -13,7 +13,8 @@
 ### High Priority
 
 - [ ] **Retrain v4.0 with 2026 season data** — Sprint 5 learning curve shows model is not saturated. Retrain when 2026 season has ≥ 500 completed games (est. late May 2026). v3.0 baseline is 55.09%.
-- [ ] **XGBoost hyperparameter tuning** — Sprint 5 default params scored 51.46% (vs RF 55.09%). Grid search on `max_depth`, `learning_rate`, `n_estimators` needed for a fair comparison.
+- [x] **XGBoost hyperparameter tuning** — Sprint 6 randomized search (n_iter=50) found best CV 56.47% but test 50.49%; RF v3.0 retained. See `docs/sprint6_xgboost_findings.md`.
+- [ ] **XGBoost re-evaluation (≥ 2,000 games)** — Re-run `--hyperparameter-search` when 2026 season has ≥ 2,000 completed games (est. late July 2026). v4.0 tuned params are the starting baseline.
 - [ ] **Starting pitcher features** — ERA/WHIP/K9 for the day's scheduled starter. Highest-impact player-level feature available pre-game. Requires new DB table, data collection script, and inference-time lookup in `enhanced_mlb_analytics.py`.
 - [ ] **NFL/NHL parity with MLB analytics** — Add ML-backed game analytics endpoints for NFL and NHL (currently only MLB has the ML prediction pipeline)
 - [ ] **NBA analytics endpoint** — Extend the analytics system to NBA games
@@ -48,6 +49,7 @@
 | Sprint 3 | 2026-04-18 | Backfill full 2024+2025 MLB dataset and retrain ML model v2.0 | PR #26 merged — retro complete |
 | Sprint 4 | 2026-04-22 | Fix early-season ML noise (v2.1) + migrate DB to Homebrew PostgreSQL | PR #28 merged — retro complete |
 | Sprint 5 | 2026-04-24 | Investigate and improve MLB model accuracy: diagnostics, XGBoost, temporal weighting → v3.0 | PR #33 open — retro complete |
+| Sprint 6 | 2026-05-04 | XGBoost hyperparameter tuning via RandomizedSearchCV; evaluate v4.0 vs RF baseline | PR #36 open — retro pending |
 
 ---
 

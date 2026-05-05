@@ -244,9 +244,11 @@ class MLBModelTrainer:
             xgb_params = dict(
                 n_estimators=200,
                 max_depth=6,
-                learning_rate=0.1,
-                subsample=0.8,
-                colsample_bytree=0.8,
+                learning_rate=0.15,
+                subsample=0.7,
+                colsample_bytree=1.0,
+                min_child_weight=1,
+                gamma=0.5,
                 random_state=42,
                 eval_metric='logloss',
                 verbosity=0

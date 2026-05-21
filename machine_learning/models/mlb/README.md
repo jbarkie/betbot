@@ -148,6 +148,7 @@ Each trained model has an accompanying JSON metadata file containing:
 | v2.0 | RandomForestClassifier | 53.84% | 4,322 | 2026-04-17 | Full 2024+2025 seasons |
 | v2.1 | RandomForestClassifier | 54.57% | 4,243 | 2026-04-21 | Min-games threshold fix |
 | v3.0 ⭐ | RandomForestClassifier | 55.09% | 3,968 (train) | 2026-04-24 | Temporal weighting (365-day half-life); current production model |
+| v3.1 | RandomForestClassifier | 53.87% | 4,550 (train) | 2026-05-20 | Full 2024+2025+2026 dataset (5,688 games); below v3.0 baseline — not promoted; test set skews toward early-2026 high-variance games |
 | v4.0 | XGBClassifier | 50.49% (CV: 56.47%) | 409 (train) | 2026-05-04 | Best params from randomized search (n_iter=50); CV inflated due to small dataset; below RF baseline — not promoted to production |
 
 ## Model Performance Expectations

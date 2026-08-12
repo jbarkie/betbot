@@ -14,8 +14,12 @@
 
 - [x] **Retrain RF baseline with 2026 season data** — 712 completed 2026 games in DB as of 2026-05-20; gate cleared. Folded into Sprint 7 as Card 1 (v3.1 candidate). v3.0 baseline is 55.09%.
 - [x] **XGBoost hyperparameter tuning** — Sprint 6 randomized search (n_iter=50) found best CV 56.47% but test 50.49%; RF v3.0 retained. See `docs/sprint6_xgboost_findings.md`.
-- [ ] **XGBoost re-evaluation (≥ 2,000 games)** — Re-run `--hyperparameter-search` when 2026 season has ≥ 2,000 completed games (est. late July 2026). v4.0 tuned params are the starting baseline.
+- [ ] **XGBoost re-evaluation (≥ 2,000 games)** — Gate now cleared: 6,909 completed games total (1,789 in 2026) as of 2026-08-11. Re-run `--hyperparameter-search`, now against the v3.3 baseline of 56.44% (AUC 0.5708) and with 32 features available. v4.0 tuned params are the starting point.
 - [x] **Starting pitcher features** — ERA/WHIP/K9 for the day's scheduled starter. Sprint 7 (#38, #39, #40): new `mlb_pitcher_stats` table (cumulative pre-game stats via MLB Stats API game logs), feature engineering (32 total features), inference-time lookup in `enhanced_mlb_analytics.py`.
+- [ ] **Pitcher stats over all appearances, not only starts** — Sprint 7 accumulates over prior starts only, leaving 10.3% of games median-imputed. Counting all prior appearances would cover relievers-turned-starters and season debuts.
+- [ ] **Pitcher handedness and platoon splits** — Natural extension of the Sprint 7 `mlb_pitcher_stats` table.
+- [ ] **Scheduler skip alerting** — The launchd MLB update logs `SKIP` and exits silently when PostgreSQL is down. Two days of data were missed in August 2026 before anyone noticed. Surface a notification or have the next successful run report the catch-up gap.
+- [ ] **Data-freshness guard in training** — `train_mlb_model.py` should warn when the newest completed game is more than N days old, so a stale database cannot silently produce a stale model.
 - [ ] **NFL/NHL parity with MLB analytics** — Add ML-backed game analytics endpoints for NFL and NHL (currently only MLB has the ML prediction pipeline)
 - [ ] **NBA analytics endpoint** — Extend the analytics system to NBA games
 - [ ] **Frontend analytics integration** — Display ML predictions and confidence scores in the game cards UI (currently only available via API)
@@ -50,7 +54,7 @@
 | Sprint 4 | 2026-04-22 | Fix early-season ML noise (v2.1) + migrate DB to Homebrew PostgreSQL | PR #28 merged — retro complete |
 | Sprint 5 | 2026-04-24 | Investigate and improve MLB model accuracy: diagnostics, XGBoost, temporal weighting → v3.0 | PR #33 open — retro complete |
 | Sprint 6 | 2026-05-04 | XGBoost hyperparameter tuning via RandomizedSearchCV; evaluate v4.0 vs RF baseline | PR #36 open — retro complete |
-| Sprint 7 | 2026-05-20 | Add starting pitcher ERA/WHIP/K9 as pre-game ML features; retrain RF baseline on 2026 data | In progress |
+| Sprint 7 | 2026-05-20 → 2026-08-11 | Add starting pitcher ERA/WHIP/K9 as pre-game ML features; retrain RF baseline on 2026 data | PR #41 open — 21/21 criteria met; v3.3 promoted (32 features); tests 132 → 203; retro complete |
 
 ---
 

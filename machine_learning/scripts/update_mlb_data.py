@@ -34,6 +34,7 @@ from machine_learning.data.collection.mlb import (
     fetch_schedule
 )
 from machine_learning.data.collection.mlb_direct_api import fetch_team_stats_direct
+from machine_learning.data.collection.mlb_pitcher_stats import collect_pitcher_stats
 from shared.database import connect_to_db
 from machine_learning.data.models.mlb_models import MLBTeam, MLBOffensiveStats, MLBDefensiveStats, MLBSchedule
 
@@ -199,6 +200,32 @@ class MLBDataUpdater:
             self.logger.error(f"Failed to update team stats: {e}")
             raise
             
+    def update_pitcher_stats(self, season_data):
+        """Update cumulative pre-game starting pitcher statistics."""
+        self.logger.info("Updating starting pitcher statistics...")
+
+        if self.dry_run:
+            self.logger.info("DRY RUN: Would fetch and store starting pitcher statistics")
+            return
+
+        try:
+            season = None
+            if self.end_date:
+                season = datetime.strptime(self.end_date, '%Y-%m-%d').year
+            elif isinstance(season_data, dict):
+                season = season_data.get('season') or season_data.get('seasonId')
+
+            seasons = [int(season)] if season else None
+            counts = collect_pitcher_stats(self.session, seasons=seasons)
+            self.logger.info(
+                f"Successfully updated starting pitcher statistics — "
+                f"inserted: {counts['inserted']}, skipped: {counts['skipped']}, "
+                f"pitchers without a game log: {counts['failed_pitchers']}"
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to update pitcher stats: {e}")
+            raise
+
     def run_update(self):
         """Run the complete data update process."""
         start_time = datetime.now()
@@ -225,8 +252,9 @@ class MLBDataUpdater:
             
             if not self.skip_stats:
                 self.update_team_stats(season_data)
+                self.update_pitcher_stats(season_data)
             else:
-                self.logger.info("Skipping team statistics update as requested")
+                self.logger.info("Skipping team and pitcher statistics update as requested")
             
             # Calculate runtime
             end_time = datetime.now()

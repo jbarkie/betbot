@@ -152,6 +152,40 @@ def build_pregame_rows(splits: List[Dict]) -> List[Dict]:
     return rows
 
 
+def compute_cumulative_before(splits: List[Dict], before_date: Optional[str] = None) -> Dict[str, Optional[float]]:
+    """
+    Compute a pitcher's cumulative rate stats across starts before a given date.
+
+    This is the inference-time counterpart to build_pregame_rows: instead of one
+    row per historical start, it returns a single snapshot of what the pitcher's
+    line looks like going into an upcoming game.
+
+    Args:
+        splits: Game log splits for one pitcher and season
+        before_date: ISO date string; starts on or after it are excluded. When None,
+            every start in the log is counted.
+
+    Returns:
+        Dict with era, whip, k9 — all None when the pitcher has no qualifying starts
+    """
+    totals = {
+        'innings_pitched': 0.0,
+        'earned_runs': 0,
+        'hits': 0,
+        'walks': 0,
+        'strikeouts': 0,
+    }
+
+    for split in splits:
+        if not _is_start(split):
+            continue
+        if before_date and (split.get('date') or '') >= before_date:
+            continue
+        _accumulate(totals, split.get('stat', {}))
+
+    return compute_rate_stats(totals)
+
+
 class MLBPitcherStatsCollector:
     """Fetches pitcher game logs and rosters from the MLB Stats API."""
 
@@ -190,6 +224,43 @@ class MLBPitcherStatsCollector:
             })
 
         return pitchers
+
+    def get_probable_pitchers(self, game_id: str) -> Dict[int, Dict]:
+        """
+        Look up the announced probable starters for a scheduled game.
+
+        Args:
+            game_id: MLB gamePk
+
+        Returns:
+            Mapping of team_id to {pitcher_id, pitcher_name}, empty when the game is
+            not found or no starters have been announced yet
+        """
+        data = self.api._make_request(
+            "schedule",
+            {'sportId': 1, 'gamePk': game_id, 'hydrate': 'probablePitcher'}
+        )
+
+        if not data:
+            return {}
+
+        probables = {}
+        for date_entry in data.get('dates', []):
+            for game in date_entry.get('games', []):
+                if str(game.get('gamePk')) != str(game_id):
+                    continue
+                for side in ('home', 'away'):
+                    team = game.get('teams', {}).get(side, {})
+                    team_id = team.get('team', {}).get('id')
+                    pitcher = team.get('probablePitcher')
+                    if team_id is None or not pitcher or pitcher.get('id') is None:
+                        continue
+                    probables[int(team_id)] = {
+                        'pitcher_id': int(pitcher['id']),
+                        'pitcher_name': pitcher.get('fullName'),
+                    }
+
+        return probables
 
     def get_game_log(self, pitcher_id: int, season: int) -> List[Dict]:
         """

@@ -2,7 +2,8 @@
 Feature enginering utilities for MLB game predictions.
 """
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Optional
+import numpy as np
 import pandas as pd
 
 class GameFeatureGenerator:
@@ -32,11 +33,13 @@ class GameFeatureGenerator:
         rolling_stats: pd.DataFrame,
         offensive_stats: pd.DataFrame,
         defensive_stats: pd.DataFrame,
-        schedule_df: pd.DataFrame
+        schedule_df: pd.DataFrame,
+        home_pitcher: Optional[Dict] = None,
+        away_pitcher: Optional[Dict] = None
     ) -> Dict[str, float]:
         """
         Generate features for a single game.
-        
+
         Args:
             home_team_id: ID of the home team
             away_team_id: ID of the away team
@@ -45,9 +48,14 @@ class GameFeatureGenerator:
             offensive_stats: DataFrame containing offensive statistics for all teams
             defensive_stats: DataFrame containing defensive statistics for all teams
             schedule_df: DataFrame containing game schedule and results
-            
+            home_pitcher: Optional dict with era/whip/k9 for the home starting pitcher
+            away_pitcher: Optional dict with era/whip/k9 for the away starting pitcher
+
         Returns:
-            Dictionary containing engineered features for the game
+            Dictionary containing engineered features for the game. Starting pitcher
+            features are NaN when the pitcher is unknown or has no prior start, which
+            callers are expected to impute — filling them with zero would read as a
+            flawless pitcher rather than a missing one.
         """
     
         latest_home_stats = self._get_recent_stats(
@@ -102,10 +110,38 @@ class GameFeatureGenerator:
             # Temporal features
             'month': temporal_features['month'],
             'day_of_week': temporal_features['day_of_week'],
-            'is_weekend': temporal_features['is_weekend']
+            'is_weekend': temporal_features['is_weekend'],
+
+            # Starting pitcher features (cumulative pre-game, NaN when unknown)
+            'home_starter_era': self._pitcher_stat(home_pitcher, 'era'),
+            'home_starter_whip': self._pitcher_stat(home_pitcher, 'whip'),
+            'home_starter_k9': self._pitcher_stat(home_pitcher, 'k9'),
+            'away_starter_era': self._pitcher_stat(away_pitcher, 'era'),
+            'away_starter_whip': self._pitcher_stat(away_pitcher, 'whip'),
+            'away_starter_k9': self._pitcher_stat(away_pitcher, 'k9'),
         }
 
         return features
+
+    @staticmethod
+    def _pitcher_stat(pitcher: Optional[Dict], key: str) -> float:
+        """
+        Read one rate stat from a starting pitcher record.
+
+        Returns NaN rather than 0.0 for a missing pitcher or missing stat, so that
+        downstream imputation can distinguish "unknown" from "genuinely zero".
+        """
+        if not pitcher:
+            return np.nan
+
+        value = pitcher.get(key)
+        if value is None:
+            return np.nan
+
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return np.nan
     
     def _get_recent_stats(
         self,

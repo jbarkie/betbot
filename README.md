@@ -277,7 +277,7 @@ The machine learning module is responsible for automated data collection, featur
 The production ML system follows this flow:
 
 1. **Data Collection** - Automated daily updates of MLB team stats and schedules
-2. **Feature Engineering** - 26 features including momentum, rest days, offense/defense stats, head-to-head history
+2. **Feature Engineering** - 32 features including momentum, rest days, offense/defense stats, head-to-head history, starting pitcher ERA/WHIP/K9
 3. **Model Training** - Offline training with historical game data (minimum 100 games required)
 4. **Model Serving** - Models lazy-loaded and cached in API memory for fast predictions
 5. **Graceful Fallback** - Automatic fallback to rule-based predictions if ML unavailable
@@ -380,7 +380,7 @@ The API serves ML predictions through the `/analytics/mlb/game?id={game_id}` end
 2. `EnhancedMLBAnalytics` calculates team statistics and features
 3. Attempts ML prediction:
    - Loads trained model (cached after first use)
-   - Prepares 26 engineered features
+   - Prepares 32 engineered features
    - Generates prediction with confidence score
 4. If confidence > 55%, returns ML prediction with feature importance
 5. Otherwise, falls back to rule-based statistical comparison

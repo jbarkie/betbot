@@ -17,14 +17,20 @@ MLB_MODELS_DIR = PROJECT_ROOT / "machine_learning" / "models" / "mlb"
 # Current production model configurations
 MLB_MODEL_CONFIG = {
     "model_name": "mlb_predictor",
-    "version": "3.2",
-    "model_file": "mlb_predictor_v3.2.joblib",
-    "metadata_file": "mlb_predictor_v3.2_metadata.json",
+    "version": "3.3",
+    "model_file": "mlb_predictor_v3.3.joblib",
+    "metadata_file": "mlb_predictor_v3.3_metadata.json",
     "model_type": "RandomForestClassifier",  # also supported: "LogisticRegression", "XGBoostClassifier"
 }
 
-# Model feature configuration
-MLB_REQUIRED_FEATURES = [
+# Model feature configuration.
+#
+# MLB_BASE_FEATURES are the 26 team-level features present since v2.0.
+# MLB_PITCHER_FEATURES are the 6 starting pitcher features added in v3.3.
+# MLB_REQUIRED_FEATURES is the serving contract: the exact column set, in order,
+# that the current production model was fit on. Keep the two halves separate so a
+# model can still be trained without pitcher features for comparison.
+MLB_BASE_FEATURES = [
     'home_rolling_win_pct',
     'away_rolling_win_pct',
     'home_rolling_runs_scored',
@@ -52,6 +58,17 @@ MLB_REQUIRED_FEATURES = [
     'day_of_week',
     'is_weekend'
 ]
+
+MLB_PITCHER_FEATURES = [
+    'home_starter_era',
+    'home_starter_whip',
+    'home_starter_k9',
+    'away_starter_era',
+    'away_starter_whip',
+    'away_starter_k9'
+]
+
+MLB_REQUIRED_FEATURES = MLB_BASE_FEATURES + MLB_PITCHER_FEATURES
 
 # Model performance thresholds
 MIN_CONFIDENCE_THRESHOLD = 0.55  # Minimum confidence to use ML prediction

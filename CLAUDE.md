@@ -65,6 +65,7 @@ python machine_learning/scripts/train_mlb_model.py --model-type xgboost --versio
 python machine_learning/scripts/train_mlb_model.py --model-type xgboost --hyperparameter-search --version 4.0  # search + train
 python machine_learning/scripts/train_mlb_model.py --model-type xgboost --hyperparameter-search --search-iter 100 --version 4.0  # wider search
 python machine_learning/scripts/train_mlb_model.py --temporal-weighting --half-life 365 --version 3.0
+python machine_learning/scripts/train_mlb_model.py --with-pitcher-features --temporal-weighting --half-life 365 --version 3.3  # 32 features incl. starting pitcher
 python machine_learning/scripts/train_mlb_model.py --diagnostics --verbose  # full diagnostic output
 
 # Install the automated daily data refresh (run once after cloning)
@@ -110,12 +111,15 @@ bash machine_learning/scripts/schedule_updates.sh
 ### ML Prediction System
 
 - Served via `/analytics/mlb/game?id={game_id}`; models lazy-loaded and memory-cached
-- 26 engineered features: momentum (rolling win %, runs), rest days, offense (BA/OBP/SLG), defense (ERA/WHIP/K), head-to-head (last 5), temporal (month/day/weekend)
+- 32 engineered features: momentum (rolling win %, runs), rest days, offense (BA/OBP/SLG), defense (ERA/WHIP/K), head-to-head (last 5), temporal (month/day/weekend), starting pitcher (cumulative pre-game ERA/WHIP/K9 for each side)
 - Predictions >55% confidence use ML (`prediction_method: "machine_learning"`), else falls back to rule-based
 - Supported: `random_forest` (default), `logistic_regression`, `xgboost`
 - Temporal weighting: `--temporal-weighting --half-life N` applies exponential decay so recent games have higher influence
 - Hyperparameter search: `--hyperparameter-search` (XGBoost only) runs `RandomizedSearchCV` with `TimeSeriesSplit(n_splits=5)`; `--search-iter N` controls breadth (default 50); best params apply automatically to the trained model; always compare CV accuracy to holdout test accuracy — CV scores on small datasets (< ~1,500 games) are optimistic
+- Starting pitcher features: `--with-pitcher-features` adds 6 columns from `mlb_pitcher_stats` (cumulative pre-game ERA/WHIP/K9 per side). Missing starters are median-imputed, never zero-filled — a 0.00 ERA would read as a perfect pitcher. Medians are saved to model metadata as `pitcher_medians` so serving matches training
+- Feature list is split in `ml_config.py`: `MLB_BASE_FEATURES` (26) + `MLB_PITCHER_FEATURES` (6) = `MLB_REQUIRED_FEATURES` (32, the serving contract). Column order is positional — keep it stable
 - Diagnostic output: `--diagnostics` prints per-month accuracy, learning curve, class balance, full feature importance
+- Gini importance overstates continuous features like ERA in Random Forests; use permutation importance on held-out data when judging whether a feature genuinely helps
 - Model info endpoint: `/analytics/mlb/model-info`
 
 ## Environment Setup

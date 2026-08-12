@@ -44,6 +44,7 @@ python machine_learning/scripts/train_mlb_model.py \
 - `--diagnostics`: Print per-month accuracy, learning curve, class balance, full feature importances
 - `--temporal-weighting`: Apply exponential decay weights (recent games weighted higher)
 - `--half-life`: Half-life in days for temporal decay (default: 365)
+- `--with-pitcher-features`: Include the 6 starting pitcher features (32 total instead of 26); requires `mlb_pitcher_stats` to be populated
 
 ### Training Requirements
 
@@ -83,7 +84,7 @@ Each trained model has an accompanying JSON metadata file containing:
 - **feature_importances**: Importance scores for each feature (tree-based models only)
 - **sklearn_version**: Version of scikit-learn used for training
 
-## Model Features (26 total)
+## Model Features (32 total)
 
 ### Momentum Features (6)
 - `home_rolling_win_pct` - Home team's win % over last 10 games
@@ -123,13 +124,24 @@ Each trained model has an accompanying JSON metadata file containing:
 - `day_of_week` - Day of week (0=Monday, 6=Sunday)
 - `is_weekend` - Binary flag for weekend games
 
+### Starting Pitcher Features (6, added in v3.3)
+Cumulative statistics from the starter's prior starts that season only, sourced
+from `mlb_pitcher_stats`. Never includes the game being predicted.
+- `home_starter_era` / `away_starter_era` - Starter's ERA entering the game
+- `home_starter_whip` / `away_starter_whip` - Starter's WHIP entering the game
+- `home_starter_k9` / `away_starter_k9` - Starter's strikeouts per 9 entering the game
+
+Missing values (season debut, or a starter not yet announced) are **median-imputed**
+using the medians recorded in the model metadata under `pitcher_medians`. They are
+never zero-filled: a 0.00 ERA would present an unknown starter as an untouchable ace.
+
 ## Prediction Flow
 
 1. User requests game analytics via `/analytics/mlb/game?id={game_id}`
 2. Enhanced analytics service calculates team analytics
 3. Service attempts ML prediction:
    - Loads model (if not already cached)
-   - Prepares 26 features from database
+   - Prepares 32 features from database
    - Gets model prediction with probability
    - Checks confidence threshold
 4. If ML prediction succeeds with high confidence:
@@ -150,7 +162,8 @@ Each trained model has an accompanying JSON metadata file containing:
 | v3.0 | RandomForestClassifier | 55.09% | 3,968 (train) | 2026-04-24 | Temporal weighting (365-day half-life); previous production model |
 | v3.1 | RandomForestClassifier | 53.87% | 4,550 (train) | 2026-05-20 | Full 2024+2025+2026 dataset (5,688 games); below v3.0 baseline — not promoted; test set skewed toward early-2026 high-variance games |
 | v4.0 | XGBClassifier | 50.49% (CV: 56.47%) | 409 (train) | 2026-05-04 | Best params from randomized search (n_iter=50); CV inflated due to small dataset; below RF baseline — not promoted to production |
-| v3.2 ⭐ | RandomForestClassifier | 56.96% | 5,400 (train) | 2026-08-11 | Same config as v3.1, retrained on 6,750 filtered games after the 2026 season matured (744 → 1,789 completed games). Beats v3.0 by 1.87pp; confirms the v3.1 shortfall was a test-split composition artifact, not a data-volume ceiling. Current production model |
+| v3.2 | RandomForestClassifier | 56.96% | 5,400 (train) | 2026-08-11 | Same config as v3.1, retrained on 6,750 filtered games after the 2026 season matured (744 → 1,789 completed games). Beats v3.0 by 1.87pp; confirms the v3.1 shortfall was a test-split composition artifact, not a data-volume ceiling |
+| v3.3 ⭐ | RandomForestClassifier | 56.44% (AUC 0.5708) | 5,400 (train) | 2026-08-11 | Adds 6 starting pitcher features (32 total). Accuracy is 0.52pp below v3.2, well inside the ~1.35pp standard error on a 1,350-game test set, while ROC AUC improves by 0.008. Promoted because the app gates ML vs rule-based at a 0.55 confidence threshold, so ranking quality matters more than thresholded accuracy. Current production model |
 
 ## Model Performance Expectations
 

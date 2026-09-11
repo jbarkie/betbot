@@ -18,6 +18,7 @@
 - [x] **Starting pitcher features** — ERA/WHIP/K9 for the day's scheduled starter. Sprint 7 (#38, #39, #40): new `mlb_pitcher_stats` table (cumulative pre-game stats via MLB Stats API game logs), feature engineering (32 total features), inference-time lookup in `enhanced_mlb_analytics.py`.
 - [ ] **Pitcher stats over all appearances, not only starts** — Sprint 7 accumulates over prior starts only, leaving 10.3% of games median-imputed. Counting all prior appearances would cover relievers-turned-starters and season debuts.
 - [ ] **Pitcher handedness and platoon splits** — Natural extension of the Sprint 7 `mlb_pitcher_stats` table.
+- [ ] **Blocking network I/O on the event loop** — `get_starting_pitcher_features()` is sync and calls the MLB Stats API (30s default timeout, up to 3 sequential requests) from inside an `async def` route, stalling the whole event loop. Tier 1 misses for every upcoming game (the backfill only covers played games), so this is the normal path for live predictions, not a rare one. Pre-existing pattern — `games.py:31` calls the Odds API the same way with no timeout at all. Fix both: `asyncio.to_thread`, or a short serving-path timeout. Found in PR #41 review.
 - [ ] **Scheduler skip alerting** — The launchd MLB update logs `SKIP` and exits silently when PostgreSQL is down. Two days of data were missed in August 2026 before anyone noticed. Surface a notification or have the next successful run report the catch-up gap.
 - [ ] **Data-freshness guard in training** — `train_mlb_model.py` should warn when the newest completed game is more than N days old, so a stale database cannot silently produce a stale model.
 - [ ] **NFL/NHL parity with MLB analytics** — Add ML-backed game analytics endpoints for NFL and NHL (currently only MLB has the ML prediction pipeline)
@@ -52,9 +53,9 @@
 | Sprint 2 | 2026-04-17 | Upgrade Angular from v19 to v21 (via v20), NgRx to v21, jest to v30 | Merged — retro complete |
 | Sprint 3 | 2026-04-18 | Backfill full 2024+2025 MLB dataset and retrain ML model v2.0 | PR #26 merged — retro complete |
 | Sprint 4 | 2026-04-22 | Fix early-season ML noise (v2.1) + migrate DB to Homebrew PostgreSQL | PR #28 merged — retro complete |
-| Sprint 5 | 2026-04-24 | Investigate and improve MLB model accuracy: diagnostics, XGBoost, temporal weighting → v3.0 | PR #33 open — retro complete |
-| Sprint 6 | 2026-05-04 | XGBoost hyperparameter tuning via RandomizedSearchCV; evaluate v4.0 vs RF baseline | PR #36 open — retro complete |
-| Sprint 7 | 2026-05-20 → 2026-08-11 | Add starting pitcher ERA/WHIP/K9 as pre-game ML features; retrain RF baseline on 2026 data | PR #41 open — 21/21 criteria met; v3.3 promoted (32 features); tests 132 → 203; retro complete |
+| Sprint 5 | 2026-04-24 | Investigate and improve MLB model accuracy: diagnostics, XGBoost, temporal weighting → v3.0 | PR #33 merged — retro complete |
+| Sprint 6 | 2026-05-04 | XGBoost hyperparameter tuning via RandomizedSearchCV; evaluate v4.0 vs RF baseline | PR #36 merged — retro complete |
+| Sprint 7 | 2026-05-20 → 2026-08-11 | Add starting pitcher ERA/WHIP/K9 as pre-game ML features; retrain RF baseline on 2026 data | PR #41 merged — 21/21 criteria met; v3.3 promoted (32 features); tests 132 → 203; retro complete |
 
 ---
 

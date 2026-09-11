@@ -28,6 +28,7 @@ import logging
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Optional
 import warnings
 
 # Add the project root to the Python path
@@ -47,9 +48,11 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import joblib
 
 from shared.database import connect_to_db
-from machine_learning.data.models.mlb_models import MLBTeam, MLBOffensiveStats, MLBDefensiveStats, MLBSchedule
-from machine_learning.data.processing.mlb_data_pipeline import MLBDataPipeline
-from api.src.ml_config import MLB_MODELS_DIR, MLB_REQUIRED_FEATURES
+from machine_learning.data.models.mlb_models import (
+    MLBTeam, MLBOffensiveStats, MLBDefensiveStats, MLBSchedule, MLBPitcherStats
+)
+from machine_learning.data.processing.mlb_data_pipeline import MLBDataPipeline, PITCHER_FEATURES
+from api.src.ml_config import MLB_MODELS_DIR, MLB_BASE_FEATURES
 
 # Suppress sklearn warnings for cleaner output
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -58,20 +61,29 @@ warnings.filterwarnings('ignore', category=UserWarning)
 class MLBModelTrainer:
     """Handles training and evaluation of MLB prediction models."""
 
-    def __init__(self, model_type: str = 'random_forest', verbose: bool = False):
+    def __init__(self, model_type: str = 'random_forest', verbose: bool = False,
+                 with_pitcher_features: bool = False):
         """
         Initialize the model trainer.
 
         Args:
             model_type: Type of model to train (random_forest, logistic_regression, xgboost)
             verbose: Enable verbose logging
+            with_pitcher_features: Include the six starting pitcher features
         """
         self.model_type = model_type
         self.verbose = verbose
+        self.with_pitcher_features = with_pitcher_features
+        # The active feature list drives the training matrix, the importance report,
+        # and the saved metadata, so a model always records exactly what it was fit on.
+        self.feature_names = list(MLB_BASE_FEATURES)
+        if with_pitcher_features:
+            self.feature_names += list(PITCHER_FEATURES)
         self.model = None
         self.pipeline = None
         self.feature_importances = {}
         self.metrics = {}
+        self.pitcher_medians = {}
         self._xgboost_override_params = {}
 
         # Set up logging
@@ -94,7 +106,9 @@ class MLBModelTrainer:
         Fetch all necessary data from the database.
 
         Returns:
-            Tuple of (schedule_df, teams_df, offensive_stats_df, defensive_stats_df)
+            Tuple of (schedule_df, teams_df, offensive_stats_df, defensive_stats_df,
+            pitcher_stats_df). The pitcher frame is empty when pitcher features are
+            not requested, so the existing 26-feature path costs no extra query.
         """
         self.logger.info("Fetching data from database...")
 
@@ -106,6 +120,9 @@ class MLBModelTrainer:
             teams_records = session.query(MLBTeam).all()
             offensive_records = session.query(MLBOffensiveStats).all()
             defensive_records = session.query(MLBDefensiveStats).all()
+            pitcher_records = (
+                session.query(MLBPitcherStats).all() if self.with_pitcher_features else []
+            )
 
             # Convert to DataFrames
             schedule_df = pd.DataFrame([{
@@ -150,10 +167,21 @@ class MLBModelTrainer:
                 'avg_against': r.avg_against
             } for r in defensive_records])
 
+            pitcher_df = pd.DataFrame([{
+                'game_id': r.game_id,
+                'team_id': r.team_id,
+                'pitcher_id': r.pitcher_id,
+                'era': r.era,
+                'whip': r.whip,
+                'k9': r.k9
+            } for r in pitcher_records])
+
             self.logger.info(f"Fetched {len(schedule_df)} games, {len(teams_df)} teams")
             self.logger.info(f"Fetched {len(offensive_df)} offensive stats, {len(defensive_df)} defensive stats")
+            if self.with_pitcher_features:
+                self.logger.info(f"Fetched {len(pitcher_df)} starting pitcher stat rows")
 
-            return schedule_df, teams_df, offensive_df, defensive_df
+            return schedule_df, teams_df, offensive_df, defensive_df, pitcher_df
 
         finally:
             session.close()
@@ -165,7 +193,8 @@ class MLBModelTrainer:
         offensive_df: pd.DataFrame,
         defensive_df: pd.DataFrame,
         start_date: datetime,
-        end_date: datetime
+        end_date: datetime,
+        pitcher_df: Optional[pd.DataFrame] = None
     ) -> pd.DataFrame:
         """
         Prepare training data using the MLBDataPipeline.
@@ -177,6 +206,7 @@ class MLBModelTrainer:
             defensive_df: Defensive statistics
             start_date: Start date for training data
             end_date: End date for training data
+            pitcher_df: Cumulative pre-game starting pitcher stats
 
         Returns:
             DataFrame with engineered features ready for training.
@@ -187,7 +217,7 @@ class MLBModelTrainer:
         pipeline = MLBDataPipeline(rolling_window=10, head_to_head_window=5)
 
         # game_date is retained here so train_and_evaluate() can use it for temporal weighting
-        # and per-month diagnostics. It is not included in MLB_REQUIRED_FEATURES so it will
+        # and per-month diagnostics. It is not included in the feature list so it will
         # not enter the feature matrix X.
         training_data = pipeline.prepare_training_data(
             schedule_df=schedule_df,
@@ -196,10 +226,20 @@ class MLBModelTrainer:
             defensive_stats_df=defensive_df,
             start_date=start_date,
             end_date=end_date,
-            features_to_exclude=['game_id', 'home_team_id', 'away_team_id', 'run_differential']
+            features_to_exclude=['game_id', 'home_team_id', 'away_team_id', 'run_differential'],
+            pitcher_stats_df=pitcher_df
         )
 
         self.logger.info(f"Prepared {len(training_data)} games for training")
+
+        if self.with_pitcher_features:
+            self.pitcher_medians = getattr(pipeline, 'pitcher_medians', {})
+            coverage = getattr(pipeline, 'pitcher_coverage', {})
+            self.logger.info(f"Starting pitcher medians used for imputation: {self.pitcher_medians}")
+            self.logger.info(
+                "Starting pitcher coverage before imputation: "
+                + ", ".join(f"{k}={v:.1%}" for k, v in coverage.items())
+            )
 
         return training_data
 
@@ -398,7 +438,7 @@ class MLBModelTrainer:
         )
         self.logger.info("This may take several minutes.")
 
-        X = training_data[MLB_REQUIRED_FEATURES].copy().fillna(0)
+        X = training_data[self.feature_names].copy().fillna(0)
         y = training_data['home_team_won'].astype(int)
         split_idx = int(len(X) * (1 - test_split))
         X_train = X.iloc[:split_idx]
@@ -473,7 +513,7 @@ class MLBModelTrainer:
         game_dates = training_data['game_date'].copy() if 'game_date' in training_data.columns else None
 
         # Separate features and target
-        X = training_data[MLB_REQUIRED_FEATURES].copy()
+        X = training_data[self.feature_names].copy()
         y = training_data['home_team_won'].astype(int)
 
         # Handle any remaining missing values
@@ -558,7 +598,7 @@ class MLBModelTrainer:
         # Feature importances for tree-based models (always shown)
         if self.model_type in ('random_forest', 'xgboost'):
             importances = self.pipeline.named_steps['model'].feature_importances_
-            self.feature_importances = dict(zip(MLB_REQUIRED_FEATURES, importances))
+            self.feature_importances = dict(zip(self.feature_names, importances))
             sorted_features = sorted(self.feature_importances.items(), key=lambda x: x[1], reverse=True)
 
             if diagnostics:
@@ -634,12 +674,18 @@ class MLBModelTrainer:
             'model_type': self.model_type,
             'version': version,
             'trained_date': datetime.now().isoformat(),
-            'features': MLB_REQUIRED_FEATURES,
+            'features': self.feature_names,
             'metrics': self.metrics,
             'feature_importances': safe_importances,
             'model_filename': model_filename,
             'sklearn_version': __import__('sklearn').__version__
         }
+
+        # Persist the imputation medians alongside the model. Serving has to fill a
+        # missing starter with the same value training used, and recomputing it from
+        # live data would drift away from what the model was fit on.
+        if self.with_pitcher_features:
+            metadata['pitcher_medians'] = self.pitcher_medians
 
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f, indent=2)
@@ -738,6 +784,12 @@ Examples:
         help='Number of parameter settings sampled in hyperparameter search (default: 50)'
     )
 
+    parser.add_argument(
+        '--with-pitcher-features',
+        action='store_true',
+        help='Include the six starting pitcher features (requires mlb_pitcher_stats to be populated)'
+    )
+
     args = parser.parse_args()
 
     # Parse dates
@@ -746,15 +798,20 @@ Examples:
 
     try:
         # Initialize trainer
-        trainer = MLBModelTrainer(model_type=args.model_type, verbose=args.verbose)
+        trainer = MLBModelTrainer(
+            model_type=args.model_type,
+            verbose=args.verbose,
+            with_pitcher_features=args.with_pitcher_features
+        )
 
         # Fetch data
-        schedule_df, teams_df, offensive_df, defensive_df = trainer.fetch_data_from_database()
+        schedule_df, teams_df, offensive_df, defensive_df, pitcher_df = \
+            trainer.fetch_data_from_database()
 
         # Prepare training data
         training_data = trainer.prepare_training_data(
             schedule_df, teams_df, offensive_df, defensive_df,
-            start_date, end_date
+            start_date, end_date, pitcher_df=pitcher_df
         )
 
         if len(training_data) < 100:

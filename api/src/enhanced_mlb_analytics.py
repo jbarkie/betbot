@@ -19,6 +19,7 @@ from machine_learning.data.models.mlb_models import (
 )
 from api.src.ml_model_service import get_mlb_model_service
 from api.src.ml_config import MLB_REQUIRED_FEATURES
+from api.src.pitcher_lookup import get_starting_pitcher_features
 
 
 class EnhancedMLBAnalytics:
@@ -71,7 +72,9 @@ class EnhancedMLBAnalytics:
             away_analytics = self._calculate_team_analytics(session, away_team, game.time)
 
             # Try ML prediction first, fallback to rule-based
-            ml_prediction = self._try_ml_prediction(session, home_team, away_team, home_analytics, away_analytics, game.time)
+            ml_prediction = self._try_ml_prediction(
+                session, home_team, away_team, home_analytics, away_analytics, game.time
+            )
 
             if ml_prediction:
                 # Use ML prediction
@@ -521,6 +524,17 @@ class EnhancedMLBAnalytics:
                 'day_of_week': float(game_time.weekday()),
                 'is_weekend': float(1 if game_time.weekday() >= 5 else 0)
             }
+
+            # Starting pitcher features. This always returns all six keys, falling
+            # back to the model's training-time medians when a starter has not been
+            # announced or the MLB API is unreachable, so an unannounced pitcher
+            # degrades the prediction rather than failing the request.
+            features.update(get_starting_pitcher_features(
+                session=session,
+                home_team_id=home_team.id,
+                away_team_id=away_team.id,
+                game_date=game_time,
+            ))
 
             return features
 

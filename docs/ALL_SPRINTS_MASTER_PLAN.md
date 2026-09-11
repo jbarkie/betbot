@@ -9,21 +9,32 @@
 ## Backlog: Next Sprint Candidates
 
 > Prioritized list of potential work items. Reprioritize with `/sprint refine`.
+> Last refined 2026-09-10 against the live database and codebase.
 
-### High Priority
+### Sprint 8 Candidates — Serving Robustness and Operations
 
-- [x] **Retrain RF baseline with 2026 season data** — 712 completed 2026 games in DB as of 2026-05-20; gate cleared. Folded into Sprint 7 as Card 1 (v3.1 candidate). v3.0 baseline is 55.09%.
-- [x] **XGBoost hyperparameter tuning** — Sprint 6 randomized search (n_iter=50) found best CV 56.47% but test 50.49%; RF v3.0 retained. See `docs/sprint6_xgboost_findings.md`.
-- [ ] **XGBoost re-evaluation (≥ 2,000 games)** — Gate now cleared: 6,909 completed games total (1,789 in 2026) as of 2026-08-11. Re-run `--hyperparameter-search`, now against the v3.3 baseline of 56.44% (AUC 0.5708) and with 32 features available. v4.0 tuned params are the starting point.
-- [x] **Starting pitcher features** — ERA/WHIP/K9 for the day's scheduled starter. Sprint 7 (#38, #39, #40): new `mlb_pitcher_stats` table (cumulative pre-game stats via MLB Stats API game logs), feature engineering (32 total features), inference-time lookup in `enhanced_mlb_analytics.py`.
-- [ ] **Pitcher stats over all appearances, not only starts** — Sprint 7 accumulates over prior starts only, leaving 10.3% of games median-imputed. Counting all prior appearances would cover relievers-turned-starters and season debuts.
-- [ ] **Pitcher handedness and platoon splits** — Natural extension of the Sprint 7 `mlb_pitcher_stats` table.
+Chosen for Sprint 8 because none of these depend on the dataset, and three come
+directly from the Sprint 7 retrospective's own recommendations. Deliberately
+excludes model work: the regular season ends around 2026-10-01, so accuracy
+experiments batch better into Sprint 9 against a complete season.
+
 - [ ] **Blocking network I/O on the event loop** — `get_starting_pitcher_features()` is sync and calls the MLB Stats API (30s default timeout, up to 3 sequential requests) from inside an `async def` route, stalling the whole event loop. Tier 1 misses for every upcoming game (the backfill only covers played games), so this is the normal path for live predictions, not a rare one. Pre-existing pattern — `games.py:31` calls the Odds API the same way with no timeout at all. Fix both: `asyncio.to_thread`, or a short serving-path timeout. Found in PR #41 review.
 - [ ] **Scheduler skip alerting** — The launchd MLB update logs `SKIP` and exits silently when PostgreSQL is down. Two days of data were missed in August 2026 before anyone noticed. Surface a notification or have the next successful run report the catch-up gap.
 - [ ] **Data-freshness guard in training** — `train_mlb_model.py` should warn when the newest completed game is more than N days old, so a stale database cannot silently produce a stale model.
+- [ ] **Alembic migration CI check** — Fail CI if unapplied migrations exist on the branch. Promoted from Low: PR #41 shipped a migration, and the reviewer could not confirm from CI alone that it applied cleanly.
+
+### Sprint 9 Candidates — Model Accuracy (hold until the season ends, ~2026-10-01)
+
+- [ ] **Full-season v3.4 retrain** — Dataset has grown 6,750 → 7,313 completed games (+8.3%) since v3.3 trained on 2026-08-11. That is inside the ~1.35pp standard error on its own, so it is not worth a mid-season cut; retrain once on the complete 2026 season instead.
+- [ ] **XGBoost re-evaluation (≥ 2,000 games)** — Gate long cleared: 7,313 completed games total, 2,193 in 2026 as of 2026-09-10. Re-run `--hyperparameter-search` against the v3.3 baseline of 56.44% (AUC 0.5708) with 32 features available. v4.0 tuned params are the starting point.
+- [ ] **Pitcher stats over all appearances, not only starts** — Sprint 7 accumulates over prior starts only. Current coverage is 88.4% of game-team slots (12,929 of 14,626), but 16.5% of completed games have at least one side median-imputed, which is the number that matters for training. Counting all prior appearances would cover relievers-turned-starters and season debuts.
+- [ ] **Pitcher handedness and platoon splits** — Natural extension of the Sprint 7 `mlb_pitcher_stats` table.
+
+### High Priority (unscheduled)
+
+- [ ] **Prediction transparency in the analytics modal** — The API returns `prediction_method`, `ml_model_name`, `ml_confidence`, `confidence_level` and `feature_importance`, and `models.ts` already declares all five on `AnalyticsResponse`, but `analytics-modal.component.ts` renders none of them. A user cannot tell an ML prediction from the rule-based fallback, even though the 0.55 confidence gate silently decides which one they get. (Supersedes the old "Frontend analytics integration" item, which claimed predictions were API-only — Sprint 1 shipped the modal.)
 - [ ] **NFL/NHL parity with MLB analytics** — Add ML-backed game analytics endpoints for NFL and NHL (currently only MLB has the ML prediction pipeline)
 - [ ] **NBA analytics endpoint** — Extend the analytics system to NBA games
-- [ ] **Frontend analytics integration** — Display ML predictions and confidence scores in the game cards UI (currently only available via API)
 - [ ] **Model retraining automation** — Scheduled script or cron job to retrain MLB model as new game data accumulates
 - [ ] **User favorites/watchlist** — Allow authenticated users to bookmark games or teams
 
@@ -40,8 +51,13 @@
 - [ ] **Dark/light theme persistence** — Persist user theme preference server-side (currently settings store is in-memory)
 - [ ] **Rate limiting** — Add per-user rate limiting to external Odds API proxy endpoints
 - [ ] **OpenAPI docs UI** — Enable Swagger UI behind auth in production
-- [ ] **Alembic migration CI check** — Fail CI if unapplied migrations exist on branch
 - [ ] **Stale data behavior investigation** — When DB data is stale, the API still returns analytics for today's games using last-known team stats. Determine whether this is expected behavior or should surface a warning/error when data is older than N days
+
+### Completed
+
+- [x] **Retrain RF baseline with 2026 season data** — Sprint 7 Card 1. v3.2 at 56.96%, beating the v3.0 baseline of 55.09% by 1.87pp.
+- [x] **XGBoost hyperparameter tuning** — Sprint 6 randomized search (n_iter=50) found best CV 56.47% but test 50.49%; RF v3.0 retained. See `docs/sprint6_xgboost_findings.md`.
+- [x] **Starting pitcher features** — ERA/WHIP/K9 for the day's scheduled starter. Sprint 7 (#38, #39, #40): new `mlb_pitcher_stats` table (cumulative pre-game stats via MLB Stats API game logs), feature engineering (32 total features), inference-time lookup in `enhanced_mlb_analytics.py`.
 
 ---
 

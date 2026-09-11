@@ -219,8 +219,8 @@ Recommended retraining frequency:
 ## Troubleshooting
 
 ### Model Not Loading
-1. Check file exists: `machine_learning/models/mlb/mlb_predictor_v3.2.joblib`
-2. Verify config in `api/src/ml_config.py` matches filename
+1. Check the file named by `MLB_MODEL_CONFIG['model_file']` exists in `machine_learning/models/mlb/`
+2. Verify the matching `metadata_file` sits alongside it in the same directory
 3. Check API logs for error messages
 4. Ensure scikit-learn version matches training version
 

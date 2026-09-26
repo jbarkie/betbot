@@ -75,6 +75,176 @@ experiments batch better into Sprint 9 against a complete season.
 
 ---
 
+## Sprint 8 — Serving Robustness and Operations (PROPOSED — awaiting approval)
+
+> **Status:** Draft written 2026-09-26 on `feature/20260922_Sprint_8`. Refined from the
+> Sprint 8 candidates above plus an external review of the first draft. This section is the
+> durable copy of the plan; the conversation that produced it is not. Approval flips this
+> header to "(Active)" and creates one GitHub issue per card.
+
+**Goal:** Slow external calls no longer block the API event loop; skipped data refreshes are
+recorded and surfaced; training warns or stops when completed-game data is older than a
+configured age; CI proves every migration applies, rolls back one step, and re-applies.
+
+**Deliberately excluded:** any model or feature work (Sprint 9, after the season ends ~2026-10-01).
+
+**Execution order:** Card 1 → Card 4 → Card 3 → Card 2.
+
+**Verified code facts the cards rest on (checked 2026-09-26):**
+- `api/src/enhanced_mlb_analytics.py:40` is `async def` but every operation inside is synchronous: `connect_to_db()`, ORM queries, and `get_starting_pitcher_features()`.
+- `api/src/pitcher_lookup.py::_live_stats` makes up to 3 sequential MLB Stats API calls (schedule + one game log per side) through `MLBDirectAPI`, whose default timeout is 30s (`machine_learning/data/collection/mlb_direct_api.py:22`). Tier 1 (stored row) misses for every upcoming game, so this is the normal live path.
+- `api/src/games.py::call_odds_api` calls `requests.get(url)` with no timeout at all.
+- `get_mlb_model_service()` is a lazy singleton with no lock; `_stats_cache` and `_medians_cache` in `pitcher_lookup.py` are module-level dicts.
+- `schedule_updates.sh` hardcodes `/usr/local/opt/postgresql@14/bin/pg_isready`, logs `SKIP` and exits 0 on failure. No shell tests exist for it.
+- `update_mlb_data.py` fetches the whole season schedule but only the last 30 days of team stats by default.
+- `train_mlb_model.py::fetch_data` loads every `MLBSchedule` row including future scheduled games; completion is `status == 'Final'` (`mlb_data_pipeline.py:162`); `--end-date` defaults to now.
+- CI (`.github/workflows/ci-cd.yml`) has `backend-tests`, `frontend-tests`, `all-checks-passed`. `alembic/env.py` reads `sqlalchemy.url` from `alembic.ini` only; it ignores `DB_URL`. There are 11 migrations.
+- CI runs Python 3.9, which has `asyncio.to_thread`.
+
+---
+
+### Card 1 — Non-blocking external I/O in the analytics and games routes
+
+**Problem:** One slow MLB Stats API or Odds API call stalls every other request on the server.
+
+**Approach:** Run the synchronous work in a worker thread via `asyncio.to_thread` at the route
+boundary, and give the serving path short timeouts with defined fallbacks. Backfill keeps its
+30s timeout.
+
+**Defined behavior:**
+- Serving-path MLB Stats API client: 5s per request. Worst case for one prediction is three
+  timeouts, roughly 15s, after which the response still returns 200 using median pitcher values.
+  This is the documented user-facing ceiling for this sprint, not "never stalls".
+- A failed live lookup is cached for the 15-minute TTL like any other result (existing behavior,
+  now documented): one bad request does not retry on every page load.
+- Odds API: `timeout=(3.05, 10)`. A `requests.Timeout` returns HTTP 504 with detail
+  `"Odds provider timed out"`, replacing today's generic 500.
+- DB sessions are created, used, and closed inside the worker thread. Already true for both
+  paths; a test pins it.
+- `MLModelService._load_model` takes a `threading.Lock` so two concurrent first requests load
+  the model once. `_stats_cache` writes are whole-dict replacements (atomic under the GIL); no
+  change needed beyond a comment.
+
+**Tasks:**
+1. `MLBPitcherStatsCollector` accepts a timeout; `pitcher_lookup` builds its default collector with `MLBDirectAPI(timeout=5)`. Test asserts serving uses 5 and the backfill default stays 30. *(Sonnet, ~2h)*
+2. `call_odds_api` passes an explicit timeout; `get_games_for_sport` maps `requests.Timeout` to 504. Test for both. *(Sonnet, ~1h)*
+3. Move the analytics body into a sync method; the async entry point awaits `asyncio.to_thread(...)`. Same for `get_games_by_date`. *(Sonnet, ~2h)*
+4. Add the model-load lock. Test: two threads call `predict` on an unloaded service; `joblib.load` is invoked once. *(Sonnet, ~1h)*
+5. Responsiveness tests for both routes: patch the external call with a stub that blocks on a `threading.Event`; run the route as a task; assert an unrelated coroutine completes before the event is released; wrap in `asyncio.wait_for(..., 10)` as a safety net. No sub-second timing assertions. *(Opus, ~3h — novel test pattern, concurrency)*
+6. Fallback tests: collector raising `requests.Timeout` yields all six pitcher features equal to the medians and a 200 response. *(Sonnet, ~1h)*
+
+**Acceptance criteria:**
+- [ ] `call_odds_api` passes an explicit timeout; a `requests.Timeout` produces HTTP 504 whose detail contains "timed out" (automated test).
+- [ ] Serving-path MLB Stats API requests use a 5s timeout; backfill retains 30s (automated test asserts both values).
+- [ ] With the live pitcher lookup raising `requests.Timeout`, the analytics response is 200 and all six pitcher features equal the training medians (automated test).
+- [ ] For each of the two routes, while the external call is held open, an unrelated coroutine on the same loop completes; each test has a 10s safety timeout and no sub-second assertion (two automated tests).
+- [ ] `MLModelService` loads the model exactly once under concurrent first use (automated test).
+- [ ] Every existing analytics and games test passes unmodified: response field names and structure unchanged.
+- [ ] CLAUDE.md documents the ~15s worst-case prediction latency and the 504 behavior.
+
+**Score:** cognitive 12 (shared state) + risk 8 (4+ files) + 2 (tests) + pattern 5 = 27 → Sonnet, with task 5 escalated to Opus (concurrency-sensitive). Confidence 80%.
+
+---
+
+### Card 4 — Alembic migration check in CI
+
+**Problem:** CI cannot tell whether a PR's migration applies, rolls back, or has forked the history.
+
+**Tasks:**
+1. New `migrations` job with a `postgres:14` service container and an explicit `DB_URL` for that disposable database. *(Sonnet, ~1h)*
+2. `alembic/env.py` uses `DB_URL` from the environment when set, otherwise the `alembic.ini` value. `.env` is not loaded automatically anywhere; local dev keeps using `alembic.ini`. Document this in CLAUDE.md. *(Haiku, ~1h)*
+3. Job steps in order: assert `alembic heads` prints exactly one head (a script counts lines and exits 1 otherwise); `alembic upgrade head`; `alembic downgrade -1`; `alembic upgrade head`. *(Sonnet, ~2h)*
+4. Add `migrations` to `all-checks-passed`'s `needs` list and its success condition. *(Haiku, ~0.5h)*
+5. Try `alembic check` as a final step; keep it only if it passes on the current models, otherwise record the drift as a backlog item. *(Sonnet, ~1h)*
+
+**Acceptance criteria:**
+- [ ] A `migrations` CI job runs on push and PR to main against a service-container PostgreSQL using its own `DB_URL`.
+- [ ] The job fails when `alembic heads` reports more than one head (the counting step is a shell script with a unit test that feeds it two-head output).
+- [ ] The job runs `upgrade head`, `downgrade -1`, `upgrade head` in that order and fails on any non-zero exit. Rollback coverage is the latest migration only, stated in the workflow comment.
+- [ ] `all-checks-passed` requires `migrations` in both `needs` and its result check.
+- [ ] CLAUDE.md states that Alembic reads `DB_URL` from the environment when set and never reads `api/.env`.
+
+**Score:** cognitive 5 + risk 4 (2-3 files) + pattern 5 = 14 → Haiku by score, assigned Sonnet because a wrong CI job blocks every later PR. Confidence 90%.
+
+---
+
+### Card 3 — Data-freshness guard in training
+
+**Problem:** A stale database silently produces a stale model. Future scheduled rows in
+`mlb_schedule` would make an old database look fresh if the check were naive.
+
+**Definitions:**
+- **Fresh data** = the newest `date` among schedule rows with `status == 'Final'` and both scores non-null is at most `max_staleness_days` before the reference date.
+- **Reference date** = the training `end_date` (defaults to today). A historical run with `--end-date` is judged against its own window, so intentional experiments are not falsely stale.
+- **No usable completed games** = stale, always. Invalid or null dates are dropped before taking the max.
+- Boundary: age of exactly `max_staleness_days` is fresh; one day more is stale.
+
+**Tasks:**
+1. `check_data_freshness(schedule_df, reference_date, max_staleness_days) -> FreshnessResult(newest_date, age_days, is_stale)` in `machine_learning/data/processing/`. *(Sonnet, ~2h)*
+2. Wire into `train_mlb_model.py` before any fitting: `--max-staleness-days` (default 3), `--fail-on-stale` (exit code 2 before training). Default is warn and continue. *(Sonnet, ~1h)*
+3. Write `newest_completed_game_date`, `data_age_days`, `max_staleness_days`, and `freshness_reference_date` into model metadata. *(Haiku, ~0.5h)*
+4. Tests: 3 days fresh vs 4 days stale; future scheduled rows ignored; empty frame stale; NaT rows dropped; `--fail-on-stale` exits 2 and never calls fit; warn mode trains. *(Sonnet, ~2h)*
+5. CLAUDE.md: the check covers completed-game recency at training time only. It does not check team or pitcher stat freshness and does not monitor a deployed model. Offseason: raise `--max-staleness-days`. *(Haiku, ~0.5h)*
+
+**Acceptance criteria:**
+- [ ] Freshness uses only rows with `status == 'Final'` and non-null scores; a future scheduled row does not change the result (automated test).
+- [ ] Reference date is the training `end_date`; a `--end-date` run against matching historical data reports fresh (automated test).
+- [ ] Empty or all-invalid-date input reports stale (automated test).
+- [ ] Age of exactly 3 days is fresh, 4 days is stale, at the default threshold (automated test).
+- [ ] `--fail-on-stale` exits with code 2 before any model fitting; without it a warning is logged and training proceeds (automated tests).
+- [ ] Model metadata for a new training run contains the four freshness fields.
+- [ ] CLAUDE.md documents the scope limits and the offseason adjustment.
+
+**Score:** cognitive 5 + risk 4 + 2 (tests) + pattern 0 = 11 → Haiku by score, assigned Sonnet because the definition of "fresh" is the whole card. Confidence 90%.
+
+---
+
+### Card 2 — Scheduler skip recording and notification
+
+**Problem:** `schedule_updates.sh` logs `SKIP` and exits 0 when PostgreSQL is down. Two days
+were missed in August 2026 before anyone noticed.
+
+**Definitions:**
+- **Marker file** `logs/mlb_update_skips.log`: one line per skipped attempt, `YYYY-MM-DD HH:MM:SS`. Skipped attempts and distinct days are both derivable from it; the resume message reports both.
+- **RESUMED**, not CATCH-UP: a successful run proves updates resumed, not that every gap was recovered. The updater fetches the full season schedule but only 30 days of team stats, so if the first skip is older than 30 days the RESUMED line also prints the manual backfill command with `--start-date`.
+- Notifications are best effort: `osascript` failure or absence never changes the exit code or the marker.
+
+**Tasks:**
+1. Make the readiness check, log directory, update command, and notifier injectable via environment variables (`BETBOT_PG_ISREADY`, `BETBOT_LOG_DIR`, `BETBOT_UPDATE_CMD`, `BETBOT_NOTIFY_CMD`). Default `pg_isready` path resolves through `brew --prefix postgresql@14`, falling back to the current hardcoded path. *(Sonnet, ~2h)*
+2. On skip: append to the marker, notify (best effort), exit 0. *(Haiku, ~1h)*
+3. On successful update: if the marker exists, log `RESUMED: N skipped attempt(s) across M day(s), first skip <date>`, notify, delete the marker. On a failed update, the marker is untouched. *(Sonnet, ~1h)*
+4. `machine_learning/tests/test_schedule_updates.py`: runs the script via `subprocess` with the env overrides pointing at a temp dir and stub commands. Cases: skip creates marker; two skips give two lines; success clears marker and logs RESUMED with correct counts; failed update preserves marker; missing notifier command still records the skip and exits 0; first skip older than 30 days prints the backfill command. *(Sonnet, ~3h)*
+5. Manual check: run the script with `BETBOT_PG_ISREADY=/usr/bin/false` and confirm the macOS notification appears. No need to stop PostgreSQL. *(Haiku, ~0.5h)*
+
+**Acceptance criteria:**
+- [ ] A skipped run appends one timestamped line to `logs/mlb_update_skips.log` and exits 0 (automated test).
+- [ ] A successful update after skips logs a `RESUMED` line with attempt count, distinct-day count, and first-skip date, then removes the marker (automated test).
+- [ ] A failed update leaves the marker unchanged (automated test).
+- [ ] With the notifier command missing or failing, the skip is still recorded and the exit code is still 0 (automated test).
+- [ ] When the first skip is more than 30 days old, the RESUMED line includes the `--start-date` backfill command (automated test).
+- [ ] Manual: notification appears when the readiness check is overridden to fail, with PostgreSQL still running.
+- [ ] CLAUDE.md documents the marker file, the env overrides, and that RESUMED does not imply full recovery.
+
+**Score:** cognitive 8 + risk 4 + pattern 10 (no shell tests exist in the repo) = 22 → Sonnet. Confidence 85%.
+
+---
+
+### Estimate
+
+| Card | Tasks | Est. hours | Model |
+|---|---|---|---|
+| 1 | 6 | ~10 | Sonnet, task 5 Opus |
+| 4 | 5 | ~5.5 | Sonnet / Haiku |
+| 3 | 5 | ~6 | Sonnet / Haiku |
+| 2 | 5 | ~7.5 | Sonnet / Haiku |
+
+### Approval
+
+When approved: change this header to "(Active)", create four GitHub issues from the cards,
+record their numbers in `.claude/sprint_status.json`, and commit per issue.
+
+---
+
 ## Sprint 2 — Angular Upgrade (Planned)
 
 **Goal:** Upgrade the frontend from Angular 19 to the latest stable Angular release, keeping all tests green and the app fully functional.

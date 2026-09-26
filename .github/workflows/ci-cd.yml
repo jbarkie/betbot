@@ -55,9 +55,13 @@ jobs:
     # one head, and that the models have not drifted from the migrations.
     # Rollback coverage is the latest migration only, not all of them.
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     services:
       postgres:
-        image: postgres:14
+        # postgres:14 multi-arch manifest digest as of 2026-09-24. Pinned so the
+        # job cannot change underneath us; bump deliberately.
+        image: postgres:14@sha256:c2427de38f998489d36de7ca3553db2134872c400f2b08be4b824e5c50e4d619
         env:
           POSTGRES_USER: user
           POSTGRES_PASSWORD: password

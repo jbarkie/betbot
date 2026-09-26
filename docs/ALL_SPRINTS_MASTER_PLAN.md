@@ -71,16 +71,16 @@ experiments batch better into Sprint 9 against a complete season.
 | Sprint 4 | 2026-04-22 | Fix early-season ML noise (v2.1) + migrate DB to Homebrew PostgreSQL | PR #28 merged — retro complete |
 | Sprint 5 | 2026-04-24 | Investigate and improve MLB model accuracy: diagnostics, XGBoost, temporal weighting → v3.0 | PR #33 merged — retro complete |
 | Sprint 6 | 2026-05-04 | XGBoost hyperparameter tuning via RandomizedSearchCV; evaluate v4.0 vs RF baseline | PR #36 merged — retro complete |
+| Sprint 8 | 2026-09-26 → | Serving robustness and operations: non-blocking external I/O, scheduler skip alerting, training freshness guard, Alembic CI check | Active — issues #44 #45 #46 #47 |
 | Sprint 7 | 2026-05-20 → 2026-08-11 | Add starting pitcher ERA/WHIP/K9 as pre-game ML features; retrain RF baseline on 2026 data | PR #41 merged — 21/21 criteria met; v3.3 promoted (32 features); tests 132 → 203; retro complete |
 
 ---
 
-## Sprint 8 — Serving Robustness and Operations (PROPOSED — awaiting approval)
+## Sprint 8 — Serving Robustness and Operations (Active)
 
-> **Status:** Draft written 2026-09-26 on `feature/20260922_Sprint_8`. Refined from the
-> Sprint 8 candidates above plus an external review of the first draft. This section is the
-> durable copy of the plan; the conversation that produced it is not. Approval flips this
-> header to "(Active)" and creates one GitHub issue per card.
+> **Status:** Approved 2026-09-26 on `feature/20260922_Sprint_8`. Refined from the
+> Sprint 8 candidates above plus an external review of the first draft. Issues: Card 1 #44,
+> Card 4 #45, Card 3 #46, Card 2 #47.
 
 **Goal:** Slow external calls no longer block the API event loop; skipped data refreshes are
 recorded and surfaced; training warns or stops when completed-game data is older than a
@@ -104,7 +104,7 @@ configured age; CI proves every migration applies, rolls back one step, and re-a
 
 ---
 
-### Card 1 — Non-blocking external I/O in the analytics and games routes
+### Card 1 (#44) — Non-blocking external I/O in the analytics and games routes
 
 **Problem:** One slow MLB Stats API or Odds API call stalls every other request on the server.
 
@@ -147,7 +147,7 @@ boundary, and give the serving path short timeouts with defined fallbacks. Backf
 
 ---
 
-### Card 4 — Alembic migration check in CI
+### Card 4 (#45) — Alembic migration check in CI
 
 **Problem:** CI cannot tell whether a PR's migration applies, rolls back, or has forked the history.
 
@@ -170,7 +170,7 @@ boundary, and give the serving path short timeouts with defined fallbacks. Backf
 
 ---
 
-### Card 3 — Data-freshness guard in training
+### Card 3 (#46) — Data-freshness guard in training
 
 **Problem:** A stale database silently produces a stale model. Future scheduled rows in
 `mlb_schedule` would make an old database look fresh if the check were naive.
@@ -201,7 +201,7 @@ boundary, and give the serving path short timeouts with defined fallbacks. Backf
 
 ---
 
-### Card 2 — Scheduler skip recording and notification
+### Card 2 (#47) — Scheduler skip recording and notification
 
 **Problem:** `schedule_updates.sh` logs `SKIP` and exits 0 when PostgreSQL is down. Two days
 were missed in August 2026 before anyone noticed.

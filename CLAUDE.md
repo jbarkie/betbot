@@ -207,6 +207,7 @@ All development follows a sprint-based Agile/Scrum workflow.
 **Plan Durability**:
 - A sprint plan must never exist only in conversation history. Before asking for Phase 3 approval, write the full draft (goal, cards, tasks, acceptance criteria) into `docs/ALL_SPRINTS_MASTER_PLAN.md` marked PROPOSED, point `.claude/sprint_status.json` at it, and commit both on the feature branch
 - Approval flips the section header to Active and creates the GitHub issues; the issues are the second durable copy
+- The same rule covers retrospectives and sprint-status changes: commit them as soon as they exist, marked DRAFT until approved. A committed PROPOSED or DRAFT item is not approval and never pre-authorizes work
 
 **Commit Discipline**:
 - Commit per GitHub issue during development, not one large commit at Phase 6

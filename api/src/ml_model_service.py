@@ -259,6 +259,10 @@ class MLModelService:
 
 # Global singleton instance for the MLB model service
 _mlb_model_service: Optional[MLModelService] = None
+# Requests run on worker threads, so two first requests can both see None and
+# each build an instance, each with its own load lock. This lock makes creation
+# happen once, so the per-instance load lock actually guards a single model.
+_mlb_model_service_lock = threading.Lock()
 
 
 def get_mlb_model_service() -> MLModelService:
@@ -274,7 +278,9 @@ def get_mlb_model_service() -> MLModelService:
     global _mlb_model_service
 
     if _mlb_model_service is None:
-        _mlb_model_service = MLModelService()
-        logger.info("Initialized MLB model service")
+        with _mlb_model_service_lock:
+            if _mlb_model_service is None:
+                _mlb_model_service = MLModelService()
+                logger.info("Initialized MLB model service")
 
     return _mlb_model_service

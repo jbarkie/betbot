@@ -489,3 +489,66 @@ class TestConcurrentFirstUse:
         assert len(results) == 2
         assert all(r is not None for r in results)
         assert service.is_loaded
+
+
+class TestConcurrentSingletonCreation:
+    """Sprint 8 review: concurrent first use must go through ONE service instance."""
+
+    def test_getter_returns_one_instance_and_loads_once_under_concurrency(self, tmp_path):
+        import threading
+        from api.src import ml_model_service as mod
+        from api.src.ml_config import MLB_REQUIRED_FEATURES
+
+        model_path = tmp_path / 'race.joblib'
+        model_path.write_bytes(b'placeholder')
+
+        fake_model = MagicMock()
+        fake_model.predict_proba.return_value = np.array([[0.4, 0.6]])
+        fake_model.predict.return_value = np.array([1])
+        fake_model.named_steps = {'model': MagicMock(feature_importances_=np.zeros(len(MLB_REQUIRED_FEATURES)))}
+
+        counts = {'init': 0, 'load': 0}
+        count_lock = threading.Lock()
+        real_init = mod.MLModelService.__init__
+
+        def slow_init(self, *args, **kwargs):
+            # Widen the race window: without the getter lock, every thread that
+            # saw None is still inside construction when the others arrive.
+            with count_lock:
+                counts['init'] += 1
+            threading.Event().wait(0.2)
+            real_init(self, *args, **kwargs)
+
+        def slow_load(path):
+            with count_lock:
+                counts['load'] += 1
+            threading.Event().wait(0.2)
+            return fake_model
+
+        n = 4
+        barrier = threading.Barrier(n)
+        instances, results = [], []
+        features = {name: 0.5 for name in MLB_REQUIRED_FEATURES}
+
+        def first_request():
+            barrier.wait()
+            service = mod.get_mlb_model_service()
+            instances.append(service)
+            results.append(service.predict(features))
+
+        with patch.object(mod, '_mlb_model_service', None), \
+             patch.object(mod.MLModelService, '__init__', slow_init), \
+             patch('api.src.ml_model_service.get_model_path', return_value=model_path), \
+             patch('api.src.ml_model_service.get_metadata_path', return_value=tmp_path / 'race.json'), \
+             patch('api.src.ml_model_service.joblib.load', side_effect=slow_load):
+            threads = [threading.Thread(target=first_request) for _ in range(n)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=10)
+
+        assert len(instances) == n
+        assert len({id(s) for s in instances}) == 1
+        assert counts['init'] == 1
+        assert counts['load'] == 1
+        assert all(r is not None for r in results)

@@ -98,7 +98,8 @@ configured age; CI proves every migration applies, rolls back one step, and re-a
 - `schedule_updates.sh` hardcodes `/usr/local/opt/postgresql@14/bin/pg_isready`, logs `SKIP` and exits 0 on failure. No shell tests exist for it.
 - `update_mlb_data.py` fetches the whole season schedule but only the last 30 days of team stats by default.
 - `train_mlb_model.py::fetch_data` loads every `MLBSchedule` row including future scheduled games; completion is `status == 'Final'` (`mlb_data_pipeline.py:162`); `--end-date` defaults to now.
-- CI (`.github/workflows/ci-cd.yml`) has `backend-tests`, `frontend-tests`, `all-checks-passed`. `alembic/env.py` reads `sqlalchemy.url` from `alembic.ini` only; it ignores `DB_URL`. There are 11 migrations.
+- CI (`.github/workflows/ci-cd.yml`) has `backend-tests`, `frontend-tests`, `all-checks-passed`. `alembic/env.py` reads `sqlalchemy.url` from `alembic.ini` only; it ignores `DB_URL`. There are 11 migrations, exactly one head, and `alembic check` reports no drift against the current models (run 2026-09-26).
+- Alembic's import chain (`env.py` → `api.src.models.tables` → `shared.database` → `api.src.config`) calls `load_dotenv()` and raises `ValueError` unless `ODDS_API_URL`, `DB_URL`, and `SECRET_KEY` are all set. So `api/.env` *is* loaded incidentally when Alembic runs locally, and any CI job that runs Alembic must set all three variables, not only `DB_URL`. Both model modules import the same `Base` from `shared.database`, so the metadata covers API and ML tables together.
 - CI runs Python 3.9, which has `asyncio.to_thread`.
 
 ---
@@ -151,18 +152,19 @@ boundary, and give the serving path short timeouts with defined fallbacks. Backf
 **Problem:** CI cannot tell whether a PR's migration applies, rolls back, or has forked the history.
 
 **Tasks:**
-1. New `migrations` job with a `postgres:14` service container and an explicit `DB_URL` for that disposable database. *(Sonnet, ~1h)*
-2. `alembic/env.py` uses `DB_URL` from the environment when set, otherwise the `alembic.ini` value. `.env` is not loaded automatically anywhere; local dev keeps using `alembic.ini`. Document this in CLAUDE.md. *(Haiku, ~1h)*
+1. New `migrations` job with a `postgres:14` service container. Job-level env sets `DB_URL` to the disposable database explicitly (not from secrets), plus placeholder `ODDS_API_URL` and `SECRET_KEY`, because `api.src.config` raises on import without them. *(Sonnet, ~1h)*
+2. `alembic/env.py` uses `DB_URL` from the environment when set, otherwise the `alembic.ini` value. Note that `api/.env` is already loaded as a side effect of the import chain, so after this change a local `DB_URL` in `api/.env` takes precedence over `alembic.ini`; today both point at the same database. Document this in CLAUDE.md. *(Haiku, ~1h)*
 3. Job steps in order: assert `alembic heads` prints exactly one head (a script counts lines and exits 1 otherwise); `alembic upgrade head`; `alembic downgrade -1`; `alembic upgrade head`. *(Sonnet, ~2h)*
 4. Add `migrations` to `all-checks-passed`'s `needs` list and its success condition. *(Haiku, ~0.5h)*
-5. Try `alembic check` as a final step; keep it only if it passes on the current models, otherwise record the drift as a backlog item. *(Sonnet, ~1h)*
+5. `alembic check` as the final step. It passes on the current models today, so it is a required step: the job fails when a model changes without a migration. *(Sonnet, ~0.5h)*
 
 **Acceptance criteria:**
 - [ ] A `migrations` CI job runs on push and PR to main against a service-container PostgreSQL using its own `DB_URL`.
 - [ ] The job fails when `alembic heads` reports more than one head (the counting step is a shell script with a unit test that feeds it two-head output).
 - [ ] The job runs `upgrade head`, `downgrade -1`, `upgrade head` in that order and fails on any non-zero exit. Rollback coverage is the latest migration only, stated in the workflow comment.
 - [ ] `all-checks-passed` requires `migrations` in both `needs` and its result check.
-- [ ] CLAUDE.md states that Alembic reads `DB_URL` from the environment when set and never reads `api/.env`.
+- [ ] `alembic check` runs last and the job fails on model drift (verified locally once by adding a throwaway column, not committed).
+- [ ] CLAUDE.md states that Alembic reads `DB_URL` from the environment when set, that `api/.env` is loaded through the config import, and that all three required config variables must be present wherever Alembic runs.
 
 **Score:** cognitive 5 + risk 4 (2-3 files) + pattern 5 = 14 → Haiku by score, assigned Sonnet because a wrong CI job blocks every later PR. Confidence 90%.
 

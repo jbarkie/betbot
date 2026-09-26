@@ -71,7 +71,7 @@ experiments batch better into Sprint 9 against a complete season.
 | Sprint 4 | 2026-04-22 | Fix early-season ML noise (v2.1) + migrate DB to Homebrew PostgreSQL | PR #28 merged — retro complete |
 | Sprint 5 | 2026-04-24 | Investigate and improve MLB model accuracy: diagnostics, XGBoost, temporal weighting → v3.0 | PR #33 merged — retro complete |
 | Sprint 6 | 2026-05-04 | XGBoost hyperparameter tuning via RandomizedSearchCV; evaluate v4.0 vs RF baseline | PR #36 merged — retro complete |
-| Sprint 8 | 2026-09-26 → | Serving robustness and operations: non-blocking external I/O, scheduler skip alerting, training freshness guard, Alembic CI check | Active — issues #44 #45 #46 #47 |
+| Sprint 8 | 2026-09-26 → | Serving robustness and operations: non-blocking external I/O, scheduler skip alerting, training freshness guard, Alembic CI check | PR #48 open — 26/28 criteria met, 1 partial, 1 pending CI; tests 203 → 253; retro DRAFT |
 | Sprint 7 | 2026-05-20 → 2026-08-11 | Add starting pitcher ERA/WHIP/K9 as pre-game ML features; retrain RF baseline on 2026 data | PR #41 merged — 21/21 criteria met; v3.3 promoted (32 features); tests 132 → 203; retro complete |
 
 ---
@@ -80,7 +80,7 @@ experiments batch better into Sprint 9 against a complete season.
 
 > **Status:** Approved 2026-09-26 on `feature/20260922_Sprint_8`. Refined from the
 > Sprint 8 candidates above plus an external review of the first draft. Issues: Card 1 #44,
-> Card 4 #45, Card 3 #46, Card 2 #47.
+> Card 4 #45, Card 3 #46, Card 2 #47. PR #48. Retrospective: `docs/retrospectives/SPRINT_8_RETROSPECTIVE.md` (DRAFT until approved).
 
 **Goal:** Slow external calls no longer block the API event loop; skipped data refreshes are
 recorded and surfaced; training warns or stops when completed-game data is older than a

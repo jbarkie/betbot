@@ -345,6 +345,8 @@ python machine_learning/scripts/train_mlb_model.py \
 
 # Run with full diagnostic output (per-month accuracy, learning curve, feature importance)
 python machine_learning/scripts/train_mlb_model.py --diagnostics --verbose
+python machine_learning/scripts/train_mlb_model.py --fail-on-stale        # Exit 2 if newest completed game is older than 3 days
+python machine_learning/scripts/train_mlb_model.py --max-staleness-days 120  # Offseason: relax the freshness gate
 ```
 
 **Requirements**:
@@ -357,7 +359,7 @@ python machine_learning/scripts/train_mlb_model.py --diagnostics --verbose
 
 #### Automated Daily Updates
 
-The scheduler uses **launchd** (macOS-native) instead of cron — launchd catches up missed runs after the machine wakes, whereas cron silently skips jobs fired while the machine is asleep. The script requires native Homebrew PostgreSQL to be running and fast-fails with a SKIP message if it is not accepting connections.
+The scheduler uses **launchd** (macOS-native) instead of cron — launchd catches up missed runs after the machine wakes, whereas cron silently skips jobs fired while the machine is asleep. The script requires native Homebrew PostgreSQL to be running. If it is not accepting connections the run is skipped (exit 0): the attempt is recorded in `logs/mlb_update_skips.log` and a macOS notification is sent. The next successful run logs a `RESUMED` line with the skipped-attempt count and clears the marker; if the first skip is older than the 30-day team-stats window it also prints the `--start-date` backfill command to run by hand.
 
 Install once after cloning:
 

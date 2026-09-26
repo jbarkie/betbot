@@ -105,12 +105,15 @@ The plan estimated ~29 hours across 21 tasks with per-task model assignments. Th
 2. **The background durability agent** committed a plan while planning was still in progress. Harmless because both copies were compared, but it means two writers touched the same document in one session.
 3. **`alembic check` already passed** on the current models, so it went from a conditional step to a required one.
 4. **The training script prints a metric after saving**, which made three otherwise-correct wiring tests fail until the mock populated it.
+5. **`alembic.ini` was gitignored.** The first CI run of the `migrations` job failed with exit 255 and no message: `alembic heads` had no configuration to read. The local dry run against a scratch database could not catch it because the file exists locally. Fixed by tracking the file (default URL only, `DB_URL` overrides) and by making the head-count script print Alembic's stderr on failure.
 
 ### Lessons Learned
 
 1. **Run the import chain before writing a CI job that imports it.** A module that raises on import turns a configuration gap into a misleading failure.
 2. **Prove a concurrency test is sensitive by removing the guard.** Otherwise it documents nothing.
 3. **Plan durability works.** The committed PROPOSED plan survived a scratchpad disappearing mid-session and a second writer; nothing was lost.
+4. **Verify a new CI job from a clean clone, not the working tree.** Gitignored files are invisible to CI, and a local dry run silently depends on them. The fix was verified by cloning the branch into a temp directory and running the job's first step there.
+5. **A script that runs under `set -e` must capture stderr before failing.** The first failure produced only an exit code; the second version of the script explains itself.
 
 ---
 

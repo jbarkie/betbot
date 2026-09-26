@@ -139,7 +139,7 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-Database (local dev): install and start native PostgreSQL via Homebrew — `brew install postgresql@14 && brew services start postgresql@14`. Create the role and database: `psql -d postgres -c "CREATE ROLE \"user\" WITH LOGIN PASSWORD 'password';"` then `psql -d postgres -c "CREATE DATABASE betbot OWNER \"user\";"`. Run `alembic upgrade head` to apply migrations. Alembic uses `DB_URL` from the environment when set and falls back to `alembic.ini` `sqlalchemy.url` otherwise. Because Alembic imports the API models, `api/.env` is loaded through `api/src/config.py` as a side effect, so a local `DB_URL` there is what Alembic uses; keep it and `alembic.ini` pointing at the same database.
+Database (local dev): install and start native PostgreSQL via Homebrew — `brew install postgresql@14 && brew services start postgresql@14`. Create the role and database: `psql -d postgres -c "CREATE ROLE \"user\" WITH LOGIN PASSWORD 'password';"` then `psql -d postgres -c "CREATE DATABASE betbot OWNER \"user\";"`. Run `alembic upgrade head` to apply migrations. `alembic.ini` is tracked in git (it was gitignored until Sprint 8, which left CI with no Alembic config) and holds only the default local URL. Alembic uses `DB_URL` from the environment when set and falls back to `alembic.ini` `sqlalchemy.url` otherwise, so do not put a machine-specific URL in the ini file; put it in `api/.env`. Because Alembic imports the API models, `api/.env` is loaded through `api/src/config.py` as a side effect, so a local `DB_URL` there is what Alembic uses; keep it and `alembic.ini` pointing at the same database.
 
 `docker-compose.yml` in `env/` is retained for CI and onboarding — do not remove it.
 

@@ -100,6 +100,7 @@ configured age; CI proves every migration applies, rolls back one step, and re-a
 - `train_mlb_model.py::fetch_data` loads every `MLBSchedule` row including future scheduled games; completion is `status == 'Final'` (`mlb_data_pipeline.py:162`); `--end-date` defaults to now.
 - CI (`.github/workflows/ci-cd.yml`) has `backend-tests`, `frontend-tests`, `all-checks-passed`. `alembic/env.py` reads `sqlalchemy.url` from `alembic.ini` only; it ignores `DB_URL`. There are 11 migrations, exactly one head, and `alembic check` reports no drift against the current models (run 2026-09-26).
 - Alembic's import chain (`env.py` → `api.src.models.tables` → `shared.database` → `api.src.config`) calls `load_dotenv()` and raises `ValueError` unless `ODDS_API_URL`, `DB_URL`, and `SECRET_KEY` are all set. So `api/.env` *is* loaded incidentally when Alembic runs locally, and any CI job that runs Alembic must set all three variables, not only `DB_URL`. Both model modules import the same `Base` from `shared.database`, so the metadata covers API and ML tables together.
+- `alembic.ini` was gitignored, so a CI checkout had no Alembic configuration and `alembic heads` exited 255 on the first PR run (found 2026-09-26). It is now tracked with the default local URL; `DB_URL` overrides it.
 - CI runs Python 3.9, which has `asyncio.to_thread`.
 
 ---

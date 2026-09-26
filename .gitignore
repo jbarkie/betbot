@@ -1,6 +1,5 @@
 venv/
 .DS_Store
-alembic.ini
 __pycache__
 .coverage
 .env

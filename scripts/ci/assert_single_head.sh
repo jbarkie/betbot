@@ -12,7 +12,13 @@ set -euo pipefail
 if [ "${1:-}" != "" ]; then
     output="$(cat "$1")"
 else
-    output="$(alembic heads)"
+    # Capture both streams so a failing alembic explains itself instead of
+    # dying silently under set -e with an opaque exit code.
+    if ! output="$(alembic heads 2>&1)"; then
+        echo "FAIL: 'alembic heads' exited non-zero" >&2
+        printf '%s\n' "$output" >&2
+        exit 1
+    fi
 fi
 
 count="$(printf '%s\n' "$output" | grep -c '(head)' || true)"

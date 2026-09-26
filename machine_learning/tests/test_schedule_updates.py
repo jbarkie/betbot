@@ -148,3 +148,106 @@ class TestResume:
 
 def test_script_is_executable():
     assert SCRIPT.stat().st_mode & stat.S_IEXEC
+
+
+class TestPgIsreadyDiscovery:
+    """
+    Sprint 8 review: discovery must work under launchd's minimal PATH, on both
+    Apple Silicon (/opt/homebrew) and Intel or Rosetta (/usr/local) layouts.
+
+    Each test builds a fake Homebrew layout in a temp dir and runs the script
+    with PATH=/usr/bin:/bin, so no real brew can leak in. The fake pg_isready
+    exits 0, which lets the run proceed to the stub update.
+    """
+
+    MINIMAL_PATH = "/usr/bin:/bin"
+
+    def _fake_pg_isready(self, root):
+        binary = root / "opt" / "postgresql@14" / "bin" / "pg_isready"
+        binary.parent.mkdir(parents=True)
+        binary.write_text("#!/bin/bash\nexit 0\n")
+        binary.chmod(0o755)
+        return binary
+
+    def _fake_brew(self, path, prefix):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            '#!/bin/bash\n'
+            f'[ "$1" = "--prefix" ] && [ "$2" = "postgresql@14" ] && echo "{prefix}" && exit 0\n'
+            'exit 1\n'
+        )
+        path.chmod(0o755)
+        return path
+
+    def _run(self, env, tmp_path, brews, roots):
+        variables = {
+            "PATH": self.MINIMAL_PATH,
+            "HOME": str(tmp_path),
+            "BETBOT_LOG_DIR": str(env["log_dir"]),
+            "BETBOT_UPDATE_CMD": "true",
+            "BETBOT_NOTIFY_CMD": env["vars"]["BETBOT_NOTIFY_CMD"],
+            "BETBOT_BREW_CANDIDATES": ":".join(str(b) for b in brews),
+            "BETBOT_HOMEBREW_ROOTS": ":".join(str(r) for r in roots),
+        }
+        return subprocess.run(["/bin/bash", str(SCRIPT)], env=variables,
+                               capture_output=True, text=True, timeout=30)
+
+    def test_apple_silicon_brew_found_without_path(self, env, tmp_path):
+        arm_root, intel_root = tmp_path / "opt-homebrew", tmp_path / "usr-local"
+        arm_pg = self._fake_pg_isready(arm_root)
+        arm_brew = self._fake_brew(arm_root / "bin" / "brew", arm_root / "opt" / "postgresql@14")
+        result = self._run(env, tmp_path, [arm_brew, intel_root / "bin" / "brew"], [])
+
+        assert f"Using pg_isready at {arm_pg}" in result.stdout
+        assert "PostgreSQL is ready" in result.stdout
+        assert result.returncode == 0
+
+    def test_intel_brew_found_when_apple_silicon_absent(self, env, tmp_path):
+        arm_root, intel_root = tmp_path / "opt-homebrew", tmp_path / "usr-local"
+        intel_pg = self._fake_pg_isready(intel_root)
+        intel_brew = self._fake_brew(intel_root / "bin" / "brew", intel_root / "opt" / "postgresql@14")
+        result = self._run(env, tmp_path, [arm_root / "bin" / "brew", intel_brew], [])
+
+        assert f"Using pg_isready at {intel_pg}" in result.stdout
+        assert "PostgreSQL is ready" in result.stdout
+
+    def test_root_scan_used_when_no_brew_binary_works(self, env, tmp_path):
+        arm_root = tmp_path / "opt-homebrew"
+        arm_pg = self._fake_pg_isready(arm_root)
+        result = self._run(env, tmp_path, [tmp_path / "missing" / "brew"], [tmp_path / "usr-local", arm_root])
+
+        assert f"Using pg_isready at {arm_pg}" in result.stdout
+        assert "PostgreSQL is ready" in result.stdout
+
+    def test_brew_prefix_without_postgres_falls_through(self, env, tmp_path):
+        """A brew that answers but has no pg_isready at that prefix is skipped."""
+        arm_root, intel_root = tmp_path / "opt-homebrew", tmp_path / "usr-local"
+        arm_brew = self._fake_brew(arm_root / "bin" / "brew", arm_root / "opt" / "postgresql@14")
+        intel_pg = self._fake_pg_isready(intel_root)
+        result = self._run(env, tmp_path, [arm_brew], [intel_root])
+
+        assert f"Using pg_isready at {intel_pg}" in result.stdout
+
+    def test_nothing_found_falls_back_to_legacy_path_and_warns_if_missing(self, env, tmp_path):
+        result = self._run(env, tmp_path, [tmp_path / "missing" / "brew"], [tmp_path / "nowhere"])
+
+        assert "Using pg_isready at /usr/local/opt/postgresql@14/bin/pg_isready" in result.stdout
+        if not os.access("/usr/local/opt/postgresql@14/bin/pg_isready", os.X_OK):
+            assert "is not executable" in result.stdout
+            assert "SKIP:" in result.stdout
+
+    def test_real_defaults_under_minimal_path(self, tmp_path):
+        """No overrides at all: on a dev machine with Homebrew PostgreSQL, discovery succeeds."""
+        found = [p for p in ("/opt/homebrew/opt/postgresql@14/bin/pg_isready",
+                             "/usr/local/opt/postgresql@14/bin/pg_isready")
+                 if os.access(p, os.X_OK)]
+        if not found:
+            pytest.skip("no Homebrew postgresql@14 on this machine (expected in CI)")
+
+        result = subprocess.run(
+            ["/bin/bash", str(SCRIPT)],
+            env={"PATH": self.MINIMAL_PATH, "HOME": str(tmp_path),
+                 "BETBOT_LOG_DIR": str(tmp_path / "logs"), "BETBOT_UPDATE_CMD": "true",
+                 "BETBOT_NOTIFY_CMD": "/usr/bin/true"},
+            capture_output=True, text=True, timeout=30)
+        assert any(f"Using pg_isready at {p}" in result.stdout for p in found)

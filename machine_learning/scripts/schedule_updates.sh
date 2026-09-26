@@ -13,7 +13,9 @@
 # team stats, so a gap older than that prints the manual backfill command.
 #
 # Environment overrides (used by tests; none are needed in normal operation):
-#   BETBOT_PG_ISREADY   path to pg_isready (default: brew --prefix postgresql@14)
+#   BETBOT_PG_ISREADY   path to pg_isready (default: discovered, see below)
+#   BETBOT_BREW_CANDIDATES  colon-separated brew binaries to try (tests only)
+#   BETBOT_HOMEBREW_ROOTS   colon-separated Homebrew roots to try (tests only)
 #   BETBOT_LOG_DIR      where the log and skip marker live (default: <repo>/logs)
 #   BETBOT_UPDATE_CMD   shell command to run instead of the venv update script
 #   BETBOT_NOTIFY_CMD   command given the message as $1 instead of osascript
@@ -28,11 +30,44 @@ SKIP_MARKER="$LOG_DIR/mlb_update_skips.log"
 UPDATE_SCRIPT="$SCRIPT_DIR/update_mlb_data.py"
 TEAM_STATS_WINDOW_DAYS=30
 
+# pg_isready discovery. launchd runs this with a minimal PATH that usually
+# contains neither Homebrew location, so `brew` by name cannot be trusted:
+# Apple Silicon installs live under /opt/homebrew, Intel (and Rosetta) installs
+# under /usr/local. Try absolute brew binaries for both first, then any brew on
+# PATH, then the two standard roots directly, then the historical path.
+LEGACY_PG_ISREADY="/usr/local/opt/postgresql@14/bin/pg_isready"
+BREW_CANDIDATES="${BETBOT_BREW_CANDIDATES:-/opt/homebrew/bin/brew:/usr/local/bin/brew}"
+HOMEBREW_ROOTS="${BETBOT_HOMEBREW_ROOTS:-/opt/homebrew:/usr/local}"
+
+discover_pg_isready() {
+    local brew prefix root candidate
+    local IFS=':'
+
+    for brew in $BREW_CANDIDATES $(command -v brew 2>/dev/null); do
+        [ -x "$brew" ] || continue
+        prefix="$("$brew" --prefix postgresql@14 2>/dev/null)" || continue
+        candidate="$prefix/bin/pg_isready"
+        if [ -n "$prefix" ] && [ -x "$candidate" ]; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+
+    for root in $HOMEBREW_ROOTS; do
+        candidate="$root/opt/postgresql@14/bin/pg_isready"
+        if [ -x "$candidate" ]; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+
+    echo "$LEGACY_PG_ISREADY"
+}
+
 if [ -n "${BETBOT_PG_ISREADY:-}" ]; then
     PG_ISREADY="$BETBOT_PG_ISREADY"
 else
-    BREW_PREFIX="$(brew --prefix postgresql@14 2>/dev/null || true)"
-    PG_ISREADY="${BREW_PREFIX:-/usr/local/opt/postgresql@14}/bin/pg_isready"
+    PG_ISREADY="$(discover_pg_isready)"
 fi
 
 mkdir -p "$LOG_DIR"
@@ -86,6 +121,11 @@ report_resumed() {
 }
 
 # ── PostgreSQL ─────────────────────────────────────────────────────────────────
+
+log "Using pg_isready at $PG_ISREADY"
+if [ ! -x "$PG_ISREADY" ]; then
+    log "WARN: $PG_ISREADY is not executable; PostgreSQL will be reported as unavailable"
+fi
 
 if ! "$PG_ISREADY" -h localhost -p 5432 -U user -d betbot > /dev/null 2>&1; then
     date '+%Y-%m-%d %H:%M:%S' >> "$SKIP_MARKER"

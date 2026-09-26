@@ -34,10 +34,12 @@ logger = logging.getLogger(__name__)
 _CACHE_TTL_SECONDS = 900
 
 # The serving path makes up to three sequential MLB Stats API calls (probable
-# starters, then one game log per side). Each gets this per-request timeout, so
-# the worst case for one uncached prediction is roughly three times this value
-# before the medians take over. The backfill keeps MLBDirectAPI's 30s default;
-# a person waiting on a page should not.
+# starters, then one game log per side). This is a requests timeout: it caps the
+# connect and each wait between received bytes, not the total duration of a
+# call. An unreachable or silent host fails in about this long per call, but a
+# server that trickles bytes can hold a call longer, and there is no total
+# deadline across the three calls. The backfill keeps MLBDirectAPI's 30s
+# default; a person waiting on a page should not.
 SERVING_API_TIMEOUT_SECONDS = 5
 
 _stats_cache: Dict[str, Tuple[float, Dict]] = {}

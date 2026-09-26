@@ -1,6 +1,6 @@
 {
   "current_sprint": 8,
-  "phase": "Phase 7 - PR #48 open; retrospective DRAFT committed, awaiting user approval of recommendations",
+  "phase": "Phase 7 complete - retrospective approved; PR #48 ready to merge once CI is green on the final commit",
   "branch": "feature/20260922_Sprint_8",
   "plan_location": "docs/ALL_SPRINTS_MASTER_PLAN.md#sprint-8",
   "issues": [

@@ -29,6 +29,7 @@ experiments batch better into Sprint 9 against a complete season.
 - [ ] **XGBoost re-evaluation (≥ 2,000 games)** — Gate long cleared: 7,313 completed games total, 2,193 in 2026 as of 2026-09-10. Re-run `--hyperparameter-search` against the v3.3 baseline of 56.44% (AUC 0.5708) with 32 features available. v4.0 tuned params are the starting point.
 - [ ] **Pitcher stats over all appearances, not only starts** — Sprint 7 accumulates over prior starts only. Current coverage is 88.4% of game-team slots (12,929 of 14,626), but 16.5% of completed games have at least one side median-imputed, which is the number that matters for training. Counting all prior appearances would cover relievers-turned-starters and season debuts.
 - [ ] **Pitcher handedness and platoon splits** — Natural extension of the Sprint 7 `mlb_pitcher_stats` table.
+- [ ] **Automatic backfill when the scheduler resumes after a long gap** — Sprint 8 retro recommendation 3. Today a RESUMED run whose first skip is older than the 30-day team-stats window only prints the manual `--start-date` command. Design recovery scope (team stats only, or schedule and pitcher stats too), failure handling, and how a partial backfill is reported before implementing.
 
 ### High Priority (unscheduled)
 
@@ -39,6 +40,9 @@ experiments batch better into Sprint 9 against a complete season.
 - [ ] **User favorites/watchlist** — Allow authenticated users to bookmark games or teams
 
 ### Medium Priority
+
+- [ ] **Wall-clock budget for the serving-path pitcher lookup** — Sprint 8 retro recommendation 4. The 5s requests timeout caps each connect and each wait between bytes, not a call's total duration, so an uncached prediction has no hard time ceiling across its three sequential MLB Stats API calls. Add a total deadline after which remaining calls are skipped and medians are used.
+- [ ] **Confirm scheduler notification visibility** — Sprint 8 manual criterion not confirmed: `osascript` exited cleanly but the user saw no notification. Re-run with the user watching, and check notification permissions for the launchd context.
 
 - [ ] **Historical odds tracking** — Store odds snapshots over time per game to surface line movement
 - [ ] **Push notifications** — Alert users when odds move significantly on a favorited game
@@ -71,7 +75,7 @@ experiments batch better into Sprint 9 against a complete season.
 | Sprint 4 | 2026-04-22 | Fix early-season ML noise (v2.1) + migrate DB to Homebrew PostgreSQL | PR #28 merged — retro complete |
 | Sprint 5 | 2026-04-24 | Investigate and improve MLB model accuracy: diagnostics, XGBoost, temporal weighting → v3.0 | PR #33 merged — retro complete |
 | Sprint 6 | 2026-05-04 | XGBoost hyperparameter tuning via RandomizedSearchCV; evaluate v4.0 vs RF baseline | PR #36 merged — retro complete |
-| Sprint 8 | 2026-09-26 → | Serving robustness and operations: non-blocking external I/O, scheduler skip alerting, training freshness guard, Alembic CI check | PR #48 open, CI green — 27/28 criteria met, 1 partial; tests 203 → 253; retro DRAFT |
+| Sprint 8 | 2026-09-26 → | Serving robustness and operations: non-blocking external I/O, scheduler skip alerting, training freshness guard, Alembic CI check | PR #48 open, CI green — 27/28 criteria met, notification visibility not confirmed; tests 203 → 261; retro complete |
 | Sprint 7 | 2026-05-20 → 2026-08-11 | Add starting pitcher ERA/WHIP/K9 as pre-game ML features; retrain RF baseline on 2026 data | PR #41 merged — 21/21 criteria met; v3.3 promoted (32 features); tests 132 → 203; retro complete |
 
 ---
@@ -80,7 +84,7 @@ experiments batch better into Sprint 9 against a complete season.
 
 > **Status:** Approved 2026-09-26 on `feature/20260922_Sprint_8`. Refined from the
 > Sprint 8 candidates above plus an external review of the first draft. Issues: Card 1 #44,
-> Card 4 #45, Card 3 #46, Card 2 #47. PR #48. Retrospective: `docs/retrospectives/SPRINT_8_RETROSPECTIVE.md` (DRAFT until approved).
+> Card 4 #45, Card 3 #46, Card 2 #47. PR #48. Retrospective: `docs/retrospectives/SPRINT_8_RETROSPECTIVE.md` (approved 2026-09-26).
 
 **Goal:** Slow external calls no longer block the API event loop; skipped data refreshes are
 recorded and surfaced; training warns or stops when completed-game data is older than a
@@ -117,6 +121,10 @@ boundary, and give the serving path short timeouts with defined fallbacks. Backf
 - Serving-path MLB Stats API client: 5s per request. Worst case for one prediction is three
   timeouts, roughly 15s, after which the response still returns 200 using median pitcher values.
   This is the documented user-facing ceiling for this sprint, not "never stalls".
+  *Correction (2026-09-26, post-review): "roughly 15s" is not a ceiling. A requests timeout caps
+  each connect and each wait between bytes, not a call's total duration, so a trickling server
+  can exceed it. An unreachable or silent host fails in about 5s per call. A true wall-clock
+  budget is recorded as a backlog item.*
 - A failed live lookup is cached for the 15-minute TTL like any other result (existing behavior,
   now documented): one bad request does not retry on every page load.
 - Odds API: `timeout=(3.05, 10)`. A `requests.Timeout` returns HTTP 504 with detail

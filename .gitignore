@@ -14,3 +14,4 @@ machine_learning/models/**/*.joblib
 !machine_learning/models/**/*.json
 !machine_learning/models/**/*.md
 
+*.pyc

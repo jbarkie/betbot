@@ -6,6 +6,7 @@ from the machine_learning module, incorporating rolling statistics, momentum,
 and advanced team metrics.
 """
 
+import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
 import pandas as pd
@@ -40,12 +41,26 @@ class EnhancedMLBAnalytics:
     async def get_enhanced_game_analytics(self, game_id: str) -> MlbAnalyticsResponse:
         """
         Get enhanced analytics for a specific MLB game.
-        
+
+        Everything below the route boundary is synchronous: the database session,
+        the ORM queries, and the starting pitcher lookup that may call the MLB
+        Stats API. Running it in a worker thread keeps the event loop free to
+        serve other requests while one prediction waits on the network.
+
         Args:
             game_id: ID of the game to analyze
-            
+
         Returns:
             Enhanced analytics response with detailed insights
+        """
+        return await asyncio.to_thread(self._get_enhanced_game_analytics_sync, game_id)
+
+    def _get_enhanced_game_analytics_sync(self, game_id: str) -> MlbAnalyticsResponse:
+        """
+        Blocking implementation of get_enhanced_game_analytics.
+
+        Runs on a worker thread. The session is opened and closed here, never
+        shared with the event loop thread.
         """
         session = connect_to_db()
         

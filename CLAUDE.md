@@ -123,6 +123,7 @@ bash machine_learning/scripts/schedule_updates.sh
 - Diagnostic output: `--diagnostics` prints per-month accuracy, learning curve, class balance, full feature importance
 - Gini importance overstates continuous features like ERA in Random Forests; use permutation importance on held-out data when judging whether a feature genuinely helps
 - Model info endpoint: `/analytics/mlb/model-info`
+- Serving latency and blocking: the analytics and games routes run their synchronous bodies (DB sessions, Odds API, MLB Stats API) via `asyncio.to_thread`, so one slow upstream call does not block other requests. Serving-path MLB Stats API calls use a 5s per-request timeout (`SERVING_API_TIMEOUT_SECONDS`); the worst case for one uncached prediction is three timeouts, roughly 15s, after which the response still returns 200 with median pitcher values. A failed live lookup is cached for the 15-minute TTL like any other result. The backfill keeps the 30s default. The Odds API uses a (3.05, 10) connect/read timeout and a timeout returns HTTP 504 with detail "Odds provider timed out". `MLModelService` loads the model under a lock so concurrent first requests load it once
 
 ## Environment Setup
 

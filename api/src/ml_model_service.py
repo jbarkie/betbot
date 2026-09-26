@@ -6,6 +6,7 @@ from trained machine learning models.
 """
 import json
 import logging
+import threading
 from typing import Dict, Optional, Tuple
 import joblib
 
@@ -45,6 +46,9 @@ class MLModelService:
         self._metadata = None
         self._is_loaded = False
         self._load_error = None
+        # Predictions now run on worker threads, so two first requests can race
+        # to load the model. The lock makes joblib.load happen once.
+        self._load_lock = threading.Lock()
 
     @property
     def is_available(self) -> bool:
@@ -76,6 +80,13 @@ class MLModelService:
         if self._is_loaded:
             return True
 
+        with self._load_lock:
+            if self._is_loaded:
+                return True
+            return self._load_model_locked()
+
+    def _load_model_locked(self) -> bool:
+        """Load the model and metadata; caller must hold _load_lock."""
         try:
             model_path = get_model_path(self.model_config)
             metadata_path = get_metadata_path(self.model_config)

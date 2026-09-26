@@ -29,7 +29,16 @@ logger = logging.getLogger(__name__)
 
 # Probable starters are announced a day or two out and rarely change intraday, so
 # a short cache keeps a burst of requests for the same game to one API round trip.
+# A failed live lookup is cached for the same TTL, so one bad request does not
+# retry on every page load.
 _CACHE_TTL_SECONDS = 900
+
+# The serving path makes up to three sequential MLB Stats API calls (probable
+# starters, then one game log per side). Each gets this per-request timeout, so
+# the worst case for one uncached prediction is roughly three times this value
+# before the medians take over. The backfill keeps MLBDirectAPI's 30s default;
+# a person waiting on a page should not.
+SERVING_API_TIMEOUT_SECONDS = 5
 
 _stats_cache: Dict[str, Tuple[float, Dict]] = {}
 _medians_cache: Optional[Dict[str, float]] = None
@@ -148,6 +157,14 @@ def _stored_stats(session: Session, game_id: str, team_id: int) -> Optional[Dict
         return None
 
 
+def _default_collector():
+    """Build the serving-path collector with the short per-request timeout."""
+    from machine_learning.data.collection.mlb_direct_api import MLBDirectAPI
+    from machine_learning.data.collection.mlb_pitcher_stats import MLBPitcherStatsCollector
+
+    return MLBPitcherStatsCollector(MLBDirectAPI(timeout=SERVING_API_TIMEOUT_SECONDS))
+
+
 def _live_stats(game_id: str, game_date, collector=None) -> Dict[int, Dict]:
     """
     Fetch announced starters for a game and compute their season-to-date lines.
@@ -155,12 +172,9 @@ def _live_stats(game_id: str, game_date, collector=None) -> Dict[int, Dict]:
     Returns:
         Mapping of team_id to {era, whip, k9}; empty when nothing is announced
     """
-    from machine_learning.data.collection.mlb_pitcher_stats import (
-        MLBPitcherStatsCollector,
-        compute_cumulative_before,
-    )
+    from machine_learning.data.collection.mlb_pitcher_stats import compute_cumulative_before
 
-    collector = collector or MLBPitcherStatsCollector()
+    collector = collector or _default_collector()
     season = game_date.year
     before = game_date.strftime('%Y-%m-%d') if hasattr(game_date, 'strftime') else None
 

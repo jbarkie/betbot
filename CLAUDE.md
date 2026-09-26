@@ -136,7 +136,7 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-Database (local dev): install and start native PostgreSQL via Homebrew — `brew install postgresql@14 && brew services start postgresql@14`. Create the role and database: `psql -d postgres -c "CREATE ROLE \"user\" WITH LOGIN PASSWORD 'password';"` then `psql -d postgres -c "CREATE DATABASE betbot OWNER \"user\";"`. Run `alembic upgrade head` to apply migrations. Ensure `alembic.ini` `sqlalchemy.url` matches `DB_URL`.
+Database (local dev): install and start native PostgreSQL via Homebrew — `brew install postgresql@14 && brew services start postgresql@14`. Create the role and database: `psql -d postgres -c "CREATE ROLE \"user\" WITH LOGIN PASSWORD 'password';"` then `psql -d postgres -c "CREATE DATABASE betbot OWNER \"user\";"`. Run `alembic upgrade head` to apply migrations. Alembic uses `DB_URL` from the environment when set and falls back to `alembic.ini` `sqlalchemy.url` otherwise. Because Alembic imports the API models, `api/.env` is loaded through `api/src/config.py` as a side effect, so a local `DB_URL` there is what Alembic uses; keep it and `alembic.ini` pointing at the same database.
 
 `docker-compose.yml` in `env/` is retained for CI and onboarding — do not remove it.
 
@@ -177,7 +177,9 @@ session.close()
 
 ## CI/CD
 
-`.github/workflows/ci-cd.yml` runs on push/PR to `main`: backend tests (Python 3.9) and frontend tests (Node 18) in parallel. `zizmor.yml` runs security analysis on workflow files.
+`.github/workflows/ci-cd.yml` runs on push/PR to `main`: backend tests (Python 3.9), frontend tests (Node 18), and a `migrations` job in parallel; `all-checks-passed` requires all three. `zizmor.yml` runs security analysis on workflow files.
+
+The `migrations` job runs against a disposable `postgres:14` service container with an explicit `DB_URL` in the workflow (not a secret). Steps, in order: `scripts/ci/assert_single_head.sh` (fails unless `alembic heads` reports exactly one head), `alembic upgrade head`, `alembic downgrade -1`, `alembic upgrade head`, `alembic check` (fails when a model changes without a migration). Rollback coverage is the latest migration only. The job also sets placeholder `ODDS_API_URL` and `SECRET_KEY` because Alembic's import chain runs `api/src/config.py`, which refuses to import without them.
 
 ## Gotchas
 

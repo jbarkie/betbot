@@ -67,6 +67,8 @@ python machine_learning/scripts/train_mlb_model.py --model-type xgboost --hyperp
 python machine_learning/scripts/train_mlb_model.py --temporal-weighting --half-life 365 --version 3.0
 python machine_learning/scripts/train_mlb_model.py --with-pitcher-features --temporal-weighting --half-life 365 --version 3.3  # 32 features incl. starting pitcher
 python machine_learning/scripts/train_mlb_model.py --diagnostics --verbose  # full diagnostic output
+python machine_learning/scripts/train_mlb_model.py --fail-on-stale  # exit 2 instead of warning when data is stale
+python machine_learning/scripts/train_mlb_model.py --max-staleness-days 120  # offseason: relax the freshness gate
 
 # Install the automated daily data refresh (run once after cloning)
 cp com.betbot.mlb-update.plist ~/Library/LaunchAgents/
@@ -121,6 +123,7 @@ bash machine_learning/scripts/schedule_updates.sh
 - The analytics endpoint is keyed by the `odds.id` hash, which is unrelated to MLB's `gamePk`. `resolve_game_pk()` bridges them via (home_team_id, away_team_id, date) with a one-day window for UTC drift
 - Feature list is split in `ml_config.py`: `MLB_BASE_FEATURES` (26) + `MLB_PITCHER_FEATURES` (6) = `MLB_REQUIRED_FEATURES` (32, the serving contract). Column order is positional — keep it stable
 - Diagnostic output: `--diagnostics` prints per-month accuracy, learning curve, class balance, full feature importance
+- Data freshness gate: before anything is fit, `check_data_freshness()` in `machine_learning/data/processing/data_freshness.py` finds the newest game with status `Final` and both scores recorded, dated on or before the run's `--end-date` (today by default), and compares its age to `--max-staleness-days` (default 3; exactly 3 is fresh, 4 is stale). Stale data logs a warning and training continues; `--fail-on-stale` exits with code 2 instead. Empty data or no completed games is always stale. Future scheduled rows never count. The result is saved to model metadata as `newest_completed_game_date`, `data_age_days`, `max_staleness_days`, `freshness_reference_date`. Scope: game-result recency at training time only. It does not check team or pitcher stats and does not monitor a deployed model. In the offseason, raise `--max-staleness-days` explicitly
 - Gini importance overstates continuous features like ERA in Random Forests; use permutation importance on held-out data when judging whether a feature genuinely helps
 - Model info endpoint: `/analytics/mlb/model-info`
 - Serving latency and blocking: the analytics and games routes run their synchronous bodies (DB sessions, Odds API, MLB Stats API) via `asyncio.to_thread`, so one slow upstream call does not block other requests. Serving-path MLB Stats API calls use a 5s per-request timeout (`SERVING_API_TIMEOUT_SECONDS`); the worst case for one uncached prediction is three timeouts, roughly 15s, after which the response still returns 200 with median pitcher values. A failed live lookup is cached for the 15-minute TTL like any other result. The backfill keeps the 30s default. The Odds API uses a (3.05, 10) connect/read timeout and a timeout returns HTTP 504 with detail "Odds provider timed out". `MLModelService` loads the model under a lock so concurrent first requests load it once

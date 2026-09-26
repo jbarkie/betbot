@@ -19,6 +19,14 @@ Options:
     --half-life             Half-life in days for temporal weighting (default: 365)
     --hyperparameter-search Run RandomizedSearchCV over XGBoost params (requires --model-type xgboost)
     --search-iter           Number of parameter settings sampled in search (default: 50)
+    --max-staleness-days    Warn (or fail) when the newest completed game is older than this many
+                            days relative to --end-date (default: 3). Raise it in the offseason.
+    --fail-on-stale         Exit with code 2 instead of warning when data is stale
+
+Data freshness: before anything is fit, the script checks how old the newest game
+with a Final status and recorded scores is, relative to --end-date (today by
+default). This covers game-result recency at training time only. It does not
+check team or pitcher statistics and does not monitor a deployed model.
 """
 
 import sys
@@ -52,6 +60,7 @@ from machine_learning.data.models.mlb_models import (
     MLBTeam, MLBOffensiveStats, MLBDefensiveStats, MLBSchedule, MLBPitcherStats
 )
 from machine_learning.data.processing.mlb_data_pipeline import MLBDataPipeline, PITCHER_FEATURES
+from machine_learning.data.processing.data_freshness import check_data_freshness, FreshnessResult
 from api.src.ml_config import MLB_MODELS_DIR, MLB_BASE_FEATURES
 
 # Suppress sklearn warnings for cleaner output
@@ -85,6 +94,9 @@ class MLBModelTrainer:
         self.metrics = {}
         self.pitcher_medians = {}
         self._xgboost_override_params = {}
+        # Set by main() after the freshness check so save_model can record what
+        # data the model actually saw.
+        self.freshness: Optional[FreshnessResult] = None
 
         # Set up logging
         self._setup_logging()
@@ -687,6 +699,9 @@ class MLBModelTrainer:
         if self.with_pitcher_features:
             metadata['pitcher_medians'] = self.pitcher_medians
 
+        if self.freshness is not None:
+            metadata.update(self.freshness.to_metadata())
+
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f, indent=2)
 
@@ -790,6 +805,19 @@ Examples:
         help='Include the six starting pitcher features (requires mlb_pitcher_stats to be populated)'
     )
 
+    parser.add_argument(
+        '--max-staleness-days',
+        type=int,
+        default=3,
+        help='Warn when the newest completed game is older than this many days relative to --end-date (default: 3)'
+    )
+
+    parser.add_argument(
+        '--fail-on-stale',
+        action='store_true',
+        help='Exit with code 2 instead of warning when the data is stale'
+    )
+
     args = parser.parse_args()
 
     # Parse dates
@@ -807,6 +835,24 @@ Examples:
         # Fetch data
         schedule_df, teams_df, offensive_df, defensive_df, pitcher_df = \
             trainer.fetch_data_from_database()
+
+        # Data freshness gate: runs before anything is prepared or fit, so a
+        # stale database cannot silently produce a stale model.
+        freshness = check_data_freshness(schedule_df, end_date, args.max_staleness_days)
+        trainer.freshness = freshness
+        if freshness.is_stale:
+            message = (
+                f"Training data is stale: {freshness.reason} "
+                f"(reference date {freshness.reference_date.isoformat()})"
+            )
+            if args.fail_on_stale:
+                print(f"\n❌ {message}")
+                print("   Run the data update script, or raise --max-staleness-days if this is intentional.")
+                sys.exit(2)
+            trainer.logger.warning(message)
+            print(f"\n⚠️  {message}")
+        else:
+            trainer.logger.info(f"Data freshness OK: {freshness.reason}")
 
         # Prepare training data
         training_data = trainer.prepare_training_data(

@@ -33,7 +33,7 @@
 | `all-checks-passed` requires `migrations` in both `needs` and its result check | ✅ Met |
 | `alembic check` runs last and fails on model drift (verified locally with a throwaway column) | ✅ Met — local run reported the throwaway `users` column and exited non-zero |
 | CLAUDE.md states that Alembic reads `DB_URL` from the environment, that `api/.env` is loaded through the config import, and that all three config variables must be present | ✅ Met |
-| Job passes on the sprint PR | ⏳ Pending — first CI run is on PR #48 |
+| Job passes on the sprint PR | ✅ Met — green on PR #48 after two fixes: tracking `alembic.ini`, then pinning the `postgres:14` image digest and scoping job permissions for zizmor |
 
 ### Issue #46 — Data-freshness guard in training
 
@@ -61,7 +61,7 @@ Live check on 2026-09-26: 7,553 schedule rows, newest completed game 2026-09-25,
 | Manual: notification appears when the readiness check is overridden to fail, with PostgreSQL still running | ✅ Met — fired via real `osascript` on 2026-09-26 12:14 with no failure logged; user to confirm it was visible |
 | CLAUDE.md documents the marker file, the env overrides, and that RESUMED does not imply full recovery | ✅ Met |
 
-**26 of 28 criteria fully met, 1 partially met, 1 pending CI.** Backend/ML test suite grew from 203 to 253 (+50). Frontend unchanged at 219.
+**27 of 28 criteria fully met, 1 partially met.** Backend/ML test suite grew from 203 to 253 (+50). Frontend unchanged at 219.
 
 ---
 
@@ -105,7 +105,8 @@ The plan estimated ~29 hours across 21 tasks with per-task model assignments. Th
 2. **The background durability agent** committed a plan while planning was still in progress. Harmless because both copies were compared, but it means two writers touched the same document in one session.
 3. **`alembic check` already passed** on the current models, so it went from a conditional step to a required one.
 4. **The training script prints a metric after saving**, which made three otherwise-correct wiring tests fail until the mock populated it.
-5. **`alembic.ini` was gitignored.** The first CI run of the `migrations` job failed with exit 255 and no message: `alembic heads` had no configuration to read. The local dry run against a scratch database could not catch it because the file exists locally. Fixed by tracking the file (default URL only, `DB_URL` overrides) and by making the head-count script print Alembic's stderr on failure.
+5. **zizmor (pedantic persona) flagged the new job** for an unpinned `postgres:14` image and default permissions. Both were fixed in one commit; the image is pinned to its multi-arch manifest digest.
+6. **`alembic.ini` was gitignored.** The first CI run of the `migrations` job failed with exit 255 and no message: `alembic heads` had no configuration to read. The local dry run against a scratch database could not catch it because the file exists locally. Fixed by tracking the file (default URL only, `DB_URL` overrides) and by making the head-count script print Alembic's stderr on failure.
 
 ### Lessons Learned
 

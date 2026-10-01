@@ -88,12 +88,33 @@ notify() {
     if [ -n "${BETBOT_NOTIFY_CMD:-}" ]; then
         "$BETBOT_NOTIFY_CMD" "$message" > /dev/null 2>&1 \
             || log "WARN: notifier '$BETBOT_NOTIFY_CMD' failed (ignored)"
+    elif [ -d "$PROJECT_ROOT/.local/BetBot Notifier.app" ]; then
+        local result
+        if ! result="$(bash "$SCRIPT_DIR/notify_macos.sh" "$message" 2>&1)"; then
+            log "WARN: BetBot notifier failed (ignored): $result"
+        fi
     elif command -v osascript > /dev/null 2>&1; then
-        osascript -e "display notification \"$message\" with title \"BetBot MLB update\"" > /dev/null 2>&1 \
-            || log "WARN: osascript notification failed (ignored)"
+        local diagnostic
+        if ! diagnostic="$(osascript - "$message" 2>&1 <<'APPLESCRIPT'
+on run argv
+    display notification (item 1 of argv) with title "BetBot MLB update" sound name "Glass"
+end run
+APPLESCRIPT
+        )"; then
+            log "WARN: osascript notification failed (ignored): $diagnostic"
+        fi
+    else
+        log "WARN: osascript unavailable; skip marker and logs remain the source of truth"
     fi
     return 0
 }
+
+# Diagnostic only: no readiness check, marker writes, or data refresh.
+if [ "${1:-}" = "--check-notification" ]; then
+    notify "Notification check: if you can see this, BetBot alerts are visible."
+    log "Notification check attempted; confirm the banner or Notification Center entry yourself. Command success does not prove visibility."
+    exit 0
+fi
 
 recovery_start() {
     local python_bin="$VENV_PATH/bin/python"

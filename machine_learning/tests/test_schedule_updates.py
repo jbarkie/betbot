@@ -169,6 +169,15 @@ class TestResume:
         assert "Starting MLB data update" not in result.stdout
         assert env["marker"].read_text() == 'invalid timestamp\n'
 
+    def test_notification_check_does_not_refresh_or_write_marker(self, env):
+        result = subprocess.run(
+            ['bash', str(SCRIPT), '--check-notification'], env=env['vars'],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert result.returncode == 0
+        assert 'does not prove visibility' in result.stdout
+        assert not env['marker'].exists()
+        assert len(_notifications(env)) == 1
 
     def test_success_without_prior_skips_is_quiet(self, env):
         result = run(env, BETBOT_PG_ISREADY=TRUE)

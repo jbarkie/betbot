@@ -15,3 +15,6 @@ machine_learning/models/**/*.joblib
 !machine_learning/models/**/*.md
 
 *.pyc
+
+# Locally built macOS notifier and Swift compiler cache
+.local/

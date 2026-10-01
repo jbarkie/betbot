@@ -29,9 +29,11 @@ experiments batch better into Sprint 9 against a complete season.
 - [ ] **XGBoost re-evaluation (≥ 2,000 games)** — Gate long cleared: 7,313 completed games total, 2,193 in 2026 as of 2026-09-10. Re-run `--hyperparameter-search` against the v3.3 baseline of 56.44% (AUC 0.5708) with 32 features available. v4.0 tuned params are the starting point.
 - [ ] **Pitcher stats over all appearances, not only starts** — Sprint 7 accumulates over prior starts only. Current coverage is 88.4% of game-team slots (12,929 of 14,626), but 16.5% of completed games have at least one side median-imputed, which is the number that matters for training. Counting all prior appearances would cover relievers-turned-starters and season debuts.
 - [ ] **Pitcher handedness and platoon splits** — Natural extension of the Sprint 7 `mlb_pitcher_stats` table.
-- [ ] **Automatic backfill when the scheduler resumes after a long gap** — Sprint 8 retro recommendation 3. Today a RESUMED run whose first skip is older than the 30-day team-stats window only prints the manual `--start-date` command. Design recovery scope (team stats only, or schedule and pitcher stats too), failure handling, and how a partial backfill is reported before implementing.
+- [x] **Automatic backfill when the scheduler resumes after a long gap** — Implemented in the authorized Sprint 8 follow-up (#50); strict recovery preserves markers on incomplete downloads. See `docs/sprint8_operations_followup.md`.
 
 ### High Priority (unscheduled)
+
+- [ ] **Audit historical team-stat snapshots before retraining (#52)** — The old season request ignored date filters; future collection is corrected, but existing snapshots/models are unchanged. Sample date-correct API responses, determine affected records, and review a repair/retrain plan before changing live data.
 
 - [ ] **Prediction transparency in the analytics modal** — The API returns `prediction_method`, `ml_model_name`, `ml_confidence`, `confidence_level` and `feature_importance`, and `models.ts` already declares all five on `AnalyticsResponse`, but `analytics-modal.component.ts` renders none of them. A user cannot tell an ML prediction from the rule-based fallback, even though the 0.55 confidence gate silently decides which one they get. (Supersedes the old "Frontend analytics integration" item, which claimed predictions were API-only — Sprint 1 shipped the modal.)
 - [ ] **NFL/NHL parity with MLB analytics** — Add ML-backed game analytics endpoints for NFL and NHL (currently only MLB has the ML prediction pipeline)
@@ -41,8 +43,8 @@ experiments batch better into Sprint 9 against a complete season.
 
 ### Medium Priority
 
-- [ ] **Wall-clock budget for the serving-path pitcher lookup** — Sprint 8 retro recommendation 4. The 5s requests timeout caps each connect and each wait between bytes, not a call's total duration, so an uncached prediction has no hard time ceiling across its three sequential MLB Stats API calls. Add a total deadline after which remaining calls are skipped and medians are used.
-- [ ] **Confirm scheduler notification visibility** — Sprint 8 manual criterion not confirmed: `osascript` exited cleanly but the user saw no notification. Re-run with the user watching, and check notification permissions for the launchd context.
+- [x] **Wall-clock budget for the serving-path pitcher lookup** — Implemented in Sprint 8 follow-up (#49): cancellable five-second live HTTP budget, partial results retained, median fallback.
+- [x] **Confirm scheduler notification visibility** — New local notifier app (#51); user confirmed both manual and launchd delivery on 2026-09-26. Setup and evidence: `docs/sprint8_operations_followup.md`.
 
 - [ ] **Historical odds tracking** — Store odds snapshots over time per game to surface line movement
 - [ ] **Push notifications** — Alert users when odds move significantly on a favorited game
@@ -66,6 +68,11 @@ experiments batch better into Sprint 9 against a complete season.
 ---
 
 ## Sprint History
+
+Sprint 8 follow-up (#49–#51), authorized 2026-09-26: see
+`docs/sprint8_operations_followup.md` for implementation, validation, and the
+confirmed notification observation. The original approved plan below remains
+historical; the follow-up supersedes its manual-backfill and latency limitations.
 
 | Sprint | Dates | Goal | Outcome |
 |--------|-------|------|---------|

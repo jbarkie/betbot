@@ -1,6 +1,6 @@
 {
   "current_sprint": 8,
-  "phase": "Phase 7 complete - retrospective approved; PR #48 ready to merge once CI is green on the final commit",
+  "phase": "Sprint 8 follow-up implemented and locally validated; PR #48 final-head CI pending",
   "branch": "feature/20260922_Sprint_8",
   "plan_location": "docs/ALL_SPRINTS_MASTER_PLAN.md#sprint-8",
   "issues": [
@@ -27,5 +27,16 @@
       40
     ]
   },
-  "retrospective": "docs/retrospectives/SPRINT_8_RETROSPECTIVE.md"
+  "retrospective": "docs/retrospectives/SPRINT_8_RETROSPECTIVE.md",
+  "follow_up": {
+    "issues": [
+      49,
+      50,
+      51
+    ],
+    "plan_location": "docs/sprint8_operations_followup.md",
+    "backend_ml_tests": 282,
+    "notification_visibility": "User confirmed manual and launchd diagnostics on 2026-09-26",
+    "data_audit_issue": 52
+  }
 }

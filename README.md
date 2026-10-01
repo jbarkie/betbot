@@ -317,6 +317,34 @@ python machine_learning/scripts/update_mlb_data.py --skip-stats   # Update only 
 
 **Note**: Full updates with team statistics can take 5-10 minutes due to rate limiting on the MLB Stats API.
 
+The scheduler automatically expands recovery beyond the normal 30-day window
+when persisted skips require it. Failed or incomplete recovery keeps the marker
+for retry; successfully committed dates are reused. Only run one updater at a
+time. Existing rows are not overwritten. See the
+[operations follow-up](docs/sprint8_operations_followup.md) for scope and limitations.
+
+On macOS, build and authorize the notifier once (requires Xcode Command Line Tools):
+
+```bash
+bash machine_learning/scripts/setup_notifications.sh
+bash machine_learning/scripts/notify_macos.sh --authorize
+bash machine_learning/scripts/schedule_updates.sh --check-notification
+```
+
+Allow **BetBot Notifier** when macOS prompts. If no banner appears, check System
+Settings → Notifications → BetBot Notifier and Focus settings. The status command
+`bash machine_learning/scripts/notify_macos.sh --status` checks permission without
+sending a notification. These checks do not refresh data.
+
+Live pitcher HTTP has a shared five-second cancellation budget; any unfinished
+pitcher features use training medians. Database queries and prediction computation
+are outside this network budget.
+
+**Before the next retrain:** [audit historical team stats (#52)](https://github.com/jbarkie/betbot/issues/52).
+The old API request ignored date filters; the corrected collector does not repair
+existing snapshots or change trained models.
+
+
 #### Train ML Models
 
 Train new prediction models using historical game data:

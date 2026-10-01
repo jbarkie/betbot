@@ -141,3 +141,15 @@ The plan estimated ~29 hours across 21 tasks with per-task model assignments. Th
 - Automatic backfill on RESUMED when the gap exceeds the team-stats window (Sprint 9 candidate)
 - Wall-clock budget for the serving-path pitcher lookup (backlog)
 - Confirm scheduler notification visibility with the user watching, and check notification permissions for the launchd context (backlog)
+
+
+## Authorized follow-up (2026-09-26 through 2026-10-01)
+
+After this retrospective was approved, the user authorized addressing the three
+remaining operational limitations immediately. Issues #49–#51 implement the
+network budget, automatic recovery, and native notification helper. The user
+confirmed visible notifications from both a manual diagnostic and a temporary
+launchd job on 2026-09-26. Earlier observations above are retained as history.
+See `docs/sprint8_operations_followup.md` for the final evidence and scope.
+A verified pre-existing API date-filter bug is corrected for future collection;
+existing data needs a separate audit before retraining (#52).

@@ -1,8 +1,42 @@
 {
-  "current_sprint": 7,
-  "phase": "Complete - PR #41 merged 2026-09-10",
-  "branch": null,
-  "issues": [37, 38, 39, 40],
-  "pr": 41,
-  "merge_commit": "b76165e"
+  "current_sprint": 8,
+  "phase": "Sprint 8 follow-up complete and locally validated; published in PR #48 (see PR for current CI and merge status)",
+  "branch": "feature/20260922_Sprint_8",
+  "plan_location": "docs/ALL_SPRINTS_MASTER_PLAN.md#sprint-8",
+  "issues": [
+    44,
+    45,
+    46,
+    47
+  ],
+  "execution_order": [
+    44,
+    45,
+    46,
+    47
+  ],
+  "pr": 48,
+  "previous_sprint": {
+    "number": 7,
+    "pr": 41,
+    "merge_commit": "b76165e",
+    "issues": [
+      37,
+      38,
+      39,
+      40
+    ]
+  },
+  "retrospective": "docs/retrospectives/SPRINT_8_RETROSPECTIVE.md",
+  "follow_up": {
+    "issues": [
+      49,
+      50,
+      51
+    ],
+    "plan_location": "docs/sprint8_operations_followup.md",
+    "backend_ml_tests": 282,
+    "notification_visibility": "User confirmed manual and launchd diagnostics on 2026-09-26",
+    "data_audit_issue": 52
+  }
 }

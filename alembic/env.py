@@ -1,3 +1,4 @@
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -10,6 +11,16 @@ from alembic import context
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+# DB_URL from the environment wins over the alembic.ini value so CI can point
+# at a disposable database. Note that importing the models above already ran
+# api.src.config, which calls load_dotenv() and requires ODDS_API_URL, DB_URL,
+# and SECRET_KEY to be set, so api/.env is loaded here as a side effect in
+# local dev and a CI job must set all three. A literal % must be doubled for
+# configparser interpolation.
+_db_url = os.environ.get("DB_URL")
+if _db_url:
+    config.set_main_option("sqlalchemy.url", _db_url.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

@@ -16,6 +16,7 @@ Tier 3 is why nothing here raises. A missing starter is an ordinary daily
 occurrence, not an error, and it must never turn into a 500.
 """
 
+import asyncio
 import json
 import logging
 import time
@@ -29,7 +30,14 @@ logger = logging.getLogger(__name__)
 
 # Probable starters are announced a day or two out and rarely change intraday, so
 # a short cache keeps a burst of requests for the same game to one API round trip.
+# A failed live lookup is cached for the same TTL, so one bad request does not
+# retry on every page load.
 _CACHE_TTL_SECONDS = 900
+
+# The serving network work has one cancellable budget across all three calls.
+# Database queries and prediction computation are outside this budget.
+SERVING_API_TIMEOUT_SECONDS = 5
+LIVE_LOOKUP_BUDGET_SECONDS = 5
 
 _stats_cache: Dict[str, Tuple[float, Dict]] = {}
 _medians_cache: Optional[Dict[str, float]] = None
@@ -148,32 +156,47 @@ def _stored_stats(session: Session, game_id: str, team_id: int) -> Optional[Dict
         return None
 
 
-def _live_stats(game_id: str, game_date, collector=None) -> Dict[int, Dict]:
-    """
-    Fetch announced starters for a game and compute their season-to-date lines.
-
-    Returns:
-        Mapping of team_id to {era, whip, k9}; empty when nothing is announced
-    """
-    from machine_learning.data.collection.mlb_pitcher_stats import (
-        MLBPitcherStatsCollector,
-        compute_cumulative_before,
-    )
-
-    collector = collector or MLBPitcherStatsCollector()
-    season = game_date.year
-    before = game_date.strftime('%Y-%m-%d') if hasattr(game_date, 'strftime') else None
+async def _live_stats_async(game_id: str, game_date, collector=None) -> Dict[int, Dict]:
+    """Cancel network work at the shared deadline, retaining completed sides."""
+    import httpx
+    from api.src.live_pitcher_stats import LivePitcherStatsCollector
+    from machine_learning.data.collection.mlb_pitcher_stats import compute_cumulative_before
 
     resolved = {}
-    for team_id, pitcher in collector.get_probable_pitchers(game_id).items():
-        splits = collector.get_game_log(pitcher['pitcher_id'], season)
-        if not splits:
-            continue
-        stats = compute_cumulative_before(splits, before_date=before)
-        if stats.get('era') is not None:
-            resolved[team_id] = stats
 
+    async def collect(source):
+        probables = await source.get_probable_pitchers(game_id)
+        for team_id, pitcher in probables.items():
+            splits = await source.get_game_log(pitcher['pitcher_id'], game_date.year)
+            stats = compute_cumulative_before(splits, before_date=game_date.strftime('%Y-%m-%d'))
+            if stats.get('era') is not None:
+                resolved[team_id] = stats
+
+    async def run():
+        if collector is not None:
+            await collect(collector)
+        else:
+            async with httpx.AsyncClient(timeout=SERVING_API_TIMEOUT_SECONDS) as client:
+                await collect(LivePitcherStatsCollector(client))
+
+    try:
+        await asyncio.wait_for(run(), timeout=LIVE_LOOKUP_BUDGET_SECONDS)
+    except asyncio.TimeoutError:
+        logger.warning("Live pitcher lookup exhausted its %.1fs network budget", LIVE_LOOKUP_BUDGET_SECONDS)
+    except Exception as exc:
+        logger.warning("Live pitcher lookup failed: %s", exc)
     return resolved
+
+
+def _live_stats(game_id: str, game_date, collector=None, live_loop=None) -> Dict[int, Dict]:
+    # Called from the analytics worker, never from the API event loop. Cancelling
+    # async HTTP closes its connection rather than abandoning a requests thread.
+    work = _live_stats_async(game_id, game_date, collector)
+    if live_loop is not None:
+        # Use the server loop so returning a timed-out lookup never waits for a
+        # temporary loop's DNS executor to shut down. No DB objects cross over.
+        return asyncio.run_coroutine_threadsafe(work, live_loop).result()
+    return asyncio.run(work)
 
 
 def get_starting_pitcher_features(
@@ -182,6 +205,7 @@ def get_starting_pitcher_features(
     away_team_id: int,
     game_date,
     collector=None,
+    live_loop=None,
 ) -> Dict[str, float]:
     """
     Build the six starting pitcher features for one game.
@@ -224,7 +248,7 @@ def get_starting_pitcher_features(
         # Only reach for the network if the database did not already answer.
         if len(by_team) < 2:
             try:
-                for team_id, stats in _live_stats(game_id, game_date, collector).items():
+                for team_id, stats in _live_stats(game_id, game_date, collector, live_loop).items():
                     by_team.setdefault(int(team_id), stats)
             except Exception as e:
                 logger.warning(f"Live pitcher lookup failed for game {game_id}: {e}")

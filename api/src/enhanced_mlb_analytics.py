@@ -6,6 +6,7 @@ from the machine_learning module, incorporating rolling statistics, momentum,
 and advanced team metrics.
 """
 
+import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
 import pandas as pd
@@ -40,12 +41,27 @@ class EnhancedMLBAnalytics:
     async def get_enhanced_game_analytics(self, game_id: str) -> MlbAnalyticsResponse:
         """
         Get enhanced analytics for a specific MLB game.
-        
+
+        Database queries and feature computation run on a worker thread. Only
+        live pitcher HTTP is scheduled back on this loop, where it can be
+        cancelled at the shared network deadline. Sessions stay on the worker.
+
         Args:
             game_id: ID of the game to analyze
-            
+
         Returns:
             Enhanced analytics response with detailed insights
+        """
+        return await asyncio.to_thread(
+            self._get_enhanced_game_analytics_sync, game_id, asyncio.get_running_loop()
+        )
+
+    def _get_enhanced_game_analytics_sync(self, game_id: str, live_loop=None) -> MlbAnalyticsResponse:
+        """
+        Blocking implementation of get_enhanced_game_analytics.
+
+        Runs on a worker thread. The session is opened and closed here, never
+        shared with the event loop thread.
         """
         session = connect_to_db()
         
@@ -73,7 +89,7 @@ class EnhancedMLBAnalytics:
 
             # Try ML prediction first, fallback to rule-based
             ml_prediction = self._try_ml_prediction(
-                session, home_team, away_team, home_analytics, away_analytics, game.time
+                session, home_team, away_team, home_analytics, away_analytics, game.time, live_loop
             )
 
             if ml_prediction:
@@ -372,7 +388,8 @@ class EnhancedMLBAnalytics:
         away_team: MLBTeam,
         home_analytics: TeamAnalytics,
         away_analytics: TeamAnalytics,
-        game_time: datetime
+        game_time: datetime,
+        live_loop=None,
     ) -> Optional[Tuple[str, float, Dict]]:
         """
         Attempt to make a prediction using the ML model.
@@ -397,7 +414,7 @@ class EnhancedMLBAnalytics:
 
             # Prepare features for ML model
             features = self._prepare_ml_features(
-                session, home_team, away_team, home_analytics, away_analytics, game_time
+                session, home_team, away_team, home_analytics, away_analytics, game_time, live_loop
             )
 
             if not features:
@@ -429,7 +446,8 @@ class EnhancedMLBAnalytics:
         away_team: MLBTeam,
         home_analytics: TeamAnalytics,
         away_analytics: TeamAnalytics,
-        game_time: datetime
+        game_time: datetime,
+        live_loop=None,
     ) -> Optional[Dict[str, float]]:
         """
         Prepare features for ML model prediction.
@@ -534,6 +552,7 @@ class EnhancedMLBAnalytics:
                 home_team_id=home_team.id,
                 away_team_id=away_team.id,
                 game_date=game_time,
+                live_loop=live_loop,
             ))
 
             return features

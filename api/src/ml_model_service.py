@@ -6,6 +6,7 @@ from trained machine learning models.
 """
 import json
 import logging
+import threading
 from typing import Dict, Optional, Tuple
 import joblib
 
@@ -45,6 +46,9 @@ class MLModelService:
         self._metadata = None
         self._is_loaded = False
         self._load_error = None
+        # Predictions now run on worker threads, so two first requests can race
+        # to load the model. The lock makes joblib.load happen once.
+        self._load_lock = threading.Lock()
 
     @property
     def is_available(self) -> bool:
@@ -76,6 +80,13 @@ class MLModelService:
         if self._is_loaded:
             return True
 
+        with self._load_lock:
+            if self._is_loaded:
+                return True
+            return self._load_model_locked()
+
+    def _load_model_locked(self) -> bool:
+        """Load the model and metadata; caller must hold _load_lock."""
         try:
             model_path = get_model_path(self.model_config)
             metadata_path = get_metadata_path(self.model_config)
@@ -248,6 +259,10 @@ class MLModelService:
 
 # Global singleton instance for the MLB model service
 _mlb_model_service: Optional[MLModelService] = None
+# Requests run on worker threads, so two first requests can both see None and
+# each build an instance, each with its own load lock. This lock makes creation
+# happen once, so the per-instance load lock actually guards a single model.
+_mlb_model_service_lock = threading.Lock()
 
 
 def get_mlb_model_service() -> MLModelService:
@@ -263,7 +278,9 @@ def get_mlb_model_service() -> MLModelService:
     global _mlb_model_service
 
     if _mlb_model_service is None:
-        _mlb_model_service = MLModelService()
-        logger.info("Initialized MLB model service")
+        with _mlb_model_service_lock:
+            if _mlb_model_service is None:
+                _mlb_model_service = MLModelService()
+                logger.info("Initialized MLB model service")
 
     return _mlb_model_service

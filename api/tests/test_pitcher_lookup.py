@@ -75,12 +75,12 @@ class _FakeCollector:
         self._logs = logs or {}
         self._raises = raises
 
-    def get_probable_pitchers(self, game_id):
+    async def get_probable_pitchers(self, game_id):
         if self._raises:
             raise RuntimeError("MLB API unreachable")
         return self._probables
 
-    def get_game_log(self, pitcher_id, season):
+    async def get_game_log(self, pitcher_id, season):
         if self._raises:
             raise RuntimeError("MLB API unreachable")
         return self._logs.get(pitcher_id, [])
@@ -268,3 +268,44 @@ class TestGetStartingPitcherFeatures:
                                           collector=_FakeCollector())
         assert a['home_starter_era'] == pytest.approx(2.00)
         assert b['home_starter_era'] == pytest.approx(6.00)
+
+
+class TestServingPathTimeouts:
+    """Sprint 8 Card 1 (#44): the serving path waits seconds, the backfill waits longer."""
+
+    def test_backfill_collector_keeps_thirty_second_default(self):
+        from machine_learning.data.collection.mlb_pitcher_stats import MLBPitcherStatsCollector
+
+        assert MLBPitcherStatsCollector().api.timeout == 30
+
+    def test_request_timeout_yields_medians_not_an_error(self, session):
+        import requests
+
+        class _TimingOut(_FakeCollector):
+            async def get_probable_pitchers(self, game_id):
+                raise requests.Timeout("statsapi.mlb.com did not answer")
+
+        _seed(session)
+        features = get_starting_pitcher_features(
+            session, 139, 138, date(2026, 7, 1), collector=_TimingOut()
+        )
+
+        assert features == get_pitcher_medians()
+        assert set(features) == set(MLB_PITCHER_FEATURES)
+
+    def test_timed_out_lookup_is_cached_so_it_does_not_retry_per_request(self, session):
+        import requests
+
+        calls = {'n': 0}
+
+        class _TimingOut(_FakeCollector):
+            async def get_probable_pitchers(self, game_id):
+                calls['n'] += 1
+                raise requests.Timeout("statsapi.mlb.com did not answer")
+
+        _seed(session)
+        collector = _TimingOut()
+        get_starting_pitcher_features(session, 139, 138, date(2026, 7, 1), collector=collector)
+        get_starting_pitcher_features(session, 139, 138, date(2026, 7, 1), collector=collector)
+
+        assert calls['n'] == 1

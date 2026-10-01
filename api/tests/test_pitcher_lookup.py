@@ -75,12 +75,12 @@ class _FakeCollector:
         self._logs = logs or {}
         self._raises = raises
 
-    def get_probable_pitchers(self, game_id):
+    async def get_probable_pitchers(self, game_id):
         if self._raises:
             raise RuntimeError("MLB API unreachable")
         return self._probables
 
-    def get_game_log(self, pitcher_id, season):
+    async def get_game_log(self, pitcher_id, season):
         if self._raises:
             raise RuntimeError("MLB API unreachable")
         return self._logs.get(pitcher_id, [])
@@ -273,13 +273,6 @@ class TestGetStartingPitcherFeatures:
 class TestServingPathTimeouts:
     """Sprint 8 Card 1 (#44): the serving path waits seconds, the backfill waits longer."""
 
-    def test_serving_collector_uses_short_timeout(self):
-        from api.src.pitcher_lookup import SERVING_API_TIMEOUT_SECONDS, _default_collector
-
-        collector = _default_collector()
-        assert collector.api.timeout == SERVING_API_TIMEOUT_SECONDS
-        assert SERVING_API_TIMEOUT_SECONDS == 5
-
     def test_backfill_collector_keeps_thirty_second_default(self):
         from machine_learning.data.collection.mlb_pitcher_stats import MLBPitcherStatsCollector
 
@@ -289,7 +282,7 @@ class TestServingPathTimeouts:
         import requests
 
         class _TimingOut(_FakeCollector):
-            def get_probable_pitchers(self, game_id):
+            async def get_probable_pitchers(self, game_id):
                 raise requests.Timeout("statsapi.mlb.com did not answer")
 
         _seed(session)
@@ -306,7 +299,7 @@ class TestServingPathTimeouts:
         calls = {'n': 0}
 
         class _TimingOut(_FakeCollector):
-            def get_probable_pitchers(self, game_id):
+            async def get_probable_pitchers(self, game_id):
                 calls['n'] += 1
                 raise requests.Timeout("statsapi.mlb.com did not answer")
 

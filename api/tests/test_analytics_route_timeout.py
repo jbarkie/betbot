@@ -2,19 +2,18 @@
 Sprint 8 review: a timing-out live pitcher lookup must still produce HTTP 200
 with median pitcher values, proven through the real HTTP endpoint.
 
-Everything between the route and the network is real: the FastAPI route, the
-analytics body on its worker thread, the three-tier pitcher lookup, the
-serving-path collector, and MLBDirectAPI's request handling. Only two things
-are replaced: the socket-level HTTP call (forced to raise requests.Timeout) and
-the trained model (a fake that records the features it was given, so the test
-can see what the pitcher fallback produced).
+The route, worker-thread analytics, three-tier lookup, async collector, and
+response serialization are real. Tests use a temporary database, bypass auth,
+replace the model with a feature recorder, and make HTTP fail or stall.
 """
 
 from datetime import date, datetime
+import asyncio
+import threading
 from unittest.mock import MagicMock, patch
 
 import pytest
-import requests
+import httpx
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -98,14 +97,14 @@ def test_live_lookup_timeout_returns_200_with_median_pitcher_features(db, client
     captured = {}
     socket_calls = []
 
-    def timing_out_get(self, url, *args, **kwargs):
-        socket_calls.append((url, kwargs.get('timeout')))
-        raise requests.Timeout(f"{url} did not answer")
+    async def timing_out_get(self, url, *args, **kwargs):
+        socket_calls.append((url, self.timeout.read))
+        raise httpx.ReadTimeout(f"{url} did not answer")
 
     with patch('api.src.enhanced_mlb_analytics.connect_to_db', side_effect=lambda: db()), \
          patch('api.src.enhanced_mlb_analytics.get_mlb_model_service',
                return_value=_recording_model_service(captured)), \
-         patch.object(requests.Session, 'get', timing_out_get):
+         patch.object(httpx.AsyncClient, 'get', timing_out_get):
         response = client.get('/analytics/mlb/game?id=odds-hash-1')
 
     assert response.status_code == 200
@@ -124,3 +123,26 @@ def test_live_lookup_timeout_returns_200_with_median_pitcher_features(db, client
     assert set(MLB_PITCHER_FEATURES) <= set(captured)
     for name in MLB_PITCHER_FEATURES:
         assert captured[name] == medians[name], name
+
+
+def test_total_budget_cancels_live_http_and_route_returns_medians(db, client, monkeypatch):
+    captured = {}
+    cancelled = threading.Event()
+
+    async def stalled_get(*args, **kwargs):
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cancelled.set()
+
+    monkeypatch.setattr(pitcher_lookup, 'LIVE_LOOKUP_BUDGET_SECONDS', 0.05)
+    with patch('api.src.enhanced_mlb_analytics.connect_to_db', side_effect=lambda: db()), \
+         patch('api.src.enhanced_mlb_analytics.get_mlb_model_service',
+               return_value=_recording_model_service(captured)), \
+         patch.object(httpx.AsyncClient, 'get', stalled_get):
+        response = client.get('/analytics/mlb/game?id=odds-hash-1')
+    assert response.status_code == 200
+    assert response.json()['prediction_method'] == 'machine_learning'
+    assert cancelled.is_set()
+    for name, value in pitcher_lookup.get_pitcher_medians().items():
+        assert captured[name] == value

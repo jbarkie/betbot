@@ -34,6 +34,7 @@ def env(tmp_path):
         "notified": notified,
         "vars": {
             **os.environ,
+            "LC_ALL": "C",
             "BETBOT_LOG_DIR": str(log_dir),
             "BETBOT_PG_ISREADY": FALSE,
             "BETBOT_UPDATE_CMD": "true",
@@ -121,22 +122,53 @@ class TestResume:
         assert "RESUMED" not in result.stdout
         assert len(_marker_lines(env)) == 1
 
-    def test_gap_over_thirty_days_prints_backfill_command(self, env):
+    def test_gap_over_thirty_days_runs_recovery(self, env):
         env["log_dir"].mkdir(parents=True)
         first = date.today() - timedelta(days=31)
         env["marker"].write_text(f"{first} 06:00:00\n")
-        result = run(env, BETBOT_PG_ISREADY=TRUE)
+        result = run(env, BETBOT_PG_ISREADY=TRUE, BETBOT_UPDATE_CMD="printf '%s\\n'")
 
         assert "RESUMED" in result.stdout
-        assert "WARN" in result.stdout
-        assert f"--start-date {first}" in result.stdout
+        assert "RECOVERY:" in result.stdout
+        assert (env["log_dir"] / "mlb_data_update.log").read_text().splitlines() == [
+            '--recover-from', str(first - timedelta(days=1))
+        ]
 
     def test_gap_within_thirty_days_has_no_backfill_warning(self, env):
         env["log_dir"].mkdir(parents=True)
-        env["marker"].write_text(f"{date.today() - timedelta(days=30)} 06:00:00\n")
+        env["marker"].write_text(f"{date.today() - timedelta(days=29)} 06:00:00\n")
         result = run(env, BETBOT_PG_ISREADY=TRUE)
         assert "RESUMED" in result.stdout
         assert "WARN" not in result.stdout
+        assert "RECOVERY:" not in result.stdout
+
+    def test_thirty_day_skip_recovers_previous_days_games(self, env):
+        env["log_dir"].mkdir(parents=True)
+        env["marker"].write_text(f"{date.today() - timedelta(days=30)} 06:00:00\n")
+        result = run(env, BETBOT_PG_ISREADY=TRUE)
+        assert "RECOVERY:" in result.stdout
+
+    def test_recovery_failure_preserves_exact_marker_for_retry(self, env):
+        env["log_dir"].mkdir(parents=True)
+        marker = f"{date.today() - timedelta(days=45)} 06:00:00\n"
+        env["marker"].write_text(marker)
+        failed = run(env, BETBOT_PG_ISREADY=TRUE, BETBOT_UPDATE_CMD="false")
+        assert failed.returncode == 1
+        assert "RESUMED" not in failed.stdout
+        assert env["marker"].read_text() == marker
+        retried = run(env, BETBOT_PG_ISREADY=TRUE)
+        assert "RECOVERY:" in retried.stdout
+        assert "RESUMED" in retried.stdout
+        assert not env["marker"].exists()
+
+    def test_invalid_marker_stops_before_update(self, env):
+        env["log_dir"].mkdir(parents=True)
+        env["marker"].write_text('invalid timestamp\n')
+        result = run(env, BETBOT_PG_ISREADY=TRUE)
+        assert result.returncode == 1
+        assert "Starting MLB data update" not in result.stdout
+        assert env["marker"].read_text() == 'invalid timestamp\n'
+
 
     def test_success_without_prior_skips_is_quiet(self, env):
         result = run(env, BETBOT_PG_ISREADY=TRUE)

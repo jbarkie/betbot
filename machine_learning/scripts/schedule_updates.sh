@@ -8,16 +8,16 @@
 # recorded in a marker file, a macOS notification is sent (best effort), and the
 # script exits 0 because a skip is an expected outcome, not a crash. The next
 # successful run logs a RESUMED line summarising the skipped attempts and clears
-# the marker. RESUMED means updates resumed, not that every gap was recovered:
-# the updater refetches the whole season schedule, but only the last 30 days of
-# team stats, so a gap older than that prints the manual backfill command.
+# the marker. Gaps beyond the 30-day refresh window trigger strict recovery
+# through today; incomplete downloads keep the marker for the next attempt.
+# RESUMED is not a general audit of historical database completeness.
 #
 # Environment overrides (used by tests; none are needed in normal operation):
 #   BETBOT_PG_ISREADY   path to pg_isready (default: discovered, see below)
 #   BETBOT_BREW_CANDIDATES  colon-separated brew binaries to try (tests only)
 #   BETBOT_HOMEBREW_ROOTS   colon-separated Homebrew roots to try (tests only)
 #   BETBOT_LOG_DIR      where the log and skip marker live (default: <repo>/logs)
-#   BETBOT_UPDATE_CMD   shell command to run instead of the venv update script
+#   BETBOT_UPDATE_CMD   shell command instead of the updater; receives its CLI arguments
 #   BETBOT_NOTIFY_CMD   command given the message as $1 instead of osascript
 #   BETBOT_VENV_PATH    virtualenv location (default: <repo>/venv)
 
@@ -95,26 +95,38 @@ notify() {
     return 0
 }
 
-days_between() {
-    python3 -c "import sys, datetime as d; a, b = (d.date.fromisoformat(x) for x in sys.argv[1:]); print((b - a).days)" "$1" "$2"
+recovery_start() {
+    local python_bin="$VENV_PATH/bin/python"
+    [ -x "$python_bin" ] || python_bin="python3"
+    "$python_bin" - "$SKIP_MARKER" "$TEAM_STATS_WINDOW_DAYS" <<'PYTHON'
+import datetime as d
+import pathlib
+import sys
+
+lines = pathlib.Path(sys.argv[1]).read_text().splitlines()
+dates = [d.datetime.strptime(line, '%Y-%m-%d %H:%M:%S').date() for line in lines if line.strip()]
+if not dates:
+    raise ValueError('Skip marker contains no timestamps')
+today = d.date.today()
+if any(day > today for day in dates):
+    raise ValueError('Skip marker contains a future timestamp')
+# The missed morning update would also have collected the previous day's games.
+first = min(dates) - d.timedelta(days=1)
+if (today - first).days > int(sys.argv[2]):
+    print(first.isoformat())
+PYTHON
 }
 
 report_resumed() {
     [ -s "$SKIP_MARKER" ] || return 0
 
-    local attempts days first_day last_day today gap
+    local attempts days first_day last_day
     attempts="$(grep -c . "$SKIP_MARKER")"
     days="$(cut -c1-10 "$SKIP_MARKER" | sort -u | grep -c .)"
     first_day="$(head -n 1 "$SKIP_MARKER" | cut -c1-10)"
     last_day="$(tail -n 1 "$SKIP_MARKER" | cut -c1-10)"
-    today="$(date '+%Y-%m-%d')"
 
     log "RESUMED: $attempts skipped attempt(s) across $days day(s), first skip $first_day, last skip $last_day"
-
-    gap="$(days_between "$first_day" "$today" 2>/dev/null || echo 0)"
-    if [ "$gap" -gt "$TEAM_STATS_WINDOW_DAYS" ]; then
-        log "WARN: first skip was $gap days ago but team stats only refresh for the last $TEAM_STATS_WINDOW_DAYS days. Backfill with: python machine_learning/scripts/update_mlb_data.py --start-date $first_day --end-date $today"
-    fi
 
     notify "MLB data update RESUMED after $attempts skipped attempt(s) since $first_day"
     rm -f "$SKIP_MARKER"
@@ -139,10 +151,20 @@ log "PostgreSQL is ready"
 
 # ── Run update ────────────────────────────────────────────────────────────────
 
+UPDATE_ARGS=()
+if [ -s "$SKIP_MARKER" ]; then
+    UPDATE_ARGS=(--require-complete)
+    RECOVERY_START="$(recovery_start)" || handle_error "Cannot parse skip marker; preserving it for inspection"
+    if [ -n "$RECOVERY_START" ]; then
+        UPDATE_ARGS=(--recover-from "$RECOVERY_START")
+        log "RECOVERY: refreshing missed data from $RECOVERY_START through today; incomplete downloads retain the marker"
+    fi
+fi
+
 log "Starting MLB data update"
 
 if [ -n "${BETBOT_UPDATE_CMD:-}" ]; then
-    bash -c "$BETBOT_UPDATE_CMD" >> "$LOG_FILE" 2>&1
+    bash -c "$BETBOT_UPDATE_CMD \"\$@\"" -- "${UPDATE_ARGS[@]}" >> "$LOG_FILE" 2>&1
     EXIT_CODE=$?
 else
     [ -d "$VENV_PATH" ] || handle_error "Virtual environment not found at $VENV_PATH"
@@ -151,7 +173,7 @@ else
     source "$VENV_PATH/bin/activate" || handle_error "Failed to activate virtual environment"
     cd "$PROJECT_ROOT" || handle_error "Failed to change to project root"
 
-    python "$UPDATE_SCRIPT" >> "$LOG_FILE" 2>&1
+    python "$UPDATE_SCRIPT" "${UPDATE_ARGS[@]}" >> "$LOG_FILE" 2>&1
     EXIT_CODE=$?
 
     deactivate

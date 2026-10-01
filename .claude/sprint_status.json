@@ -1,6 +1,6 @@
 {
   "current_sprint": 8,
-  "phase": "Sprint 8 follow-up implemented and locally validated; PR #48 final-head CI pending",
+  "phase": "Sprint 8 follow-up complete and locally validated; published in PR #48 (see PR for current CI and merge status)",
   "branch": "feature/20260922_Sprint_8",
   "plan_location": "docs/ALL_SPRINTS_MASTER_PLAN.md#sprint-8",
   "issues": [

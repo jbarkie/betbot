@@ -1,6 +1,7 @@
 # Sprint 8 operations follow-up
 
-Status: Implementation complete; final validation and publishing in progress. Authorized by the user's request on 2026-09-26 to address the
+Status: Implementation complete and locally validated; published in PR #48.
+See the PR for current CI and merge status. Authorized by the user's request on 2026-09-26 to address the
 remaining limitations now. This extends the open Sprint 8 branch; it does not
 change the previously approved retrospective or claim new manual observations.
 

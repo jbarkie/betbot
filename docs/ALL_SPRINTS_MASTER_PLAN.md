@@ -33,7 +33,7 @@ experiments batch better into Sprint 9 against a complete season.
 
 ### High Priority (unscheduled)
 
-- [ ] **Audit historical team-stat snapshots before retraining (#52)** — The old season request ignored date filters; future collection is corrected, but existing snapshots/models are unchanged. Sample date-correct API responses, determine affected records, and review a repair/retrain plan before changing live data.
+- [ ] **Audit historical team-stat snapshots before retraining (#52)** — Collection and snapshot selection are corrected on PR #48 (cumulative regular-season snapshots; strictly earlier, same-season selection). A reviewed repair of rows dated 2026-09-26 onward is previewed (959 rows) but **not applied**; scheduler stays unloaded until it is. Older history (2024-2026 before 09-26) is unrepaired and the existing model is not certified. See `docs/sprint8_operations_followup.md`.
 
 - [ ] **Prediction transparency in the analytics modal** — The API returns `prediction_method`, `ml_model_name`, `ml_confidence`, `confidence_level` and `feature_importance`, and `models.ts` already declares all five on `AnalyticsResponse`, but `analytics-modal.component.ts` renders none of them. A user cannot tell an ML prediction from the rule-based fallback, even though the 0.55 confidence gate silently decides which one they get. (Supersedes the old "Frontend analytics integration" item, which claimed predictions were API-only — Sprint 1 shipped the modal.)
 - [ ] **NFL/NHL parity with MLB analytics** — Add ML-backed game analytics endpoints for NFL and NHL (currently only MLB has the ML prediction pipeline)

@@ -120,44 +120,76 @@ https://github.com/jbarkie/betbot/issues/52. No live backfill was run for valida
 - Final-head GitHub CI is checked after publishing; frontend and migration
   integration validation are delegated to those existing CI jobs.
 
-## Team-stat snapshot repair (2026-10-15, in progress, DRAFT)
+## Team-stat snapshot repair (2026-10-15, DRAFT pending user review)
 
 The 2026-10-01 validation above covers notifications, recovery and the network
 budget. It does not establish that team-stat snapshots are correct, and the
 statement under #52 that collection "now uses that date-range contract" was
-incomplete. A 2026-10-15 review found three remaining defects:
+incomplete. A 2026-10-15 review found these defects:
 
 1. **Collection window, not season.** Each request started at the collection
    window's first day (30 days back on a daily run), so a snapshot dated D covered
-   a run-dependent window instead of the season through D. Requests also named no
-   game type.
+   a run-dependent window. Requests also named no game type.
 2. **Same-day leakage.** Training and serving chose the newest snapshot with
-   `date <= game date`. A snapshot dated on the game date already contains that
-   game's result.
+   `date <= game date`, which includes the game's own result.
 3. **Cross-season fallback.** Neither selection required the snapshot to belong to
-   the game's season, so early-season games could read the previous season.
+   the game's season.
+4. **Partial days.** The updater could store a snapshot for the current,
+   unfinished day.
 
-Code changes on this branch: requests now start on Jan 1 of the snapshot year with
-`gameType=R` (read-only checks against the MLB API: Jan 1 to 2025-04-02 gave 6
-games for Tampa Bay, Jan 1 to 2025-09-28 gave 162); training and serving select the
-newest snapshot strictly before the game date and within its season. Regression
-tests fail on the previous selection code.
+### Snapshot contract (implemented)
 
-Observed before any repair (read-only, 2026-10-15): the database holds about
-18,200 offense and 18,200 defense rows across 2024-2026. A rough cross-check of
-stored `runs_scored` against cumulative runs from `mlb_schedule` matched for only
-10 of 5,670 rows in 2024, 12 of 5,460 in 2025 and 3,129 of 5,520 in 2026 (regular
-season dates). Treat that as a signal, not an audit; the schedule data was not
-independently validated. The earlier "150 + 150 rows across five dates" estimate
-is stale.
+A snapshot dated D holds the cumulative regular-season statistics from January 1 of
+D's year through D. Requests send `startDate=<year>-01-01`, `endDate=D`,
+`season=<year>`, `gameType=R` for hitting and pitching, whether collection is daily,
+an explicit range, or multi-year recovery. The update range only picks which dates
+to collect. Only dates before today are stored. Training and serving select the
+newest snapshot strictly before the game's calendar date (so an evening game cannot
+see its own midnight snapshot) and within the game's season; with no eligible
+snapshot, existing missing-data fallbacks apply and prior-season rows are never used.
 
-The daily scheduler job (`com.betbot.mlb-update`) was unloaded on 2026-10-15
-before this work because it runs directly from the development checkout and would
-keep writing rows under the old logic. It stays unloaded until the corrected code
-is installed and the approved repair is complete. Restore with:
+Read-only MLB API checks (2026-10-15): Tampa Bay hitting from Jan 1 through
+2025-04-02 returned 6 games, and through 2025-09-28 returned 162, the same with and
+without `gameType=R`. The old window-style request for 2025-04-01..02 returned 2.
+For 2026-09-26 the API returned 161 games, 733 runs and 167 home runs, matching the
+preview's proposed value for that team and date.
+
+### Evidence about stored data
+
+About 18,200 offense and 18,200 defense rows exist for 2024-2026. A rough
+cross-check of stored `runs_scored` against cumulative runs from `mlb_schedule`
+matched for 10 of 5,670 rows in 2024, 12 of 5,460 in 2025 and 3,129 of 5,520 in
+2026 (regular-season dates). This is a signal, not an audit; the schedule data was
+not independently validated. Earlier history is out of scope for this repair and
+stays open under #52.
+
+### Recent-row repair preview (nothing applied)
+
+`machine_learning/scripts/repair_team_stat_snapshots.py` has separate `preview`,
+`apply` and `restore` operations. Preview is read-only and writes its manifest,
+original rows (with primary keys) and API evidence under gitignored `.local/`.
+Apply and restore take the manifest and the SHA-256 the reviewer approved, verify
+before writing unless `--execute` is given, and refuse when the preview has missing
+responses, failed requests or duplicate team/date keys, when the database name
+differs, when any row or the set of rows in range changed since the preview, or when
+the manifest was edited. Writes are one transaction that preserves row IDs, saves a
+restoration file first, re-reads and verifies before commit, and rolls back on any
+failure. Repeating an operation is a no-op.
+
+Preview run 2026-10-15 20:29 (code `cbf13af`, range 2026-09-26 to 2026-10-14, 16
+dates): 959 rows, 479 offense and 480 defense, all would change; no missing
+responses, failed requests or duplicate keys. The previous "150 + 150 rows" estimate
+was stale. One defense row (team 110, 2026-10-14) has no offense counterpart because
+that club had no game that day and the hitting request timed out; the preview
+reports missing rows but never inserts them. After the regular season ended, every
+snapshot equals the final regular-season total, per the contract.
+
+### Scheduler
+
+`com.betbot.mlb-update` was unloaded on 2026-10-15 before any change because it runs
+from the development checkout. It stays unloaded until the corrected code is
+deliberately installed and the approved repair is applied. Restore with:
 `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.betbot.mlb-update.plist`.
-Skipped mornings are recovered by the scheduler's `--recover-from` logic.
+Skipped mornings are recovered by `--recover-from`.
 
-`machine_learning/scripts/preview_team_stat_repair.py` produces a non-writing
-preview (JSONL with stored and proposed values and a per-row fingerprint). No live
-rows have been changed, no model retrained, nothing merged. #52 stays open.
+No live rows were changed, no model retrained, nothing merged. #52 stays open.

@@ -7,7 +7,7 @@ and advanced team metrics.
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Dict, Optional, Tuple
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -273,7 +273,8 @@ class EnhancedMLBAnalytics:
         # Get most recent offensive stats
         offensive_stats = session.query(MLBOffensiveStats).filter(
             MLBOffensiveStats.team_id == team_id,
-            MLBOffensiveStats.date <= game_time.date()
+            MLBOffensiveStats.date < game_time.date(),
+            MLBOffensiveStats.date >= date(game_time.year, 1, 1)
         ).order_by(MLBOffensiveStats.date.desc()).first()
         
         if not offensive_stats:
@@ -304,7 +305,8 @@ class EnhancedMLBAnalytics:
         # Get most recent defensive stats
         defensive_stats = session.query(MLBDefensiveStats).filter(
             MLBDefensiveStats.team_id == team_id,
-            MLBDefensiveStats.date <= game_time.date()
+            MLBDefensiveStats.date < game_time.date(),
+            MLBDefensiveStats.date >= date(game_time.year, 1, 1)
         ).order_by(MLBDefensiveStats.date.desc()).first()
         
         if not defensive_stats:
@@ -495,22 +497,26 @@ class EnhancedMLBAnalytics:
             # Get recent offensive/defensive stats
             home_offensive = session.query(MLBOffensiveStats).filter(
                 MLBOffensiveStats.team_id == home_team.id,
-                MLBOffensiveStats.date <= game_time.date()
+                MLBOffensiveStats.date < game_time.date(),
+                MLBOffensiveStats.date >= date(game_time.year, 1, 1)
             ).order_by(MLBOffensiveStats.date.desc()).first()
 
             away_offensive = session.query(MLBOffensiveStats).filter(
                 MLBOffensiveStats.team_id == away_team.id,
-                MLBOffensiveStats.date <= game_time.date()
+                MLBOffensiveStats.date < game_time.date(),
+                MLBOffensiveStats.date >= date(game_time.year, 1, 1)
             ).order_by(MLBOffensiveStats.date.desc()).first()
 
             home_defensive = session.query(MLBDefensiveStats).filter(
                 MLBDefensiveStats.team_id == home_team.id,
-                MLBDefensiveStats.date <= game_time.date()
+                MLBDefensiveStats.date < game_time.date(),
+                MLBDefensiveStats.date >= date(game_time.year, 1, 1)
             ).order_by(MLBDefensiveStats.date.desc()).first()
 
             away_defensive = session.query(MLBDefensiveStats).filter(
                 MLBDefensiveStats.team_id == away_team.id,
-                MLBDefensiveStats.date <= game_time.date()
+                MLBDefensiveStats.date < game_time.date(),
+                MLBDefensiveStats.date >= date(game_time.year, 1, 1)
             ).order_by(MLBDefensiveStats.date.desc()).first()
 
             # Prepare feature dictionary

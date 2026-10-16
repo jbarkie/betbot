@@ -243,7 +243,10 @@ class GameFeatureGenerator:
         defensive_stats: pd.DataFrame
     ) -> Dict[str, float]:
         """
-        Get current season statistics for a given team up to a given date.
+        Get the latest cumulative snapshot for a team from the game's own season,
+        taken strictly before the game date. A snapshot dated on the game date
+        already includes that game's result, and one from an earlier season
+        describes a different roster.
 
         Args:
             team_id: ID of the team
@@ -256,12 +259,14 @@ class GameFeatureGenerator:
         """
         team_offense = offensive_stats[
             (offensive_stats['team_id'] == team_id) &
-            (offensive_stats['date'] <= game_date)  
+            (offensive_stats['date'] < game_date) &
+            (pd.to_datetime(offensive_stats['date']).dt.year == game_date.year)
         ].sort_values('date')
         team_defense = defensive_stats[
             (defensive_stats['team_id'] == team_id) &
-            (defensive_stats['date'] <= game_date)  
-        ].sort_values('date')   
+            (defensive_stats['date'] < game_date) &
+            (pd.to_datetime(defensive_stats['date']).dt.year == game_date.year)
+        ].sort_values('date')
         
         stats = {}
         if not team_offense.empty:

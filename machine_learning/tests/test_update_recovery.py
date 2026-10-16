@@ -69,7 +69,7 @@ def test_historical_team_request_names_the_season():
     with patch.object(client, '_make_request') as request:
         client.get_team_hitting_stats(139, '2025-09-01', '2025-09-02')
     assert request.call_args.args[1] == {
-        'season': 2025, 'stats': 'byDateRange', 'group': 'hitting',
+        'season': 2025, 'gameType': 'R', 'stats': 'byDateRange', 'group': 'hitting',
         'startDate': '2025-09-01', 'endDate': '2025-09-02',
     }
     client.session.close()

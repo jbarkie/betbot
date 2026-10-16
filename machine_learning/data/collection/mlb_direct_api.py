@@ -14,6 +14,18 @@ from sqlalchemy.orm import Session
 from ..models.mlb_models import MLBOffensiveStats, MLBDefensiveStats
 
 
+def season_start_date(on_date) -> str:
+    """
+    First day of the calendar year of ``on_date``, as YYYY-MM-DD.
+
+    Team-stat snapshots are cumulative for the season: every request starts here
+    (with ``gameType=R``, so only regular-season games count) rather than at the
+    start of the collection window. Spring training and prior seasons never
+    leak into a snapshot, and a snapshot dated D is the same whichever run stored it.
+    """
+    return f"{on_date.year}-01-01"
+
+
 class MLBDirectAPI:
     """Direct HTTP client for MLB Stats API."""
     
@@ -78,6 +90,7 @@ class MLBDirectAPI:
             'startDate': start_date,
             'endDate': end_date,
             'season': datetime.strptime(end_date, '%Y-%m-%d').year,
+            'gameType': 'R',
             'stats': 'byDateRange',
             'group': 'hitting'
         }
@@ -105,6 +118,7 @@ class MLBDirectAPI:
             'startDate': start_date,
             'endDate': end_date,
             'season': datetime.strptime(end_date, '%Y-%m-%d').year,
+            'gameType': 'R',
             'stats': 'byDateRange',
             'group': 'pitching'
         }
@@ -236,7 +250,7 @@ def fetch_team_stats_direct(
             else:
                 # Fetch hitting stats
                 hitting_data = api_client.get_team_hitting_stats(
-                    team.id, start_date, current_date.strftime('%Y-%m-%d')
+                    team.id, season_start_date(current_date), current_date.strftime('%Y-%m-%d')
                 )
 
                 if hitting_data:
@@ -275,7 +289,7 @@ def fetch_team_stats_direct(
             else:
                 # Fetch pitching stats
                 pitching_data = api_client.get_team_pitching_stats(
-                    team.id, start_date, current_date.strftime('%Y-%m-%d')
+                    team.id, season_start_date(current_date), current_date.strftime('%Y-%m-%d')
                 )
 
                 if pitching_data:

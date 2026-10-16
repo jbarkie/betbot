@@ -257,17 +257,22 @@ class GameFeatureGenerator:
         Returns:
             Dictionary containing current season statistics for the team
         """
+        # Compare calendar dates: a midnight snapshot from the game's own day must
+        # not qualify just because the game starts later that day.
+        game_day = pd.Timestamp(game_date).normalize()
+        offense_days = pd.to_datetime(offensive_stats['date']).dt.normalize()
+        defense_days = pd.to_datetime(defensive_stats['date']).dt.normalize()
         team_offense = offensive_stats[
             (offensive_stats['team_id'] == team_id) &
-            (offensive_stats['date'] < game_date) &
-            (pd.to_datetime(offensive_stats['date']).dt.year == game_date.year)
+            (offense_days < game_day) &
+            (offense_days.dt.year == game_day.year)
         ].sort_values('date')
         team_defense = defensive_stats[
             (defensive_stats['team_id'] == team_id) &
-            (defensive_stats['date'] < game_date) &
-            (pd.to_datetime(defensive_stats['date']).dt.year == game_date.year)
+            (defense_days < game_day) &
+            (defense_days.dt.year == game_day.year)
         ].sort_values('date')
-        
+
         stats = {}
         if not team_offense.empty:
             latest_offense = team_offense.iloc[-1]

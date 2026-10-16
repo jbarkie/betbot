@@ -7,7 +7,7 @@ the mlbstatsapi library to avoid compatibility issues.
 
 import requests
 import logging
-from datetime import datetime
+from datetime import date, datetime
 from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
 
@@ -178,6 +178,7 @@ def fetch_team_stats_direct(
     end_date: str,
     api_client: MLBDirectAPI = None,
     require_complete: bool = False,
+    today: Optional[date] = None,
 ) -> None:
     """
     Fetch team statistics using direct API calls.
@@ -188,6 +189,8 @@ def fetch_team_stats_direct(
         end_date: End date in YYYY-MM-DD format
         api_client: Optional API client instance
         require_complete: Fail on missing stats for teams that played on each date
+        today: Treated as the current date; snapshots are stored only for earlier
+            dates so a partially played day is never saved as final
     """
     from ..models.mlb_models import MLBTeam, MLBSchedule
 
@@ -195,10 +198,12 @@ def fetch_team_stats_direct(
         api_client = MLBDirectAPI(raise_on_error=require_complete)
 
     teams = session.query(MLBTeam).all()
+    today = today or date.today()
 
-    # Only process dates where games were actually played
+    # Only process completed past dates on which games were actually played
     game_dates = session.query(MLBSchedule.date)\
         .filter(MLBSchedule.date.between(start_date, end_date))\
+        .filter(MLBSchedule.date < today)\
         .filter(MLBSchedule.status == 'Final')\
         .distinct()\
         .order_by(MLBSchedule.date)\

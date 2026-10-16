@@ -119,3 +119,45 @@ https://github.com/jbarkie/betbot/issues/52. No live backfill was run for valida
 - Shell syntax checks and `git diff --check` passed.
 - Final-head GitHub CI is checked after publishing; frontend and migration
   integration validation are delegated to those existing CI jobs.
+
+## Team-stat snapshot repair (2026-10-15, in progress, DRAFT)
+
+The 2026-10-01 validation above covers notifications, recovery and the network
+budget. It does not establish that team-stat snapshots are correct, and the
+statement under #52 that collection "now uses that date-range contract" was
+incomplete. A 2026-10-15 review found three remaining defects:
+
+1. **Collection window, not season.** Each request started at the collection
+   window's first day (30 days back on a daily run), so a snapshot dated D covered
+   a run-dependent window instead of the season through D. Requests also named no
+   game type.
+2. **Same-day leakage.** Training and serving chose the newest snapshot with
+   `date <= game date`. A snapshot dated on the game date already contains that
+   game's result.
+3. **Cross-season fallback.** Neither selection required the snapshot to belong to
+   the game's season, so early-season games could read the previous season.
+
+Code changes on this branch: requests now start on Jan 1 of the snapshot year with
+`gameType=R` (read-only checks against the MLB API: Jan 1 to 2025-04-02 gave 6
+games for Tampa Bay, Jan 1 to 2025-09-28 gave 162); training and serving select the
+newest snapshot strictly before the game date and within its season. Regression
+tests fail on the previous selection code.
+
+Observed before any repair (read-only, 2026-10-15): the database holds about
+18,200 offense and 18,200 defense rows across 2024-2026. A rough cross-check of
+stored `runs_scored` against cumulative runs from `mlb_schedule` matched for only
+10 of 5,670 rows in 2024, 12 of 5,460 in 2025 and 3,129 of 5,520 in 2026 (regular
+season dates). Treat that as a signal, not an audit; the schedule data was not
+independently validated. The earlier "150 + 150 rows across five dates" estimate
+is stale.
+
+The daily scheduler job (`com.betbot.mlb-update`) was unloaded on 2026-10-15
+before this work because it runs directly from the development checkout and would
+keep writing rows under the old logic. It stays unloaded until the corrected code
+is installed and the approved repair is complete. Restore with:
+`launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.betbot.mlb-update.plist`.
+Skipped mornings are recovered by the scheduler's `--recover-from` logic.
+
+`machine_learning/scripts/preview_team_stat_repair.py` produces a non-writing
+preview (JSONL with stored and proposed values and a per-row fingerprint). No live
+rows have been changed, no model retrained, nothing merged. #52 stays open.

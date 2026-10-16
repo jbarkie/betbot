@@ -143,7 +143,7 @@ The plan estimated ~29 hours across 21 tasks with per-task model assignments. Th
 - Confirm scheduler notification visibility with the user watching, and check notification permissions for the launchd context (backlog)
 
 
-## Authorized follow-up (2026-09-26 through 2026-10-01)
+## Authorized follow-up (2026-09-26 through 2026-10-01) — DRAFT
 
 After this retrospective was approved, the user authorized addressing the three
 remaining operational limitations immediately. Issues #49–#51 implement the
@@ -151,5 +151,8 @@ network budget, automatic recovery, and native notification helper. The user
 confirmed visible notifications from both a manual diagnostic and a temporary
 launchd job on 2026-09-26. Earlier observations above are retained as history.
 See `docs/sprint8_operations_followup.md` for the final evidence and scope.
-A verified pre-existing API date-filter bug is corrected for future collection;
-existing data needs a separate audit before retraining (#52).
+A verified pre-existing API date-filter bug was believed corrected for future
+collection; a 2026-10-15 review found that claim incomplete (see "Team-stat
+snapshot repair" in `docs/sprint8_operations_followup.md`). Existing data needs
+repair and an audit before retraining (#52). This section remains DRAFT until
+that work is verified and approved.

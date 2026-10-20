@@ -20,11 +20,13 @@ import asyncio
 import json
 import logging
 import time
+import uuid
 from typing import Dict, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
 from api.src.ml_config import MLB_MODELS_DIR, MLB_MODEL_CONFIG, MLB_PITCHER_FEATURES
+from api.src.pitcher_telemetry import record_event
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +41,7 @@ _CACHE_TTL_SECONDS = 900
 SERVING_API_TIMEOUT_SECONDS = 5
 LIVE_LOOKUP_BUDGET_SECONDS = 5
 
-_stats_cache: Dict[str, Tuple[float, Dict]] = {}
+_stats_cache: Dict[str, Tuple[float, Dict, Dict]] = {}
 _medians_cache: Optional[Dict[str, float]] = None
 
 # Used only when a model predates pitcher features or its metadata is unreadable.
@@ -156,42 +158,84 @@ def _stored_stats(session: Session, game_id: str, team_id: int) -> Optional[Dict
         return None
 
 
-async def _live_stats_async(game_id: str, game_date, collector=None) -> Dict[int, Dict]:
+async def _live_stats_async(game_id: str, game_date, collector=None, telemetry=None) -> Dict[int, Dict]:
     """Cancel network work at the shared deadline, retaining completed sides."""
     import httpx
     from api.src.live_pitcher_stats import LivePitcherStatsCollector
     from machine_learning.data.collection.mlb_pitcher_stats import compute_cumulative_before
 
     resolved = {}
+    telemetry = telemetry if telemetry is not None else {}
+    telemetry.setdefault('lookup_id', uuid.uuid4().hex)
+    telemetry['reasons'] = {}
+    started = time.perf_counter()
+    outcome, stage, active_team = 'completed', 'probable_pitchers', None
 
     async def collect(source):
+        nonlocal stage, active_team, outcome
         probables = await source.get_probable_pitchers(game_id)
+        if getattr(source, 'last_error', None):
+            outcome = 'upstream_error'
+            telemetry['reasons'].update({t: source.last_error for t in telemetry.get('team_ids', [])})
+            return
+        for team_id in telemetry.get('team_ids', []):
+            if team_id not in probables:
+                telemetry['reasons'][team_id] = 'starter_not_announced'
         for team_id, pitcher in probables.items():
+            stage, active_team = 'game_log', team_id
             splits = await source.get_game_log(pitcher['pitcher_id'], game_date.year)
+            if getattr(source, 'last_error', None):
+                outcome = 'upstream_error'
+                telemetry['reasons'][team_id] = source.last_error
+                continue
             stats = compute_cumulative_before(splits, before_date=game_date.strftime('%Y-%m-%d'))
             if stats.get('era') is not None:
                 resolved[team_id] = stats
+            else:
+                telemetry['reasons'][team_id] = 'no_usable_pregame_stats'
 
     async def run():
         if collector is not None:
             await collect(collector)
         else:
             async with httpx.AsyncClient(timeout=SERVING_API_TIMEOUT_SECONDS) as client:
-                await collect(LivePitcherStatsCollector(client))
+                await collect(LivePitcherStatsCollector(
+                    client, lookup_id=telemetry['lookup_id'], game_id=str(game_id)
+                ))
 
     try:
         await asyncio.wait_for(run(), timeout=LIVE_LOOKUP_BUDGET_SECONDS)
     except asyncio.TimeoutError:
+        outcome = 'budget_exhausted'
         logger.warning("Live pitcher lookup exhausted its %.1fs network budget", LIVE_LOOKUP_BUDGET_SECONDS)
+    except asyncio.CancelledError:
+        outcome = 'cancelled'
+        raise
     except Exception as exc:
+        outcome = 'lookup_error'
         logger.warning("Live pitcher lookup failed: %s", exc)
+    finally:
+        telemetry['outcome'] = outcome
+        for team_id in telemetry.get('team_ids', []):
+            if team_id not in resolved:
+                telemetry['reasons'].setdefault(
+                    team_id, outcome if outcome != 'completed' else 'no_usable_pregame_stats'
+                )
+        record_event(
+            'pitcher_live_lookup', lookup_id=telemetry['lookup_id'], game_id=str(game_id),
+            elapsed_ms=round((time.perf_counter() - started) * 1000, 2),
+            budget_ms=LIVE_LOOKUP_BUDGET_SECONDS * 1000, outcome=outcome,
+            stage=stage, active_team_id=active_team,
+            resolved_team_ids=sorted(resolved),
+            fallback_reasons=telemetry['reasons'],
+        )
     return resolved
 
 
-def _live_stats(game_id: str, game_date, collector=None, live_loop=None) -> Dict[int, Dict]:
+def _live_stats(game_id: str, game_date, collector=None, live_loop=None, telemetry=None) -> Dict[int, Dict]:
     # Called from the analytics worker, never from the API event loop. Cancelling
     # async HTTP closes its connection rather than abandoning a requests thread.
-    work = _live_stats_async(game_id, game_date, collector)
+    work = _live_stats_async(game_id, game_date, collector, telemetry)
     if live_loop is not None:
         # Use the server loop so returning a timed-out lookup never waits for a
         # temporary loop's DNS executor to shut down. No DB objects cross over.
@@ -225,46 +269,90 @@ def get_starting_pitcher_features(
     """
     medians = get_pitcher_medians()
     features = dict(medians)
+    started = time.perf_counter()
+    lookup_id = uuid.uuid4().hex
 
     target = game_date.date() if hasattr(game_date, 'date') else game_date
     cache_key = f"{home_team_id}:{away_team_id}:{target}"
     cached = _stats_cache.get(cache_key)
     if cached and (time.time() - cached[0]) < _CACHE_TTL_SECONDS:
+        record_event(
+            'pitcher_features', lookup_id=lookup_id, cache_hit=True,
+            cache_age_seconds=round(time.time() - cached[0], 3), live_attempted=False,
+            elapsed_ms=round((time.perf_counter() - started) * 1000, 2),
+            home_team_id=home_team_id, away_team_id=away_team_id,
+            game_date=target.isoformat(), **cached[2],
+        )
         return dict(cached[1])
 
+    game_id = None
+    live_attempted = False
+    cache_result = True
+    telemetry = {'lookup_id': lookup_id, 'team_ids': [home_team_id, away_team_id]}
+    provenance = {
+        side: {'sources': {stat: 'fallback' for stat in ('era', 'whip', 'k9')},
+               'fallback_reason': 'game_not_resolved'}
+        for side in ('home', 'away')
+    }
     try:
         game_id = resolve_game_pk(session, home_team_id, away_team_id, game_date)
         if game_id is None:
-            _stats_cache[cache_key] = (time.time(), dict(features))
             return features
 
         by_team: Dict[int, Dict] = {}
+        sources = {}
 
         for team_id in (home_team_id, away_team_id):
             stored = _stored_stats(session, game_id, team_id)
             if stored:
                 by_team[int(team_id)] = stored
+                sources[int(team_id)] = 'stored'
 
         # Only reach for the network if the database did not already answer.
         if len(by_team) < 2:
+            live_attempted = True
+            telemetry['team_ids'] = [t for t in (home_team_id, away_team_id) if int(t) not in by_team]
             try:
-                for team_id, stats in _live_stats(game_id, game_date, collector, live_loop).items():
+                for team_id, stats in _live_stats(game_id, game_date, collector, live_loop, telemetry).items():
+                    if int(team_id) not in by_team:
+                        sources[int(team_id)] = 'live'
                     by_team.setdefault(int(team_id), stats)
             except Exception as e:
+                telemetry['outcome'] = 'lookup_error'
                 logger.warning(f"Live pitcher lookup failed for game {game_id}: {e}")
 
         for prefix, team_id in (('home', home_team_id), ('away', away_team_id)):
             stats = by_team.get(int(team_id))
+            provenance[prefix]['fallback_reason'] = telemetry.get('reasons', {}).get(
+                int(team_id), telemetry.get('outcome', 'no_usable_pregame_stats')
+            )
             if not stats:
                 continue
             for stat in ('era', 'whip', 'k9'):
                 value = stats.get(stat)
                 if value is not None:
                     features[f'{prefix}_starter_{stat}'] = float(value)
-
-        _stats_cache[cache_key] = (time.time(), dict(features))
+                    provenance[prefix]['sources'][stat] = sources[int(team_id)]
+            provenance[prefix]['fallback_reason'] = (
+                'incomplete_stats' if 'fallback' in provenance[prefix]['sources'].values() else None
+            )
 
     except Exception as e:
+        cache_result = False
+        for side in provenance.values():
+            if 'fallback' in side['sources'].values():
+                side['fallback_reason'] = 'feature_resolution_error'
         logger.warning(f"Pitcher feature resolution failed for game {game_id}: {e}")
+    finally:
+        metadata = {'game_id': game_id, 'origin_lookup_id': lookup_id, **provenance}
+        if cache_result:
+            _stats_cache[cache_key] = (time.time(), dict(features), metadata)
+        record_event(
+            'pitcher_features', lookup_id=lookup_id, cache_hit=False,
+            cache_age_seconds=None, live_attempted=live_attempted,
+            elapsed_ms=round((time.perf_counter() - started) * 1000, 2),
+            home_team_id=home_team_id, away_team_id=away_team_id,
+            game_date=target.isoformat(), **metadata,
+        )
 
     return features

@@ -340,6 +340,11 @@ Live pitcher HTTP has a shared five-second cancellation budget; any unfinished
 pitcher features use training medians. Database queries and prediction computation
 are outside this network budget.
 
+Serving emits structured pitcher timing, outcome, cache, and fallback-source logs
+to stderr. See [capture and interpretation instructions](docs/pitcher_lookup_observability.md).
+[Follow-up #53](https://github.com/jbarkie/betbot/issues/53) tracks a tuning review
+after two weeks of representative use of the instrumented API.
+
 **Before the next retrain:** [audit historical team stats (#52)](https://github.com/jbarkie/betbot/issues/52).
 The old API request ignored date filters; the corrected collector does not repair
 existing snapshots or change trained models.

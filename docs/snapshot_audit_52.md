@@ -62,6 +62,15 @@ against schedule-derived runs allowed). It was **not** sampled against the API.
    table, roughly 19 times the 959-row recent preview, so expect a long preview run and
    gentle request pacing. The utility already refuses to apply a partial, ambiguous or
    hash-mismatched preview, preserves row IDs, and can restore.
+   **Known blocker for widening:** the utility treats "API returned no stats" as a
+   blocking `missing_response`. The API returns nothing for a team before its first game
+   of the year (team 108 returns no stats for 2024-01-01 through 2024-03-27, and stats
+   from 2024-03-28), and the table holds about 40 offense rows dated before their team's
+   first game. A widened preview would therefore be refused at apply. A decision is
+   needed first on what a correct snapshot is on those dates (no row, or zeros), and
+   the utility needs a code change to handle it. An independent review of the script
+   (2026-10-20) also recommends retry/resume for failed requests, row locking during
+   apply, and bulk queries before running it on tens of thousands of rows.
 2. Review a preview of the whole range (counts per year, and a sample of proposed
    values) before any apply.
 3. Only after an approved apply, retrain and compare against v3.3 on the same

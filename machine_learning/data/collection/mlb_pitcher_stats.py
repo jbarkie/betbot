@@ -186,6 +186,42 @@ def compute_cumulative_before(splits: List[Dict], before_date: Optional[str] = N
     return compute_rate_stats(totals)
 
 
+def parse_probable_pitchers(data: Optional[Dict], game_id: str) -> Dict[int, Dict]:
+    """Extract announced starters from an MLB schedule response."""
+    if not data:
+        return {}
+
+    probables = {}
+    for date_entry in data.get('dates', []):
+        for game in date_entry.get('games', []):
+            if str(game.get('gamePk')) != str(game_id):
+                continue
+            for side in ('home', 'away'):
+                team = game.get('teams', {}).get(side, {})
+                team_id = team.get('team', {}).get('id')
+                pitcher = team.get('probablePitcher')
+                if team_id is None or not pitcher or pitcher.get('id') is None:
+                    continue
+                probables[int(team_id)] = {
+                    'pitcher_id': int(pitcher['id']),
+                    'pitcher_name': pitcher.get('fullName'),
+                }
+
+    return probables
+
+
+def parse_pitching_game_log(data: Optional[Dict]) -> List[Dict]:
+    """Extract pitching game-log splits from an MLB stats response."""
+    if not data:
+        return []
+
+    for group in data.get('stats', []):
+        if group.get('type', {}).get('displayName') == 'gameLog':
+            return group.get('splits', []) or []
+
+    return []
+
+
 class MLBPitcherStatsCollector:
     """Fetches pitcher game logs and rosters from the MLB Stats API."""
 
@@ -241,26 +277,7 @@ class MLBPitcherStatsCollector:
             {'sportId': 1, 'gamePk': game_id, 'hydrate': 'probablePitcher'}
         )
 
-        if not data:
-            return {}
-
-        probables = {}
-        for date_entry in data.get('dates', []):
-            for game in date_entry.get('games', []):
-                if str(game.get('gamePk')) != str(game_id):
-                    continue
-                for side in ('home', 'away'):
-                    team = game.get('teams', {}).get(side, {})
-                    team_id = team.get('team', {}).get('id')
-                    pitcher = team.get('probablePitcher')
-                    if team_id is None or not pitcher or pitcher.get('id') is None:
-                        continue
-                    probables[int(team_id)] = {
-                        'pitcher_id': int(pitcher['id']),
-                        'pitcher_name': pitcher.get('fullName'),
-                    }
-
-        return probables
+        return parse_probable_pitchers(data, game_id)
 
     def get_game_log(self, pitcher_id: int, season: int) -> List[Dict]:
         """
@@ -278,14 +295,7 @@ class MLBPitcherStatsCollector:
             {'stats': 'gameLog', 'group': 'pitching', 'season': season}
         )
 
-        if not data:
-            return []
-
-        for group in data.get('stats', []):
-            if group.get('type', {}).get('displayName') == 'gameLog':
-                return group.get('splits', []) or []
-
-        return []
+        return parse_pitching_game_log(data)
 
 
 def collect_pitcher_stats(

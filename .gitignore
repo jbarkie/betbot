@@ -1,6 +1,5 @@
 venv/
 .DS_Store
-alembic.ini
 __pycache__
 .coverage
 .env
@@ -15,3 +14,7 @@ machine_learning/models/**/*.joblib
 !machine_learning/models/**/*.json
 !machine_learning/models/**/*.md
 
+*.pyc
+
+# Locally built macOS notifier and Swift compiler cache
+.local/

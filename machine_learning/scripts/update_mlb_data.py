@@ -2,7 +2,7 @@
 """
 MLB Data Update Script
 
-This script updates the MLB database tables with fresh data from the 2025 season.
+Update current-season data, with optional recovery of missed historical dates.
 It leverages the existing data collection functions from the machine_learning module.
 
 Usage:
@@ -17,7 +17,7 @@ import sys
 import os
 import argparse
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 # Add the project root to the Python path
@@ -33,8 +33,8 @@ from machine_learning.data.collection.mlb import (
     fetch_team_records,
     fetch_schedule
 )
-from machine_learning.data.collection.mlb_direct_api import fetch_team_stats_direct
-from machine_learning.data.collection.mlb_pitcher_stats import collect_pitcher_stats
+from machine_learning.data.collection.mlb_direct_api import fetch_team_stats_direct, MLBDirectAPI
+from machine_learning.data.collection.mlb_pitcher_stats import collect_pitcher_stats, MLBPitcherStatsCollector
 from shared.database import connect_to_db
 from machine_learning.data.models.mlb_models import MLBTeam, MLBOffensiveStats, MLBDefensiveStats, MLBSchedule
 
@@ -42,10 +42,23 @@ from machine_learning.data.models.mlb_models import MLBTeam, MLBOffensiveStats, 
 load_dotenv(project_root / 'api' / '.env')
 
 
+def recovery_windows(start_date, end_date):
+    """Yield inclusive recovery ranges split at season-year boundaries."""
+    first = datetime.strptime(start_date, '%Y-%m-%d').date()
+    end = datetime.strptime(end_date, '%Y-%m-%d').date()
+    while first <= end:
+        last = min(end, first.replace(month=12, day=31))
+        yield first.isoformat(), last.isoformat()
+        first = last + timedelta(days=1)
+
+
 class MLBDataUpdater:
     """Handles updating MLB database tables with fresh data."""
     
-    def __init__(self, verbose=False, dry_run=False, skip_stats=False, start_date=None, end_date=None):
+    def __init__(
+        self, verbose=False, dry_run=False, skip_stats=False, start_date=None,
+        end_date=None, recover_from=None, require_complete=False,
+    ):
         """
         Initialize the MLB data updater.
         
@@ -54,6 +67,21 @@ class MLBDataUpdater:
             dry_run: Show what would be updated without making changes
             skip_stats: Skip team statistics update
         """
+        if recover_from:
+            recovery_date = datetime.strptime(recover_from, '%Y-%m-%d').date()
+            if recovery_date > datetime.now().date():
+                raise ValueError('Recovery start must not be in the future')
+            if skip_stats or start_date or end_date:
+                raise ValueError('--recover-from cannot be combined with --skip-stats or explicit dates')
+            start_date = recovery_date.isoformat()
+            end_date = datetime.now().date().isoformat()
+        elif bool(start_date) != bool(end_date):
+            raise ValueError('--start-date and --end-date must be supplied together')
+        if start_date and end_date:
+            if datetime.strptime(start_date, '%Y-%m-%d') > datetime.strptime(end_date, '%Y-%m-%d'):
+                raise ValueError('Start date must not be after end date')
+        self.require_complete = require_complete or bool(recover_from)
+        self.recover_from = recover_from
         self.verbose = verbose
         self.dry_run = dry_run
         self.skip_stats = skip_stats
@@ -168,6 +196,8 @@ class MLBDataUpdater:
         try:
             start_date = season_data.regular_season_start_date
             end_date = datetime.now().strftime('%Y-%m-%d')
+            if self.recover_from:
+                start_date = min(str(start_date), self.recover_from)
             
             self.logger.info(f"Fetching schedule from {start_date} to {end_date}")
             fetch_schedule(self.mlb, self.session, start_date, end_date)
@@ -185,7 +215,6 @@ class MLBDataUpdater:
             return
             
         try:
-            from datetime import timedelta
             if self.start_date and self.end_date:
                 start_date = self.start_date
                 end_date = self.end_date
@@ -194,7 +223,14 @@ class MLBDataUpdater:
                 start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
                 end_date = datetime.now().strftime('%Y-%m-%d')
                 self.logger.info(f"Fetching team stats from {start_date} to {end_date} (last 30 days)")
-            fetch_team_stats_direct(self.session, start_date, end_date)
+            if self.recover_from:
+                # Each request belongs to one season, even across an offseason.
+                for first, last in recovery_windows(start_date, end_date):
+                    fetch_team_stats_direct(self.session, first, last, require_complete=True)
+            else:
+                fetch_team_stats_direct(
+                    self.session, start_date, end_date, require_complete=self.require_complete
+                )
             self.logger.info("Successfully updated team statistics")
         except Exception as e:
             self.logger.error(f"Failed to update team stats: {e}")
@@ -216,7 +252,15 @@ class MLBDataUpdater:
                 season = season_data.get('season') or season_data.get('seasonId')
 
             seasons = [int(season)] if season else None
-            counts = collect_pitcher_stats(self.session, seasons=seasons)
+            if self.recover_from:
+                seasons = list(range(int(self.recover_from[:4]), int(self.end_date[:4]) + 1))
+            if self.require_complete:
+                # Empty valid game logs are normal (e.g. a reliever with no starts).
+                # Transport failures must escape instead of masquerading as empty logs.
+                collector = MLBPitcherStatsCollector(MLBDirectAPI(raise_on_error=True))
+                counts = collect_pitcher_stats(self.session, seasons=seasons, collector=collector)
+            else:
+                counts = collect_pitcher_stats(self.session, seasons=seasons)
             self.logger.info(
                 f"Successfully updated starting pitcher statistics — "
                 f"inserted: {counts['inserted']}, skipped: {counts['skipped']}, "
@@ -320,6 +364,16 @@ Examples:
         help='End date for team stats fetch (default: today). Use with --start-date for backfills.'
     )
 
+    parser.add_argument(
+        '--recover-from', metavar='YYYY-MM-DD',
+        help='Recover schedule and missing team/pitcher stats through today; fail on incomplete downloads'
+    )
+
+    parser.add_argument(
+        '--require-complete', action='store_true',
+        help='Fail on missing team stats or pitcher transport errors, preserving scheduler recovery state'
+    )
+
     args = parser.parse_args()
 
     try:
@@ -329,6 +383,8 @@ Examples:
             skip_stats=args.skip_stats,
             start_date=args.start_date,
             end_date=args.end_date,
+            recover_from=args.recover_from,
+            require_complete=args.require_complete,
         )
         updater.run_update()
         

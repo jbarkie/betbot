@@ -67,6 +67,8 @@ python machine_learning/scripts/train_mlb_model.py --model-type xgboost --hyperp
 python machine_learning/scripts/train_mlb_model.py --temporal-weighting --half-life 365 --version 3.0
 python machine_learning/scripts/train_mlb_model.py --with-pitcher-features --temporal-weighting --half-life 365 --version 3.3  # 32 features incl. starting pitcher
 python machine_learning/scripts/train_mlb_model.py --diagnostics --verbose  # full diagnostic output
+python machine_learning/scripts/train_mlb_model.py --fail-on-stale  # exit 2 instead of warning when data is stale
+python machine_learning/scripts/train_mlb_model.py --max-staleness-days 120  # offseason: relax the freshness gate
 
 # Install the automated daily data refresh (run once after cloning)
 cp com.betbot.mlb-update.plist ~/Library/LaunchAgents/
@@ -121,8 +123,11 @@ bash machine_learning/scripts/schedule_updates.sh
 - The analytics endpoint is keyed by the `odds.id` hash, which is unrelated to MLB's `gamePk`. `resolve_game_pk()` bridges them via (home_team_id, away_team_id, date) with a one-day window for UTC drift
 - Feature list is split in `ml_config.py`: `MLB_BASE_FEATURES` (26) + `MLB_PITCHER_FEATURES` (6) = `MLB_REQUIRED_FEATURES` (32, the serving contract). Column order is positional — keep it stable
 - Diagnostic output: `--diagnostics` prints per-month accuracy, learning curve, class balance, full feature importance
+- Data freshness gate: before anything is fit, `check_data_freshness()` in `machine_learning/data/processing/data_freshness.py` finds the newest game with status `Final` and both scores recorded, dated on or before the run's `--end-date` (today by default), and compares its age to `--max-staleness-days` (default 3; exactly 3 is fresh, 4 is stale). Stale data logs a warning and training continues; `--fail-on-stale` exits with code 2 instead. Empty data or no completed games is always stale. Future scheduled rows never count. The result is saved to model metadata as `newest_completed_game_date`, `data_age_days`, `max_staleness_days`, `freshness_reference_date`. Scope: game-result recency at training time only. It does not check team or pitcher stats and does not monitor a deployed model. In the offseason, raise `--max-staleness-days` explicitly
 - Gini importance overstates continuous features like ERA in Random Forests; use permutation importance on held-out data when judging whether a feature genuinely helps
 - Model info endpoint: `/analytics/mlb/model-info`
+- Serving latency and blocking: analytics DB queries and feature computation run via `asyncio.to_thread`, with sessions confined to the worker. Live pitcher HTTP runs on the API loop using HTTPX and one cancellable 5s budget across probable-starter and game-log calls (`LIVE_LOOKUP_BUDGET_SECONDS`). Completed pitcher results survive the deadline; missing values use training medians. This is a network budget, not a deadline for DB queries or model inference; cancellation/connection cleanup can add overhead. The synchronous historical collector retains 30s request timeouts. Results remain cached for 15 minutes. Odds API timeout still returns HTTP 504. Singleton creation and model loading are separately locked.
+
 
 ## Environment Setup
 
@@ -135,7 +140,7 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-Database (local dev): install and start native PostgreSQL via Homebrew — `brew install postgresql@14 && brew services start postgresql@14`. Create the role and database: `psql -d postgres -c "CREATE ROLE \"user\" WITH LOGIN PASSWORD 'password';"` then `psql -d postgres -c "CREATE DATABASE betbot OWNER \"user\";"`. Run `alembic upgrade head` to apply migrations. Ensure `alembic.ini` `sqlalchemy.url` matches `DB_URL`.
+Database (local dev): install and start native PostgreSQL via Homebrew — `brew install postgresql@14 && brew services start postgresql@14`. Create the role and database: `psql -d postgres -c "CREATE ROLE \"user\" WITH LOGIN PASSWORD 'password';"` then `psql -d postgres -c "CREATE DATABASE betbot OWNER \"user\";"`. Run `alembic upgrade head` to apply migrations. `alembic.ini` is tracked in git (it was gitignored until Sprint 8, which left CI with no Alembic config) and holds only the default local URL. Alembic uses `DB_URL` from the environment when set and falls back to `alembic.ini` `sqlalchemy.url` otherwise, so do not put a machine-specific URL in the ini file; put it in `api/.env`. Because Alembic imports the API models, `api/.env` is loaded through `api/src/config.py` as a side effect, so a local `DB_URL` there is what Alembic uses; keep it and `alembic.ini` pointing at the same database.
 
 `docker-compose.yml` in `env/` is retained for CI and onboarding — do not remove it.
 
@@ -176,7 +181,9 @@ session.close()
 
 ## CI/CD
 
-`.github/workflows/ci-cd.yml` runs on push/PR to `main`: backend tests (Python 3.9) and frontend tests (Node 18) in parallel. `zizmor.yml` runs security analysis on workflow files.
+`.github/workflows/ci-cd.yml` runs on push/PR to `main`: backend tests (Python 3.9), frontend tests (Node 18), and a `migrations` job in parallel; `all-checks-passed` requires all three. `zizmor.yml` runs security analysis on workflow files.
+
+The `migrations` job runs against a disposable `postgres:14` service container with an explicit `DB_URL` in the workflow (not a secret). Steps, in order: `scripts/ci/assert_single_head.sh` (fails unless `alembic heads` reports exactly one head), `alembic upgrade head`, `alembic downgrade -1`, `alembic upgrade head`, `alembic check` (fails when a model changes without a migration). Rollback coverage is the latest migration only. The job also sets placeholder `ODDS_API_URL` and `SECRET_KEY` because Alembic's import chain runs `api/src/config.py`, which refuses to import without them.
 
 ## Gotchas
 
@@ -187,7 +194,10 @@ session.close()
 5. **Sklearn Versions:** Training and API must use the same scikit-learn version — mismatches cause unpickling errors
 6. **ML Models:** `.joblib` files are gitignored; API falls back to rule-based predictions if model unavailable
 7. **Frontend Linting:** No `npm run lint` script; ESLint runs on save via editor (`.vscode/settings.json`); use `ng build` for type checking
-8. **MLB Scheduler (launchd):** `com.betbot.mlb-update.plist` must be copied to `~/Library/LaunchAgents/` and loaded with `launchctl load` after a fresh clone — it is not active automatically. The scheduler requires Homebrew PostgreSQL to be accepting connections on port 5432; if it is not ready it logs a SKIP message and exits immediately.
+8. **MLB Scheduler (launchd):** install `com.betbot.mlb-update.plist` as documented in README. The scheduler discovers `pg_isready` on both Homebrew layouts without relying on PATH. Skips append timestamped attempts to `logs/mlb_update_skips.log`. On resumption, strict collection propagates missing team stats and pitcher HTTP failures; a failed run preserves the marker. If the oldest skipped morning's previous day falls outside the normal 30-day window, the scheduler passes `--recover-from YYYY-MM-DD`; schedule coverage expands and team stats are fetched in year-separated ranges, with pitcher collection covering those seasons. Completed dates remain committed and retries skip existing rows. RESUMED is not an audit of existing records. Run only one updater at a time. Env overrides and notification setup are documented in `docs/sprint8_operations_followup.md`.
+9. **macOS notifications:** build the local helper with `bash machine_learning/scripts/setup_notifications.sh`, request permission with `bash machine_learning/scripts/notify_macos.sh --authorize`, then run `bash machine_learning/scripts/schedule_updates.sh --check-notification`. The ignored `.local/BetBot Notifier.app` uses the stable identity `com.betbot.notifier`; daily runs never request permission. Without the app, `osascript` remains a best-effort fallback. A successful command is not proof of visible delivery.
+10. **Historical team-stat audit:** future team-stat requests use MLB's `byDateRange`, `startDate`, and `endDate`; the old `season` request ignored snake_case date filters. Existing rows and models are untouched. Audit them before retraining (GitHub #52); recovery intentionally skips already-stored rows.
+
 
 ## Sprint Workflow
 
@@ -203,6 +213,14 @@ All development follows a sprint-based Agile/Scrum workflow.
 **Sprint Authority**:
 - Once a sprint plan is approved in Phase 3, all tasks are pre-authorized
 - Only stop for sprint stopping criteria
+
+**Plan Durability**:
+- A sprint plan must never exist only in conversation history. Before asking for Phase 3 approval, write the full draft (goal, cards, tasks, acceptance criteria) into `docs/ALL_SPRINTS_MASTER_PLAN.md` marked PROPOSED, point `.claude/sprint_status.json` at it, and commit both on the feature branch
+- Approval flips the section header to Active and creates the GitHub issues; the issues are the second durable copy
+- The same rule covers retrospectives and sprint-status changes: commit them as soon as they exist, marked DRAFT until approved. A committed PROPOSED or DRAFT item is not approval and never pre-authorizes work
+
+**Planning Estimates**:
+- Do not put per-task hour estimates in sprint plans; they did not predict effort (Sprint 8 retro). Keep relative card sizing, dependencies, and uncertainty. Use observed completion times if forecasting becomes useful
 
 **Commit Discipline**:
 - Commit per GitHub issue during development, not one large commit at Phase 6

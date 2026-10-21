@@ -1,11 +1,11 @@
-import mlbstatsapi 
 import logging
 from datetime import datetime
-from colorlog import ColoredFormatter
 from shared.database import connect_to_db
 from machine_learning.data.models.mlb_models import MLBTeam, MLBOffensiveStats, MLBDefensiveStats, MLBSchedule
 
 def configure_logging():
+    from colorlog import ColoredFormatter
+
     logger = logging.getLogger('statsapi')
     logger.setLevel(logging.DEBUG)
     rootLogger = logging.getLogger()
@@ -210,6 +210,8 @@ def fetch_schedule(mlb, session, start_date, end_date):
     session.commit()
 
 def main():
+    import mlbstatsapi
+
     configure_logging()
     logging.info('Starting MLB data collection')
 

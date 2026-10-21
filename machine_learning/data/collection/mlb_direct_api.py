@@ -7,11 +7,23 @@ the mlbstatsapi library to avoid compatibility issues.
 
 import requests
 import logging
-from datetime import datetime
+from datetime import date, datetime
 from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
 
 from ..models.mlb_models import MLBOffensiveStats, MLBDefensiveStats
+
+
+def season_start_date(on_date) -> str:
+    """
+    First day of the calendar year of ``on_date``, as YYYY-MM-DD.
+
+    Team-stat snapshots are cumulative for the season: every request starts here
+    (with ``gameType=R``, so only regular-season games count) rather than at the
+    start of the collection window. Spring training and prior seasons never
+    leak into a snapshot, and a snapshot dated D is the same whichever run stored it.
+    """
+    return f"{on_date.year}-01-01"
 
 
 class MLBDirectAPI:
@@ -19,13 +31,15 @@ class MLBDirectAPI:
     
     BASE_URL = "https://statsapi.mlb.com/api/v1"
     
-    def __init__(self, timeout: int = 30):
+    def __init__(self, timeout: int = 30, raise_on_error: bool = False):
         """
         Initialize the direct API client.
         
         Args:
             timeout: Request timeout in seconds
+            raise_on_error: Propagate transport failures when recovery must be complete
         """
+        self.raise_on_error = raise_on_error
         self.timeout = timeout
         self.session = requests.Session()
         self.session.headers.update({
@@ -50,6 +64,8 @@ class MLBDirectAPI:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
+            if self.raise_on_error:
+                raise
             logging.error(f"API request failed for {url}: {e}")
             return None
     
@@ -71,9 +87,11 @@ class MLBDirectAPI:
             Hitting stats data or None if request failed
         """
         params = {
-            'start_date': start_date,
-            'end_date': end_date,
-            'stats': 'season',
+            'startDate': start_date,
+            'endDate': end_date,
+            'season': datetime.strptime(end_date, '%Y-%m-%d').year,
+            'gameType': 'R',
+            'stats': 'byDateRange',
             'group': 'hitting'
         }
         
@@ -97,9 +115,11 @@ class MLBDirectAPI:
             Pitching stats data or None if request failed
         """
         params = {
-            'start_date': start_date,
-            'end_date': end_date,
-            'stats': 'season',
+            'startDate': start_date,
+            'endDate': end_date,
+            'season': datetime.strptime(end_date, '%Y-%m-%d').year,
+            'gameType': 'R',
+            'stats': 'byDateRange',
             'group': 'pitching'
         }
         
@@ -119,7 +139,7 @@ class MLBDirectAPI:
             if 'stats' in api_data and api_data['stats']:
                 for stat_group in api_data['stats']:
                     if (stat_group.get('group', {}).get('displayName') == 'hitting' and
-                        stat_group.get('type', {}).get('displayName') == 'season' and
+                        stat_group.get('type', {}).get('displayName') in ('season', 'byDateRange') and
                         'splits' in stat_group and stat_group['splits']):
                         
                         return stat_group['splits'][0]['stat']
@@ -142,7 +162,7 @@ class MLBDirectAPI:
             if 'stats' in api_data and api_data['stats']:
                 for stat_group in api_data['stats']:
                     if (stat_group.get('group', {}).get('displayName') == 'pitching' and
-                        stat_group.get('type', {}).get('displayName') == 'season' and
+                        stat_group.get('type', {}).get('displayName') in ('season', 'byDateRange') and
                         'splits' in stat_group and stat_group['splits']):
                         
                         return stat_group['splits'][0]['stat']
@@ -156,7 +176,9 @@ def fetch_team_stats_direct(
     session: Session,
     start_date: str,
     end_date: str,
-    api_client: MLBDirectAPI = None
+    api_client: MLBDirectAPI = None,
+    require_complete: bool = False,
+    today: Optional[date] = None,
 ) -> None:
     """
     Fetch team statistics using direct API calls.
@@ -166,17 +188,22 @@ def fetch_team_stats_direct(
         start_date: Start date in YYYY-MM-DD format
         end_date: End date in YYYY-MM-DD format
         api_client: Optional API client instance
+        require_complete: Fail on missing stats for teams that played on each date
+        today: Treated as the current date; snapshots are stored only for earlier
+            dates so a partially played day is never saved as final
     """
     from ..models.mlb_models import MLBTeam, MLBSchedule
 
     if api_client is None:
-        api_client = MLBDirectAPI()
+        api_client = MLBDirectAPI(raise_on_error=require_complete)
 
     teams = session.query(MLBTeam).all()
+    today = today or date.today()
 
-    # Only process dates where games were actually played
+    # Only process completed past dates on which games were actually played
     game_dates = session.query(MLBSchedule.date)\
         .filter(MLBSchedule.date.between(start_date, end_date))\
+        .filter(MLBSchedule.date < today)\
         .filter(MLBSchedule.status == 'Final')\
         .distinct()\
         .order_by(MLBSchedule.date)\
@@ -209,9 +236,18 @@ def fetch_team_stats_direct(
     stats_skipped = {'offensive': 0, 'defensive': 0}
 
     for current_date in game_dates:
+        # In recovery mode, require stats only for clubs with a completed game
+        # on this date; an idle club may legitimately have no season stats yet.
+        participants = None
+        if require_complete:
+            participants = {team_id for game in session.query(MLBSchedule).filter(
+                MLBSchedule.date == current_date, MLBSchedule.status == 'Final'
+            ).all() for team_id in (game.home_team_id, game.away_team_id)}
         logging.info(f'Processing team stats for {current_date}')
 
         for team in teams:
+            if participants is not None and team.id not in participants:
+                continue
             # Check if offensive stats already exist before making API call
             if (team.id, current_date) in existing_offensive:
                 logging.debug(f'Skipping offensive stats for team {team.id} on {current_date} - already exists')
@@ -219,7 +255,7 @@ def fetch_team_stats_direct(
             else:
                 # Fetch hitting stats
                 hitting_data = api_client.get_team_hitting_stats(
-                    team.id, start_date, current_date.strftime('%Y-%m-%d')
+                    team.id, season_start_date(current_date), current_date.strftime('%Y-%m-%d')
                 )
 
                 if hitting_data:
@@ -239,10 +275,16 @@ def fetch_team_stats_direct(
                             stats_fetched['offensive'] += 1
                             logging.debug(f'Added offensive stats for team {team.id} on {current_date}')
                         except (ValueError, TypeError) as e:
+                            if require_complete:
+                                raise RuntimeError(f'Failed to process offensive stats for team {team.id} on {current_date}: {e}')
                             logging.warning(f'Failed to process offensive stats for team {team.id} on {current_date}: {e}')
                     else:
+                        if require_complete:
+                            raise RuntimeError(f'No hitting stats found for team {team.id} on {current_date}')
                         logging.warning(f'No hitting stats found for team {team.id} on {current_date}')
                 else:
+                    if require_complete:
+                        raise RuntimeError(f'Failed to fetch hitting data for team {team.id} on {current_date}')
                     logging.warning(f'Failed to fetch hitting data for team {team.id} on {current_date}')
 
             # Check if defensive stats already exist before making API call
@@ -252,7 +294,7 @@ def fetch_team_stats_direct(
             else:
                 # Fetch pitching stats
                 pitching_data = api_client.get_team_pitching_stats(
-                    team.id, start_date, current_date.strftime('%Y-%m-%d')
+                    team.id, season_start_date(current_date), current_date.strftime('%Y-%m-%d')
                 )
 
                 if pitching_data:
@@ -272,10 +314,16 @@ def fetch_team_stats_direct(
                             stats_fetched['defensive'] += 1
                             logging.debug(f'Added defensive stats for team {team.id} on {current_date}')
                         except (ValueError, TypeError) as e:
+                            if require_complete:
+                                raise RuntimeError(f'Failed to process defensive stats for team {team.id} on {current_date}: {e}')
                             logging.warning(f'Failed to process defensive stats for team {team.id} on {current_date}: {e}')
                     else:
+                        if require_complete:
+                            raise RuntimeError(f'No pitching stats found for team {team.id} on {current_date}')
                         logging.warning(f'No pitching stats found for team {team.id} on {current_date}')
                 else:
+                    if require_complete:
+                        raise RuntimeError(f'Failed to fetch pitching data for team {team.id} on {current_date}')
                     logging.warning(f'Failed to fetch pitching data for team {team.id} on {current_date}')
         
         # Commit after each date to avoid large transactions

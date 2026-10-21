@@ -1,3 +1,4 @@
+import asyncio
 import traceback
 from fastapi import HTTPException
 from api.src.models.tables import Odds
@@ -10,16 +11,32 @@ from shared.database import connect_to_db
 import requests
 from sqlalchemy import cast, Date, func
 from pytz import timezone, utc
-    
+
+# (connect, read) timeouts for the Odds API. The connect value is just over a
+# multiple of 3, which requests recommends because of TCP retransmission timing.
+# Without this, one unresponsive upstream held a request open indefinitely.
+ODDS_API_TIMEOUT_SECONDS = (3.05, 10)
+ODDS_API_TIMEOUT_DETAIL = "Odds provider timed out"
+
+
 async def get_games_for_sport(date: str, sport: str, api_sport_param: str):
     try:
         parsed_date = datetime.strptime(date, "%Y-%m-%d")
-        return get_games_by_date(parsed_date, sport, api_sport_param)
     except ValueError as e:
         error_message = f"Invalid date format. Please use YYYY-MM-DD format. Error: {str(e)}"
         traceback_message = traceback.format_exc()
         print(f"Error: {error_message}\nTraceback: {traceback_message}")
         raise HTTPException(status_code=400, detail=error_message)
+
+    try:
+        # get_games_by_date does blocking work: DB sessions and, when the cache
+        # has expired, a synchronous Odds API call. Run it in a worker thread so
+        # the event loop keeps serving other requests. Every session it uses is
+        # opened and closed inside the worker.
+        return await asyncio.to_thread(get_games_by_date, parsed_date, sport, api_sport_param)
+    except requests.Timeout:
+        print(f"Error: {ODDS_API_TIMEOUT_DETAIL} for {sport}")
+        raise HTTPException(status_code=504, detail=ODDS_API_TIMEOUT_DETAIL)
     except Exception as e:
         error_message = f"An error occurred while processing the request. Error: {str(e)}"
         traceback_message = traceback.format_exc()
@@ -28,7 +45,7 @@ async def get_games_for_sport(date: str, sport: str, api_sport_param: str):
 
 def call_odds_api(sport):
     url = ODDS_API_URL.format(sport=sport)
-    response = requests.get(url).json()
+    response = requests.get(url, timeout=ODDS_API_TIMEOUT_SECONDS).json()
     return response
 
 def parse_response_and_store_games(odds_response, sport):

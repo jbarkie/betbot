@@ -1,21 +1,43 @@
 {
-  "current_sprint": 8,
-  "phase": "Sprint 8 follow-up published in PR #48; snapshot-contract fix and recent-row repair preview ready for user review (nothing applied, scheduler unloaded)",
-  "branch": "feature/20260922_Sprint_8",
-  "plan_location": "docs/ALL_SPRINTS_MASTER_PLAN.md#sprint-8",
-  "issues": [
-    44,
-    45,
-    46,
-    47
-  ],
-  "execution_order": [
-    44,
-    45,
-    46,
-    47
-  ],
-  "pr": 48,
+  "current_sprint": null,
+  "phase": "Sprint 8 merged (PR #48, merge commit 4a77fa2, 2026-10-21 UTC). No sprint active. Post-merge operations pending user approval: recent-row team-stat repair apply, scheduler reload, older-row audit (#52). Sprint 9 not yet planned.",
+  "branch": null,
+  "last_sprint": {
+    "number": 8,
+    "pr": 48,
+    "merge_commit": "4a77fa2",
+    "issues": [
+      44,
+      45,
+      46,
+      47
+    ],
+    "retrospective": "docs/retrospectives/SPRINT_8_RETROSPECTIVE.md",
+    "retrospective_follow_up_section": "DRAFT (awaiting user approval)",
+    "follow_up": {
+      "issues": [
+        49,
+        50,
+        51
+      ],
+      "plan_location": "docs/sprint8_operations_followup.md",
+      "backend_ml_tests": 282,
+      "notification_visibility": "User confirmed manual and launchd diagnostics on 2026-09-26",
+      "data_audit_issue": 52,
+      "snapshot_repair": {
+        "status": "DRAFT: awaiting user review of preview before any live write",
+        "issue": 52,
+        "scheduler": "com.betbot.mlb-update unloaded 2026-10-15; restore with launchctl bootstrap after approved repair",
+        "preview_rows": 959,
+        "applied": false,
+        "utility": "machine_learning/scripts/repair_team_stat_snapshots.py"
+      }
+    },
+    "post_merge_issues": [
+      52,
+      53
+    ]
+  },
   "previous_sprint": {
     "number": 7,
     "pr": 41,
@@ -26,25 +48,5 @@
       39,
       40
     ]
-  },
-  "retrospective": "docs/retrospectives/SPRINT_8_RETROSPECTIVE.md",
-  "follow_up": {
-    "issues": [
-      49,
-      50,
-      51
-    ],
-    "plan_location": "docs/sprint8_operations_followup.md",
-    "backend_ml_tests": 282,
-    "notification_visibility": "User confirmed manual and launchd diagnostics on 2026-09-26",
-    "data_audit_issue": 52,
-    "snapshot_repair": {
-      "status": "DRAFT: awaiting user review of preview before any live write",
-      "issue": 52,
-      "scheduler": "com.betbot.mlb-update unloaded 2026-10-15; restore with launchctl bootstrap after approved repair",
-      "preview_rows": 959,
-      "applied": false,
-      "utility": "machine_learning/scripts/repair_team_stat_snapshots.py"
-    }
   }
 }

@@ -6,9 +6,13 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions: {}
+
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       ODDS_API_URL: ${{ secrets.ODDS_API_URL }}
       DB_URL: ${{ secrets.DB_URL }}
@@ -34,6 +38,8 @@ jobs:
 
   frontend-tests:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
       with:
@@ -107,6 +113,7 @@ jobs:
 
   all-checks-passed:
     runs-on: ubuntu-latest
+    permissions: {}
     needs: [backend-tests, frontend-tests, migrations]
     if: always()
     steps:

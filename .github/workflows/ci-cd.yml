@@ -6,9 +6,13 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions: {}
+
 jobs:
   backend-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # ubuntu-latest is 26.04, which has no Python 3.9
+    permissions:
+      contents: read
     env:
       ODDS_API_URL: ${{ secrets.ODDS_API_URL }}
       DB_URL: ${{ secrets.DB_URL }}
@@ -34,6 +38,8 @@ jobs:
 
   frontend-tests:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
       with:
@@ -54,7 +60,7 @@ jobs:
     # newest migration rolls back and re-applies, that the history has exactly
     # one head, and that the models have not drifted from the migrations.
     # Rollback coverage is the latest migration only, not all of them.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # ubuntu-latest is 26.04, which has no Python 3.9
     permissions:
       contents: read
     services:
@@ -107,6 +113,7 @@ jobs:
 
   all-checks-passed:
     runs-on: ubuntu-latest
+    permissions: {}
     needs: [backend-tests, frontend-tests, migrations]
     if: always()
     steps:

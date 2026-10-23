@@ -9,7 +9,7 @@ on:
 jobs:
   zizmor-analysis:
     name: Analyze GitHub Actions workflows
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       # Required for SARIF upload to code scanning
       security-events: write

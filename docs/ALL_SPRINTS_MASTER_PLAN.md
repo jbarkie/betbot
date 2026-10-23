@@ -23,7 +23,11 @@ experiments batch better into Sprint 9 against a complete season.
 - [ ] **Data-freshness guard in training** — `train_mlb_model.py` should warn when the newest completed game is more than N days old, so a stale database cannot silently produce a stale model.
 - [ ] **Alembic migration CI check** — Fail CI if unapplied migrations exist on the branch. Promoted from Low: PR #41 shipped a migration, and the reviewer could not confirm from CI alone that it applied cleanly.
 
-### Sprint 9 Candidates — Model Accuracy (hold until the season ends, ~2026-10-01)
+### Sprint 9 Candidates — Model Accuracy (blocked on data correctness)
+
+As of 2026-10-22, complete the proposed data-correctness work below before these
+experiments. The historical v3.3 score of 56.44% is unvalidated and is not a
+promotion threshold. End-of-season availability alone does not make training safe.
 
 - [ ] **Full-season v3.4 retrain** — As of the 2026-09-10 refinement, raw completed-game counts had grown from 6,909 on 2026-08-11 to 7,313 (+5.8%). Separately, v3.3 used 6,750 games after training-data filters (5,400 train / 1,350 test); recount eligible samples before retraining. Defer the next retrain until the complete 2026 season to avoid repeating the work shortly afterward. This is a scheduling choice, not evidence that an interim retrain would fail to improve the model: the ~1.35pp standard error describes held-out accuracy uncertainty and cannot be compared with dataset growth.
 - [ ] **XGBoost re-evaluation (≥ 2,000 games)** — Gate long cleared: 7,313 completed games total, 2,193 in 2026 as of 2026-09-10. Re-run `--hyperparameter-search` against the v3.3 baseline of 56.44% (AUC 0.5708) with 32 features available. v4.0 tuned params are the starting point.
@@ -33,7 +37,7 @@ experiments batch better into Sprint 9 against a complete season.
 
 ### High Priority (unscheduled)
 
-- [ ] **Audit historical team-stat snapshots before retraining (#52)** — Collection and snapshot selection are corrected on PR #48 (cumulative regular-season snapshots; strictly earlier, same-season selection). A reviewed repair of rows dated 2026-09-26 onward is previewed (959 rows) but **not applied**; scheduler stays unloaded until it is. Older history (2024-2026 before 09-26) is unrepaired and the existing model is not certified. See `docs/sprint8_operations_followup.md`.
+- [ ] **Audit historical team-stat snapshots before retraining (#52)** — Collection and snapshot selection fixes merged in PR #48 (cumulative regular-season snapshots; strictly earlier, same-season selection). A repair of rows dated 2026-09-26 through 2026-10-14 is previewed (959 rows) but **not applied**; scheduler stays unloaded until approved repair and recovery. Older history remains unrepaired. The proposed plan below also addresses mixed schedule game types before any model evaluation. See `docs/snapshot_audit_52.md`.
 
 - [ ] **Prediction transparency in the analytics modal** — The API returns `prediction_method`, `ml_model_name`, `ml_confidence`, `confidence_level` and `feature_importance`, and `models.ts` already declares all five on `AnalyticsResponse`, but `analytics-modal.component.ts` renders none of them. A user cannot tell an ML prediction from the rule-based fallback, even though the 0.55 confidence gate silently decides which one they get. (Supersedes the old "Frontend analytics integration" item, which claimed predictions were API-only — Sprint 1 shipped the modal.)
 - [ ] **NFL/NHL parity with MLB analytics** — Add ML-backed game analytics endpoints for NFL and NHL (currently only MLB has the ML prediction pipeline)
@@ -66,6 +70,104 @@ experiments batch better into Sprint 9 against a complete season.
 - [x] **Starting pitcher features** — ERA/WHIP/K9 for the day's scheduled starter. Sprint 7 (#38, #39, #40): new `mlb_pitcher_stats` table (cumulative pre-game stats via MLB Stats API game logs), feature engineering (32 total features), inference-time lookup in `enhanced_mlb_analytics.py`.
 
 ---
+
+## Post-Sprint-8 data correctness (PROPOSED — awaiting approval)
+
+Goal: restore dependable collection and produce a reproducible regular-season
+evaluation using date-correct team statistics and verified game eligibility.
+This plan supersedes the older model-accuracy sequencing above. No sprint is active.
+Preparing and publishing this plan does not approve live writes, scheduler reload,
+model retraining, promotion, or the still-DRAFT retrospective follow-up.
+
+### Bounded recent repair and recovery — separate operational approval
+
+On 2026-10-22, read-only verification of
+`.local/repairs/20261020T180806/manifest.json` returned 959 pending changes,
+zero already applied, and no conflicts. SHA-256:
+`5def24b967025eaebe0002383d18351f592c1d1fdc0cf1c8338f44ff71bf890c`.
+Scope: 479 offense and 480 defense rows dated 2026-09-26 through 2026-10-14.
+Current totals: 18,239 offense and 18,240 defense rows; newest date in both tables
+is 2026-10-14. The launchd job is absent and no skip-marker file exists.
+These are observations, not a guarantee that the manifest will remain current.
+
+After explicit approval of this manifest and recovery:
+
+1. Confirm database identity, manifest hash, row agreement, and that no updater or
+   other writer is running. Keep the scheduler unloaded during repair; the current
+   utility does not lock rows against concurrent edits. Abort on any conflict.
+2. Apply only this manifest using the existing utility, retaining its restoration
+   artifact. Verify all 959 rows now match the proposed values and row IDs/counts
+   in the repaired range are unchanged. Stop on failure; do not reload the job.
+3. Run the corrected updater with `--recover-from 2026-10-15` and inspect completion
+   and coverage through the last completed day. An unloaded job never recorded
+   skipped mornings, so do not assume a skip marker will trigger recovery. Recovery
+   writes newly collected data and is separately acknowledged in this approval.
+4. Only after successful verification, restore launchd with the documented
+   bootstrap command from `sprint8_operations_followup.md`, confirm its installed
+   checkout contains the merged fixes, and verify a scheduler-wrapper run and logs.
+   Do not overlap updater processes. If that final check fails after bootstrap,
+   unload the scheduler again and retain the logs for diagnosis.
+
+This operation does not repair older history, retrain a model, or establish model
+accuracy. Restoration of the manifest covers the 959 replacements, not additional
+rows written by the subsequent updater.
+
+### Card A — Game eligibility and reproducible audit (M, relates to #52)
+
+- Preserve or resolve official game type for historical and newly collected games;
+  add a migration if storing it. Retain legitimate spring/postseason records.
+- For the regular-season model, filter both targets and rolling/head-to-head
+  histories to regular-season games. Exclude ties and absent scores from binary
+  targets; document postseason-serving behavior before changing it.
+- Commit a read-only audit entry point and preserve dated evidence outside source
+  control. Report unmatched IDs, game-type counts, date/score mismatches, and sample
+  all stored offense and defense columns across 2024–2026, including boundaries.
+- Acceptance: the team-108 2024 example resolves to 162 regular and seven spring
+  games; tests show spring games cannot affect regular-season features or targets,
+  and ties/missing scores cannot become losses. Unresolved records are reported
+  and excluded or block evaluation, never silently treated as regular games.
+- Biggest uncertainty: historical schedule/score corrections and season boundaries.
+
+### Card B — Wider repair preparation and reviewed execution (L, relates to #52)
+
+- Define pre-first-game snapshots as unavailable history, not zero performance.
+  Specify how existing invalid rows are removed or marked ineligible, including a
+  reversible backup, before implementing this recommendation.
+- Reject missing/non-finite required API stat values instead of zero-filling them;
+  distinguish legitimate no-history responses from HTTP or response failures.
+- Add bounded retries, resumable evidence with contract/version checks, bulk reads,
+  stronger database identity checks, and transactional protection against concurrent
+  changes, including changes to the candidate row set.
+- Produce a fresh preview for the agreed full range, counts per year/table/status,
+  representative before/after values, and a restoration procedure. Revalidate the
+  live rows after resume; an old partial preview is not current evidence.
+- Acceptance: automated refusal/rollback/restore tests cover the above cases;
+  all blocked responses are resolved or explicitly excluded under the agreed
+  contract; offense and defense samples match official date-correct values.
+- Dependency: Card A's audit and agreed snapshot semantics. Biggest uncertainty:
+  API coverage and reliable completion across roughly 36,500 rows.
+- A full-range apply requires separate approval of the resulting manifest/hash.
+
+### Card C — Reproducible baseline evaluation (M)
+
+- After Cards A/B and approved repair, save eligible game IDs, chronological split
+  dates, code/data provenance, feature contract, and imputation parameters. Keep
+  each calendar day's games in one split and derive fitted preprocessing from
+  training data only.
+- Use an untouched later period when comparing with v3.3 if its original split
+  cannot be reconstructed. Do not repeatedly tune on the final test set.
+- Report accuracy, AUC, sample counts, a simple baseline, and uncertainty on the
+  same holdout. Keep the freshness gate enabled with an explicit offseason limit.
+- Acceptance: a saved evaluation can be reproduced from the recorded inputs;
+  game eligibility and pre-game feature checks pass. Promotion is a separate
+  decision based on clean evidence, not beating the old 56.44% figure.
+- Biggest uncertainty: performance after removing leakage and mixed game types.
+
+Recommended order: approve the bounded recovery separately; then A, B, and C.
+Keep v3.3 designated unvalidated in the meantime; no serving configuration is
+changed by this plan. #53 remains independent: its two-week observation window
+starts at instrumented deployment; extend it if representative live attempts are
+too sparse for review.
 
 ## Sprint History
 

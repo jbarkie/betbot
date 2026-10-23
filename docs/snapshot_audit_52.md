@@ -7,7 +7,7 @@ recent-row repair (2026-09-26 onward) is separate and still waiting for approval
 
 ## What was checked
 
-1. **Structure of every stored snapshot row** for 2024-2026, regular-season dates
+1. **Structure of every stored snapshot row** for 2024-2026, a calendar window
    (Mar 20 to Sep 30): how many distinct `runs_scored` values each team holds across a
    season, and whether the values ever decrease from one date to the next.
 2. **A date-correct sample from the MLB API**: 6 teams (108, 119, 111, 147, 137, 158)
@@ -42,24 +42,47 @@ against schedule-derived runs allowed). It was **not** sampled against the API.
 - The API sample is 72 team-dates for runs only. It is strong evidence for the 2024
   pattern (24 of 24) and a real signal for 2025 and 2026, not a full audit of every
   stat column or every row.
-- `mlb_schedule` is not a reliable reference. For team 108 in 2024 it holds 169
-  completed games between Mar 20 and Sep 29, where a season has 162, so its derived
-  totals do not equal true totals. The schedule-derived match counts above are a rough
-  signal only; the API sample is the real evidence.
+- The unfiltered schedule totals mix game types and cannot validate regular-season
+  snapshots. Follow-up review matched all 169 stored game IDs for team 108 between
+  2024-03-20 and 2024-09-29 to the official MLB schedule: **162 regular-season (`R`)
+  and seven spring-training (`S`) games**. This count does not establish corrupt or
+  duplicate records. The match counts above remain historical, unfiltered results;
+  recompute them after game-type validation.
 - Which stored rows the v3.3 model saw cannot be read from its metadata (it records
   train and test sizes of 5,400 and 1,350, not a date range). The model was trained on
   2026-08-11, before any repair.
 - **Not shown:** whether the damage helped or hurt the reported accuracy of 56.44%
-  (AUC 0.5708). That number was measured on features that were wrong for most training
-  rows, so it should not be treated as a trustworthy estimate until the data is
-  repaired and the model retrained and re-evaluated.
+  (AUC 0.5708). The audit establishes historical data defects, not the exact number
+  of affected feature vectors in the saved model. Treat the score as unvalidated
+  until the data and game eligibility are corrected and the model is re-evaluated.
+
+## Schedule finding and retraining prerequisite
+
+The official query used for the follow-up was
+`GET https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=108&startDate=2024-03-20&endDate=2024-09-29`.
+Match its `gamePk` to stored `game_id`, and inspect `gameType`; do not infer type
+from a shared calendar window. Spring-training game `747883` on 2024-03-20 finished
+8–8. The other six spring IDs are `747881`, `747850`, `747836`, `747822`, `747811`,
+and `747801`.
+
+`mlb_schedule` currently stores no game type. In `mlb_data_pipeline.py`, training
+selects dates and `status == 'Final'`, while `home_score > away_score` labels ties
+as home losses. The same schedule supplies rolling and head-to-head features.
+These are existing behaviors, not changes introduced by this documentation PR.
+Whether this particular game survived v3.3's minimum-history filter is unverified.
+
+Before a new regular-season evaluation, preserve/resolve game type, exclude
+non-regular games from both training targets and feature histories, and exclude
+ties and missing scores from binary win/loss targets. Verify historical game IDs,
+dates and scores against the API. Decide postseason serving behavior explicitly;
+do not delete legitimate non-regular games merely to make counts equal 162.
 
 ## Proposed repair scope (needs your approval; nothing here is authorized)
 
 1. Widen the existing preview/apply/restore utility
    (`machine_learning/scripts/repair_team_stat_snapshots.py`) from `--from-date
    2026-09-26` back to the first stored date, 2024-03-20. That is about 18,200 rows per
-   table, roughly 19 times the 959-row recent preview, so expect a long preview run and
+   table, roughly 38 times the 959-row recent preview in total, so expect a long preview run and
    gentle request pacing. The utility already refuses to apply a partial, ambiguous or
    hash-mismatched preview, preserves row IDs, and can restore.
    **Known blocker for widening:** the utility treats "API returned no stats" as a
@@ -73,9 +96,17 @@ against schedule-derived runs allowed). It was **not** sampled against the API.
    apply, and bulk queries before running it on tens of thousands of rows.
 2. Review a preview of the whole range (counts per year, and a sample of proposed
    values) before any apply.
-3. Only after an approved apply, retrain and compare against v3.3 on the same
-   held-out games, with the freshness gate on.
+3. Resolve the schedule/game-eligibility prerequisite above as well as the snapshot
+   repair before retraining. Save chronological train/test game IDs and dates;
+   evaluate candidates on the same clean holdout. Use an untouched later period
+   for a fair comparison with v3.3 if its original split cannot be reconstructed.
+   Keep the freshness gate on with an explicit, justified offseason threshold.
+   Freshness checks recency, not correctness.
 4. Until then, treat v3.3 predictions as unvalidated.
 
 Open questions for you: whether the earlier spec ("repair only rows dated 2026-09-26
 onward") should be widened, and whether to leave v3.3 serving in the meantime.
+
+The proposed execution order, acceptance criteria, and separate operational
+approval are recorded in `ALL_SPRINTS_MASTER_PLAN.md` under
+“Post-Sprint-8 data correctness”.

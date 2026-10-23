@@ -1,6 +1,6 @@
 {
   "current_sprint": null,
-  "phase": "Sprint 8 merged (PR #48, merge commit 4a77fa2, 2026-10-21 UTC). No sprint active. Post-merge operations pending user approval: recent-row team-stat repair apply, scheduler reload, older-row audit (#52). Sprint 9 not yet planned.",
+  "phase": "Sprint 8 merged; no sprint active. Post-Sprint-8 data-correctness plan PROPOSED, awaiting approval. Recent repair/recovery awaiting explicit manifest approval; broader repair and retraining not authorized.",
   "branch": null,
   "last_sprint": {
     "number": 8,
@@ -48,5 +48,24 @@
       39,
       40
     ]
+  },
+  "plan_location": "docs/ALL_SPRINTS_MASTER_PLAN.md#post-sprint-8-data-correctness-proposed--awaiting-approval",
+  "proposed_follow_up": {
+    "status": "PROPOSED \u2014 awaiting approval",
+    "cards": [
+      "A: Game eligibility and reproducible audit",
+      "B: Wider repair preparation and reviewed execution",
+      "C: Reproducible baseline evaluation"
+    ],
+    "execution_order": [
+      "A",
+      "B",
+      "C"
+    ],
+    "issue": 52,
+    "last_read_only_verification": "2026-10-22",
+    "recent_repair_pending_rows": 959,
+    "recent_repair_applied": false,
+    "scheduler_loaded": false
   }
 }

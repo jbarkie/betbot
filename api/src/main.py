@@ -6,11 +6,19 @@ from api.src.ml_model_service import get_mlb_model_service
 from api.src.models.settings import SettingsRequest, SettingsResponse
 from api.src.settings import get_user_settings, update_user_settings
 load_dotenv()
-from fastapi import FastAPI, HTTPException, Query, Depends
+from fastapi import FastAPI, HTTPException, Query, Depends, Request
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from api.src.config import ACCESS_TOKEN_EXPIRE_MINUTES, API_HOST
-from api.src.login import authenticate_user, create_access_token, get_current_user, get_user_by_username
+from api.src.login import (
+    authenticate_user,
+    clear_failed_logins,
+    create_access_token,
+    get_current_user,
+    get_user_by_username,
+    login_retry_after,
+    record_failed_login,
+)
 from api.src.models.auth import AuthenticatedUser, LoginResponse, RegisterRequest, RegisterResponse, User
 from api.src.games import get_games_for_sport
 from api.src.models.games import GamesResponse
@@ -44,14 +52,24 @@ async def register(register_request: RegisterRequest):
     return response
 
 @app.post("/login", response_model=LoginResponse)
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+async def login(request: Request, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    client_host = request.client.host if request.client else "unknown"
+    retry_after = login_retry_after(client_host, form_data.username)
+    if retry_after:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed login attempts. Try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
+        record_failed_login(client_host, form_data.username)
         raise HTTPException(
             status_code=401,
             detail="Invalid username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    clear_failed_logins(client_host, form_data.username)
     access_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     response = LoginResponse(access_token=access_token)
     return response

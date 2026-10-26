@@ -2,7 +2,8 @@ from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 import pytest
 from api.src.config import ALGORITHM, SECRET_KEY
-from api.src.login import get_user_by_username
+from api.src import login as login_module
+from api.src.login import LOGIN_LOCKOUT_SECONDS, LOGIN_MAX_FAILED_ATTEMPTS, get_user_by_username
 from api.src.main import app, main
 from api.src.models.auth import AuthenticatedUser
 from api.src.models.tables import Users
@@ -10,6 +11,12 @@ import bcrypt
 import jwt
 
 client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def reset_failed_logins():
+    login_module._failed_logins.clear()
+    yield
+    login_module._failed_logins.clear()
 
 def test_get_user_by_username():
     mock_session = MagicMock()
@@ -91,6 +98,55 @@ def test_login_bcrypt_error(mock_user):
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Invalid username or password"}
+
+def _fail_logins(count, username="testuser"):
+    for _ in range(count):
+        response = client.post("/login", data={"username": username, "password": "wrongpassword"})
+        assert response.status_code == 401
+
+def test_login_locked_after_max_failed_attempts(mock_user):
+    with patch('api.src.login.get_user_by_username', return_value=mock_user):
+        _fail_logins(LOGIN_MAX_FAILED_ATTEMPTS)
+        response = client.post("/login", data={"username": "testuser", "password": "correctpassword"})
+
+    assert response.status_code == 429
+    assert response.json() == {"detail": "Too many failed login attempts. Try again later."}
+    assert 0 < int(response.headers["Retry-After"]) <= LOGIN_LOCKOUT_SECONDS
+
+def test_login_lockout_is_per_username(mock_user):
+    with patch('api.src.login.get_user_by_username', return_value=mock_user):
+        _fail_logins(LOGIN_MAX_FAILED_ATTEMPTS, username="otheruser")
+        response = client.post("/login", data={"username": "testuser", "password": "correctpassword"})
+
+    assert response.status_code == 200
+
+def test_login_lockout_ignores_username_case(mock_user):
+    with patch('api.src.login.get_user_by_username', return_value=mock_user):
+        _fail_logins(LOGIN_MAX_FAILED_ATTEMPTS)
+        response = client.post("/login", data={"username": "TestUser", "password": "correctpassword"})
+
+    assert response.status_code == 429
+
+def test_successful_login_clears_failed_attempts(mock_user):
+    with patch('api.src.login.get_user_by_username', return_value=mock_user):
+        _fail_logins(LOGIN_MAX_FAILED_ATTEMPTS - 1)
+        assert client.post("/login", data={"username": "testuser", "password": "correctpassword"}).status_code == 200
+        _fail_logins(LOGIN_MAX_FAILED_ATTEMPTS - 1)
+        response = client.post("/login", data={"username": "testuser", "password": "correctpassword"})
+
+    assert response.status_code == 200
+
+def test_login_lockout_expires(mock_user):
+    with patch('api.src.login.get_user_by_username', return_value=mock_user), \
+         patch('api.src.login.time.monotonic', return_value=1000.0):
+        _fail_logins(LOGIN_MAX_FAILED_ATTEMPTS)
+        assert client.post("/login", data={"username": "testuser", "password": "correctpassword"}).status_code == 429
+
+    with patch('api.src.login.get_user_by_username', return_value=mock_user), \
+         patch('api.src.login.time.monotonic', return_value=1000.0 + LOGIN_LOCKOUT_SECONDS):
+        response = client.post("/login", data={"username": "testuser", "password": "correctpassword"})
+
+    assert response.status_code == 200
 
 def test_main_binds_configured_host():
     with patch('api.src.main.uvicorn.run') as mock_run, \

@@ -9,7 +9,7 @@ load_dotenv()
 from fastapi import FastAPI, HTTPException, Query, Depends
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
-from api.src.config import ACCESS_TOKEN_EXPIRE_MINUTES
+from api.src.config import ACCESS_TOKEN_EXPIRE_MINUTES, API_HOST
 from api.src.login import authenticate_user, create_access_token, get_current_user, get_user_by_username
 from api.src.models.auth import AuthenticatedUser, LoginResponse, RegisterRequest, RegisterResponse, User
 from api.src.games import get_games_for_sport
@@ -124,7 +124,7 @@ async def mlb_model_info(
 
 def main():
     configure(app)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=API_HOST, port=8000)
 
 if __name__ == "__main__":
     main()

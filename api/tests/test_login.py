@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 import pytest
 from api.src.config import ALGORITHM, SECRET_KEY
 from api.src.login import get_user_by_username
-from api.src.main import app
+from api.src.main import app, main
 from api.src.models.auth import AuthenticatedUser
 from api.src.models.tables import Users
 import bcrypt
@@ -91,6 +91,14 @@ def test_login_bcrypt_error(mock_user):
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Invalid username or password"}
+
+def test_main_binds_configured_host():
+    with patch('api.src.main.uvicorn.run') as mock_run, \
+         patch('api.src.main.configure'), \
+         patch('api.src.main.API_HOST', '192.0.2.10'):
+        main()
+
+    assert mock_run.call_args.kwargs["host"] == '192.0.2.10'
 
 def test_get_current_user_valid_token(mock_user):
     with patch('api.src.login.get_user_by_username', return_value=mock_user):

@@ -192,6 +192,8 @@ The PostgreSQL database includes the following key tables:
 
 9. From the root `betbot` directory, run the API server: `python3 -m api.src.main`
 
+   The server listens on `127.0.0.1:8000`, so it is not reachable from other machines on your network. To expose it deliberately, set `API_HOST` (for example `API_HOST = '0.0.0.0'`) in `api/.env`.
+
 ### Running Tests
 
 From the root `betbot` directory, run all tests and generate a coverage report:

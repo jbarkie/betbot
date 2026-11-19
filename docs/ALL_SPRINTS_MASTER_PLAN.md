@@ -41,7 +41,7 @@ promotion threshold. End-of-season availability alone does not make training saf
 
 - [ ] **Prediction transparency in the analytics modal** — The API returns `prediction_method`, `ml_model_name`, `ml_confidence`, `confidence_level` and `feature_importance`, and `models.ts` already declares all five on `AnalyticsResponse`, but `analytics-modal.component.ts` renders none of them. A user cannot tell an ML prediction from the rule-based fallback, even though the 0.55 confidence gate silently decides which one they get. (Supersedes the old "Frontend analytics integration" item, which claimed predictions were API-only — Sprint 1 shipped the modal.)
 - [ ] **NFL/NHL parity with MLB analytics** — Add ML-backed game analytics endpoints for NFL and NHL (currently only MLB has the ML prediction pipeline)
-- [ ] **NBA analytics endpoint** — Extend the analytics system to NBA games
+- [x] **Basic NBA analytics endpoint** — The NBA Analyze modal shows market-implied win probabilities from cached moneylines, not a trained NBA model.
 - [ ] **Model retraining automation** — Scheduled script or cron job to retrain MLB model as new game data accumulates
 - [ ] **User favorites/watchlist** — Allow authenticated users to bookmark games or teams
 

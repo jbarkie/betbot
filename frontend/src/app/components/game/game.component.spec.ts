@@ -2,9 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { of, throwError } from 'rxjs';
-import { AnalyticsService } from '../../services/analytics/analytics.service';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { environment } from '../../../environments/environment';
 import { Game } from '../models';
 import { GameComponent } from './game.component';
 
@@ -110,44 +109,50 @@ describe('GameComponent', () => {
       expect(button.nativeElement.textContent.trim()).toBe('Analyze');
     });
 
-    it('should call analyze method on button click', () => {
-      jest.spyOn(component, 'analyze');
-      const button = fixture.debugElement.query(By.css('button'));
-      button.nativeElement.click();
-      expect(component.analyze).toHaveBeenCalled();
-    });
+    it('shows an NBA moneyline error and opens analytics after a successful retry', async () => {
+      const nbaGame: Game = {
+        ...mockGame,
+        id: 'nba-1',
+        sport: 'NBA',
+        awayTeam: 'Los Angeles Lakers',
+        homeTeam: 'Boston Celtics',
+      };
+      Object.defineProperty(component, 'game', { get: () => () => nbaGame });
+      fixture.detectChanges();
 
-    it('should call analyticsService.analyze with correct parameters', async () => {
-      const analyticsService = TestBed.inject(AnalyticsService);
-      jest.spyOn(analyticsService, 'analyze').mockReturnValue(
-        of({
-          id: '1',
-          home_team: 'Boston Red Sox',
-          away_team: 'New York Yankees',
-          predicted_winner: 'Boston Red Sox',
-          win_probability: 0.65,
-        })
-      );
+      const http = TestBed.inject(HttpTestingController);
+      const analyzeButton: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="analyze-game"]');
+      const nbaUrl = `${environment.apiUrl}/analytics/nba/game?id=nba-1`;
 
-      await component.analyze();
+      analyzeButton.click();
+      fixture.detectChanges();
+      expect(analyzeButton.disabled).toBe(true);
+      http.expectOne(nbaUrl).flush(null, { status: 409, statusText: 'Conflict' });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[data-testid="analytics-error"]').textContent)
+        .toContain('Both moneylines');
+      expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+      expect(analyzeButton.disabled).toBe(false);
 
-      expect(analyticsService.analyze).toHaveBeenCalled();
-    });
-
-    it('should handle errors from analyticsService', async () => {
-      const analyticsService = TestBed.inject(AnalyticsService);
-      const mockError = new Error('Analysis failed');
-      jest
-        .spyOn(analyticsService, 'analyze')
-        .mockReturnValue(throwError(() => mockError));
-      jest.spyOn(console, 'error');
-
-      await component.analyze();
-
-      expect(console.error).toHaveBeenCalledWith(
-        'Error analyzing game:',
-        mockError
-      );
+      analyzeButton.click();
+      http.expectOne(nbaUrl).flush({
+        id: nbaGame.id,
+        home_team: nbaGame.homeTeam,
+        away_team: nbaGame.awayTeam,
+        predicted_winner: nbaGame.homeTeam,
+        win_probability: 0.58,
+        home_win_probability: 0.58,
+        away_win_probability: 0.42,
+        prediction_method: 'market_implied',
+      });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[data-testid="analytics-error"]')).toBeNull();
+      const dialog = fixture.nativeElement.querySelector('[role="dialog"]');
+      expect(dialog.textContent).toContain('Market Favorite');
+      expect(dialog.querySelector('[data-testid="home-win-pct"]').textContent).toContain('58.0%');
+      http.verify();
     });
   });
 

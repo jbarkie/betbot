@@ -82,6 +82,24 @@ describe('AnalyticsModalComponent', () => {
       expect(homePct.textContent).toContain('42.0%');
     });
 
+    it('shows an even NBA market without naming a favorite', () => {
+      const fixture = createFixture({
+        id: 'nba-2',
+        home_team: 'Boston Celtics',
+        away_team: 'Los Angeles Lakers',
+        predicted_winner: null,
+        win_probability: 0.5,
+        home_win_probability: 0.5,
+        away_win_probability: 0.5,
+        prediction_method: 'market_implied',
+      });
+      const modal: HTMLElement = fixture.nativeElement;
+      expect(modal.textContent).toContain('No favorite');
+      expect(modal.textContent).toContain('Market-Implied Win Probability');
+      expect(modal.querySelector('[data-testid="home-win-pct"]')?.textContent).toContain('50.0%');
+      expect(modal.querySelector('[data-testid="away-win-pct"]')?.textContent).toContain('50.0%');
+    });
+
     it('should render two probability bar segments', () => {
       const fixture = createFixture(mlAnalytics);
       const segments = fixture.nativeElement.querySelectorAll('.bg-secondary, .bg-primary');

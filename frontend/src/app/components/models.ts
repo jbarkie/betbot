@@ -70,7 +70,7 @@ export type AnalyticsResponse = {
   id: string;
   home_team: string;
   away_team: string;
-  predicted_winner: string;
+  predicted_winner: string | null;
   win_probability: number;
   home_analytics?: TeamAnalytics;
   away_analytics?: TeamAnalytics;
@@ -80,6 +80,6 @@ export type AnalyticsResponse = {
   ml_confidence?: string;
   home_win_probability?: number;
   away_win_probability?: number;
-  prediction_method?: 'machine_learning' | 'rule_based';
+  prediction_method?: 'machine_learning' | 'rule_based' | 'market_implied';
   feature_importance?: Record<string, number>;
 };

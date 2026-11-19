@@ -21,15 +21,19 @@ import { AnalyticsResponse } from '../models';
 
         <!-- Prediction -->
         <div class="bg-base-200 p-4 rounded-lg">
-          <h4 class="font-semibold text-base mb-2">Prediction</h4>
+          <h4 class="font-semibold text-base mb-2">
+            {{ marketImplied() ? 'Market Favorite' : 'Prediction' }}
+          </h4>
           <p class="text-lg font-bold text-primary text-center">
-            {{ analytics().predicted_winner }}
+            {{ analytics().predicted_winner ?? 'No favorite' }}
           </p>
         </div>
 
         <!-- Win Probability Bar -->
         <div class="bg-base-200 p-4 rounded-lg">
-          <h4 class="font-semibold text-base mb-3">Win Probability</h4>
+          <h4 class="font-semibold text-base mb-3">
+            {{ marketImplied() ? 'Market-Implied Win Probability' : 'Win Probability' }}
+          </h4>
           <div class="flex justify-between text-sm font-medium mb-1">
             <span data-testid="away-win-pct">
               {{ awayPct() }}%
@@ -57,7 +61,9 @@ import { AnalyticsResponse } from '../models';
         <!-- Key Factors -->
         @if (analytics().key_factors) {
           <div class="bg-base-200 p-4 rounded-lg">
-            <h4 class="font-semibold text-base mb-2">Key Factors</h4>
+            <h4 class="font-semibold text-base mb-2">
+              {{ marketImplied() ? 'Moneyline Details' : 'Key Factors' }}
+            </h4>
             <ul class="space-y-1">
               @for (entry of keyFactorEntries(); track entry[0]) {
                 <li class="text-sm text-base-content/70">{{ entry[1] }}</li>
@@ -77,6 +83,8 @@ import { AnalyticsResponse } from '../models';
 export class AnalyticsModalComponent {
   analytics = input.required<AnalyticsResponse>();
   close = output<void>();
+
+  marketImplied = computed(() => this.analytics().prediction_method === 'market_implied');
 
   homePct = computed(() => {
     const a = this.analytics();

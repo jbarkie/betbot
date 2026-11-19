@@ -2,6 +2,8 @@ from dotenv import load_dotenv
 
 from api.src.mlb_analytics import get_mlb_game_analytics
 from api.src.models.mlb_analytics import MlbAnalyticsResponse, ModelInfoResponse
+from api.src.models.nba_analytics import NbaAnalyticsResponse
+from api.src.nba_analytics import get_nba_game_analytics
 from api.src.ml_model_service import get_mlb_model_service
 from api.src.models.settings import SettingsRequest, SettingsResponse
 from api.src.settings import get_user_settings, update_user_settings
@@ -95,6 +97,13 @@ async def nhl_games(
     date: str = Query(..., description="Date in YYYY-MM-DD format")
 ):
     return await get_games_for_sport(date, "NHL", "icehockey_nhl")
+
+@app.get("/analytics/nba/game", response_model=NbaAnalyticsResponse)
+def nba_game_analytics(
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    id: str = Query(..., description="Game ID")
+):
+    return get_nba_game_analytics(id)
 
 @app.get("/analytics/mlb/game", response_model=MlbAnalyticsResponse)
 async def mlb_game_analytics(

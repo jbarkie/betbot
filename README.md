@@ -8,6 +8,7 @@ BetBot is a full-stack sports betting application that allows users to view and 
 - User authentication with JWT tokens
 - Intelligent odds caching system to minimize external API calls
 - Machine learning-powered game predictions for MLB (additional sports coming soon)
+- NBA moneyline analytics in the same game-card Analyze modal as MLB
 - Automated daily data updates for MLB team statistics and schedules
 - Advanced MLB analytics including team momentum, offensive/defensive stats, and head-to-head matchups
 - Trained ML models with 54-60% prediction accuracy using RandomForest, Logistic Regression, and XGBoost
@@ -114,6 +115,12 @@ The backend API is responsible for user authentication, fetching the latest odds
 - `GET /mlb/games?date={yyyy-mm-dd}`: Returns MLB games and odds for a given date
 - `GET /nfl/games?date={yyyy-mm-dd}`: Returns NFL games and odds for a given date
 - `GET /nhl/games?date={yyyy-mm-dd}`: Returns NHL games and odds for a given date
+
+#### NBA Analytics (Market Implied)
+
+- `GET /analytics/nba/game?id={game_id}`: Requires authentication and a game ID from `/nba/games`. Returns the market favorite (or `null` for an even market), odds-derived win probabilities for both sides, and the quoted moneylines.
+- The NBA **Analyze** button uses cached FanDuel moneylines and normalizes their implied probabilities to sum to 100%. This is not an independent model prediction and does not fetch fresh odds.
+- An unknown or non-NBA game returns `404`. An NBA game without two usable moneylines returns `409` and shows a message on the game card.
 
 #### MLB Analytics (Machine Learning)
 

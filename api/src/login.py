@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta, timezone
+import math
+import time
 from typing import Union
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
@@ -11,6 +13,37 @@ import bcrypt
 from jwt.exceptions import InvalidTokenError
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+LOGIN_MAX_FAILED_ATTEMPTS = 5
+LOGIN_LOCKOUT_SECONDS = 15 * 60
+
+# Failed login times keyed by (client address, username). Held in memory, so it
+# is per process and resets on restart, which suits the single-process server.
+_failed_logins = {}
+
+def _recent_failures(key, now):
+    attempts = [t for t in _failed_logins.get(key, []) if now - t < LOGIN_LOCKOUT_SECONDS]
+    if attempts:
+        _failed_logins[key] = attempts
+    else:
+        _failed_logins.pop(key, None)
+    return attempts
+
+def login_retry_after(client_host: str, username: str) -> int:
+    """Seconds until this client may try this username again; 0 when allowed."""
+    now = time.monotonic()
+    attempts = _recent_failures((client_host, username.lower()), now)
+    if len(attempts) < LOGIN_MAX_FAILED_ATTEMPTS:
+        return 0
+    return max(1, math.ceil(LOGIN_LOCKOUT_SECONDS - (now - attempts[-LOGIN_MAX_FAILED_ATTEMPTS])))
+
+def record_failed_login(client_host: str, username: str):
+    key = (client_host, username.lower())
+    now = time.monotonic()
+    _failed_logins[key] = _recent_failures(key, now) + [now]
+
+def clear_failed_logins(client_host: str, username: str):
+    _failed_logins.pop((client_host, username.lower()), None)
 
 def get_user_by_username(username: str) -> AuthenticatedUser:
     session = connect_to_db()

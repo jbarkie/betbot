@@ -66,20 +66,37 @@ export type TeamAnalytics = {
   momentum_score?: number;
 };
 
+type NbaRecord = { wins: number; losses: number };
+
+type NbaTeamResults = {
+  season_record: NbaRecord;
+  recent_record: NbaRecord;
+  venue_record: NbaRecord;
+  head_to_head_record: NbaRecord;
+  season_margin: number | null;
+  recent_margin: number | null;
+  latest_result: string | null;
+};
+
 export type AnalyticsResponse = {
   id: string;
   home_team: string;
   away_team: string;
   predicted_winner: string | null;
-  win_probability: number;
+  win_probability: number | null;
   home_analytics?: TeamAnalytics;
   away_analytics?: TeamAnalytics;
-  key_factors?: Record<string, string>;
+  key_factors?: Record<string, string> | null;
   confidence_level?: string;
   ml_model_name?: string;
   ml_confidence?: string;
-  home_win_probability?: number;
-  away_win_probability?: number;
+  home_win_probability?: number | null;
+  away_win_probability?: number | null;
   prediction_method?: 'machine_learning' | 'rule_based' | 'market_implied';
   feature_importance?: Record<string, number>;
+  team_comparison?: {
+    before: string;
+    home: NbaTeamResults;
+    away: NbaTeamResults;
+  } | null;
 };

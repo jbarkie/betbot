@@ -109,7 +109,7 @@ describe('GameComponent', () => {
       expect(button.nativeElement.textContent.trim()).toBe('Analyze');
     });
 
-    it('shows an NBA moneyline error and opens analytics after a successful retry', async () => {
+    it('shows a request error and opens NBA analytics after a successful retry', async () => {
       const nbaGame: Game = {
         ...mockGame,
         id: 'nba-1',
@@ -127,11 +127,11 @@ describe('GameComponent', () => {
       analyzeButton.click();
       fixture.detectChanges();
       expect(analyzeButton.disabled).toBe(true);
-      http.expectOne(nbaUrl).flush(null, { status: 409, statusText: 'Conflict' });
+      http.expectOne(nbaUrl).flush(null, { status: 500, statusText: 'Server Error' });
       await fixture.whenStable();
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector('[data-testid="analytics-error"]').textContent)
-        .toContain('Both moneylines');
+        .toContain('Game analytics are unavailable');
       expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
       expect(analyzeButton.disabled).toBe(false);
 

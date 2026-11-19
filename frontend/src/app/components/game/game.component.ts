@@ -1,5 +1,4 @@
 import { Component, inject, input, signal } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
 import { Game, AnalyticsResponse } from '../models';
 import { AnalyticsService } from '../../services/analytics/analytics.service';
 import { firstValueFrom } from 'rxjs';
@@ -106,12 +105,8 @@ export class GameComponent {
         )
       );
       this.analyticsData.set(response);
-    } catch (error) {
-      this.analyticsError.set(
-        error instanceof HttpErrorResponse && error.status === 409
-          ? 'Both moneylines are needed to analyze this game.'
-          : 'Game analytics are unavailable. Please try again.'
-      );
+    } catch {
+      this.analyticsError.set('Game analytics are unavailable. Please try again.');
     } finally {
       this.isAnalyzing.set(false);
     }

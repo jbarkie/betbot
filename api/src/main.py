@@ -99,11 +99,11 @@ async def nhl_games(
     return await get_games_for_sport(date, "NHL", "icehockey_nhl")
 
 @app.get("/analytics/nba/game", response_model=NbaAnalyticsResponse)
-def nba_game_analytics(
+async def nba_game_analytics(
     current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
     id: str = Query(..., description="Game ID")
 ):
-    return get_nba_game_analytics(id)
+    return await get_nba_game_analytics(id)
 
 @app.get("/analytics/mlb/game", response_model=MlbAnalyticsResponse)
 async def mlb_game_analytics(

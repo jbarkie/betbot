@@ -17,6 +17,7 @@ class NbaTeamResults(BaseModel):
     season_margin: Optional[float]
     recent_margin: Optional[float]
     latest_result: Optional[date]
+    incomplete: bool
 
 
 class NbaTeamComparison(BaseModel):

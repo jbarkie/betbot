@@ -76,6 +76,7 @@ type NbaTeamResults = {
   season_margin: number | null;
   recent_margin: number | null;
   latest_result: string | null;
+  incomplete: boolean;
 };
 
 export type AnalyticsResponse = {

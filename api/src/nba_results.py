@@ -38,16 +38,23 @@ class _Result(NamedTuple):
     margin: int
 
 
+class _Schedule(NamedTuple):
+    results: list[_Result]
+    skipped_days: set[date]
+
+
 # At most one season per team, shared by matchup requests in this process.
-_cache: dict[str, tuple[int, float, list[_Result]]] = {}
+_cache: dict[str, tuple[int, float, _Schedule]] = {}
+_inflight: dict[tuple[asyncio.AbstractEventLoop, str, int], asyncio.Task[Optional[_Schedule]]] = {}
 
 
-def _parse_schedule(payload: dict, team: str, season: int) -> list[_Result]:
+def _parse_schedule(payload: dict, team: str, season: int) -> _Schedule:
     requested = payload["requestedSeason"]
     if requested["year"] != season or requested["type"] != 2 or payload["team"]["abbreviation"].lower() != team:
         raise ValueError("Unexpected ESPN team or regular season")
 
     results = {}
+    tied_finals = {}
     for event in payload["events"]:
         if event["seasonType"]["type"] != 2:
             continue
@@ -62,31 +69,52 @@ def _parse_schedule(payload: dict, team: str, season: int) -> list[_Result]:
         side, opponent = (first, second) if first["team"]["abbreviation"].lower() == team else (second, first)
         if side["team"]["abbreviation"].lower() != team:
             raise ValueError("ESPN result missing the requested team")
+        event_id = event["id"]
+        day = datetime.fromisoformat(event["date"].replace("Z", "+00:00")).astimezone(_EASTERN).date()
         margin = int(side["score"]["value"]) - int(opponent["score"]["value"])
         if not margin:
-            raise ValueError("Tied final score in ESPN NBA results")
-        day = datetime.fromisoformat(event["date"].replace("Z", "+00:00")).astimezone(_EASTERN).date()
+            logger.warning("Skipping tied ESPN NBA final %s in %s season %s", event_id, team, season)
+            tied_finals[event_id] = day
+            continue
         venue = "neutral" if competition["neutralSite"] else side["homeAway"]
-        results[event["id"]] = _Result(day, opponent["team"]["abbreviation"].lower(), venue, margin)
+        results[event_id] = _Result(day, opponent["team"]["abbreviation"].lower(), venue, margin)
 
-    return sorted(results.values(), key=lambda result: result.day, reverse=True)
+    return _Schedule(
+        sorted(results.values(), key=lambda result: result.day, reverse=True),
+        {day for event_id, day in tied_finals.items() if event_id not in results},
+    )
 
 
-async def _load_schedule(client: httpx.AsyncClient, team: str, season: int) -> Optional[list[_Result]]:
+async def _fetch_schedule(team: str, season: int) -> Optional[_Schedule]:
+    try:
+        async with httpx.AsyncClient(timeout=_LOOKUP_SECONDS) as client:
+            response = await asyncio.wait_for(
+                client.get(_SCHEDULE_URL.format(team=team), params={"season": season, "seasontype": 2}),
+                timeout=_LOOKUP_SECONDS,
+            )
+        response.raise_for_status()
+        schedule = _parse_schedule(response.json(), team, season)
+    except (asyncio.TimeoutError, httpx.HTTPError, AttributeError, IndexError, KeyError, TypeError, ValueError) as exc:
+        logger.warning("ESPN NBA results unavailable for %s season %s: %s", team, season, exc)
+        return None
+
+    _cache[team] = (season, monotonic() + _CACHE_SECONDS, schedule)
+    return schedule
+
+
+async def _load_schedule(team: str, season: int) -> Optional[_Schedule]:
     cached = _cache.get(team)
     if cached is not None and cached[0] == season and cached[1] > monotonic():
         return cached[2]
 
-    try:
-        response = await client.get(_SCHEDULE_URL.format(team=team), params={"season": season, "seasontype": 2})
-        response.raise_for_status()
-        results = _parse_schedule(response.json(), team, season)
-    except (httpx.HTTPError, AttributeError, IndexError, KeyError, TypeError, ValueError) as exc:
-        logger.warning("ESPN NBA results unavailable for %s season %s: %s", team, season, exc)
-        return None
-
-    _cache[team] = (season, monotonic() + _CACHE_SECONDS, results)
-    return results
+    key = (asyncio.get_running_loop(), team, season)
+    task = _inflight.get(key)
+    if task is None:
+        task = asyncio.create_task(_fetch_schedule(team, season))
+        _inflight[key] = task
+        task.add_done_callback(lambda _: _inflight.pop(key))
+    # One caller's cancellation or deadline must not cancel another caller's lookup.
+    return await asyncio.shield(task)
 
 
 def _record(results: list[_Result]) -> NbaRecord:
@@ -94,8 +122,8 @@ def _record(results: list[_Result]) -> NbaRecord:
     return NbaRecord(wins=wins, losses=len(results) - wins)
 
 
-def _summarize(results: list[_Result], before: date, venue: str, opponent: str) -> NbaTeamResults:
-    season = [result for result in results if result.day < before]
+def _summarize(schedule: _Schedule, before: date, venue: str, opponent: str) -> NbaTeamResults:
+    season = [result for result in schedule.results if result.day < before]
     recent = season[:10]
     return NbaTeamResults(
         season_record=_record(season),
@@ -105,6 +133,7 @@ def _summarize(results: list[_Result], before: date, venue: str, opponent: str) 
         season_margin=sum(result.margin for result in season) / len(season) if season else None,
         recent_margin=sum(result.margin for result in recent) / len(recent) if recent else None,
         latest_result=season[0].day if season else None,
+        incomplete=any(day < before for day in schedule.skipped_days),
     )
 
 
@@ -116,11 +145,10 @@ async def get_nba_team_comparison(home_team: str, away_team: str, game_day: date
     # ESPN uses the ending year (e.g. 2027 for 2026–27).
     season = game_day.year + (game_day.month >= 7)
     try:
-        async with httpx.AsyncClient(timeout=_LOOKUP_SECONDS) as client:
-            home, away = await asyncio.wait_for(
-                asyncio.gather(_load_schedule(client, home_slug, season), _load_schedule(client, away_slug, season)),
-                timeout=_LOOKUP_SECONDS,
-            )
+        home, away = await asyncio.wait_for(
+            asyncio.gather(_load_schedule(home_slug, season), _load_schedule(away_slug, season)),
+            timeout=_LOOKUP_SECONDS,
+        )
     except asyncio.TimeoutError:
         logger.warning("ESPN NBA results deadline exceeded for %s at %s", away_team, home_team)
         return None

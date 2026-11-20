@@ -120,7 +120,8 @@ The backend API is responsible for user authentication, fetching the latest odds
 
 - `GET /analytics/nba/game?id={game_id}`: Requires authentication and a game ID from `/nba/games`. Unknown and non-NBA game IDs return `404`.
 - **Team Form & Matchup** compares season and last-10 win–loss records, road/home and head-to-head records, and average point margins. It uses completed [ESPN NBA](https://www.espn.com/nba/scoreboard) regular-season games strictly before the matchup's Eastern calendar date. The NBA Cup championship is excluded; neutral-site games do not count in road/home splits.
-- ESPN schedules are cached in memory for 15 minutes. The lookup has a four-second budget and requires no API key. If the results feed is unavailable, `team_comparison` is `null` and market analytics still work.
+- ESPN schedules are cached in memory for 15 minutes; concurrent requests on the API worker share an in-flight fetch for the same team and season. The lookup has a four-second budget and requires no API key. If the results feed is unavailable, `team_comparison` is `null` and market analytics still work.
+- A tied final score is invalid in the NBA. If ESPN reports one, the app skips that result, retains valid results, and warns that the comparison may be incomplete when the skipped game falls before the matchup date.
 - The market panel normalizes both cached FanDuel moneylines to 100%. These are market-implied probabilities, not an independent model prediction. If either price is unavailable, the market probabilities are `null` and team results can still be shown.
 
 #### MLB Analytics (Machine Learning)

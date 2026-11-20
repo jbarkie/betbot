@@ -1,4 +1,5 @@
-from datetime import datetime
+import asyncio
+from datetime import date, datetime
 from functools import partial
 
 import httpx
@@ -142,6 +143,23 @@ def test_nba_team_comparison_uses_prior_regular_season_finals(nba_client):
     assert away["recent_margin"] == -2.5
 
 
+@pytest.mark.parametrize("tip, incomplete", [
+    ("2026-11-18T01:30Z", True),   # Nov 17 Eastern, before the matchup date.
+    ("2026-11-19T01:30Z", False),  # Nov 18 Eastern, on the matchup date.
+])
+def test_nba_tied_final_preserves_valid_results(nba_client, espn, tip, incomplete):
+    schedules, _ = espn
+    schedules["bos"].append(_game("bad-final", tip, "BOS", "PHI", 100, 100))
+
+    response = nba_client("-150", "+130")
+    assert response.status_code == 200
+    home = response.json()["team_comparison"]["home"]
+    assert home["season_record"] == {"wins": 9, "losses": 2}
+    assert home["season_margin"] == pytest.approx(65 / 11)
+    assert home["incomplete"] is incomplete
+    assert response.json()["team_comparison"]["away"]["incomplete"] is False
+
+
 def test_nba_source_failure_preserves_market(nba_client, espn):
     schedules, _ = espn
     del schedules["bos"]
@@ -157,6 +175,56 @@ def test_nba_schedule_is_reused_for_repeat_analyses(nba_client, espn):
     second = nba_client("-150", "+130").json()
     assert second["team_comparison"] == first["team_comparison"]
     assert sorted(requests) == ["bos", "lal"]
+
+
+@pytest.mark.parametrize("cancel_first", [False, True])
+async def test_concurrent_matchups_share_team_fetch(monkeypatch, cancel_first):
+    boston_started, other_matchup_started, release_boston = (asyncio.Event() for _ in range(3))
+    requests = []
+
+    async def scoreboard(request):
+        team = request.url.path.split("/")[-2]
+        requests.append(team)
+        events = []
+        if team == "bos":
+            boston_started.set()
+            await release_boston.wait()
+            events = [_game("result", "2026-11-17T20:00Z", "BOS", "NY", 110, 100)]
+        elif team == "gs":
+            other_matchup_started.set()
+        return httpx.Response(200, json={
+            "requestedSeason": {"year": 2027, "type": 2},
+            "team": {"abbreviation": team.upper()},
+            "events": events,
+        })
+
+    monkeypatch.setattr(nba_results, "_cache", {})
+    monkeypatch.setattr(nba_results.httpx, "AsyncClient",
+                        partial(httpx.AsyncClient, transport=httpx.MockTransport(scoreboard)))
+
+    matchup_date = date(2026, 11, 18)
+    first = asyncio.create_task(nba_results.get_nba_team_comparison(
+        "Boston Celtics", "Los Angeles Lakers", matchup_date,
+    ))
+    try:
+        await asyncio.wait_for(boston_started.wait(), timeout=2)
+        second = asyncio.create_task(nba_results.get_nba_team_comparison(
+            "Boston Celtics", "Golden State Warriors", matchup_date,
+        ))
+        # The second matchup's other team can reach ESPN while Boston is in flight.
+        await asyncio.wait_for(other_matchup_started.wait(), timeout=2)
+        if cancel_first:
+            first.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await first
+    finally:
+        release_boston.set()
+
+    comparison = await second
+    assert comparison.home.season_record.wins == 1
+    if not cancel_first:
+        assert (await first).home == comparison.home
+    assert sorted(requests) == ["bos", "gs", "lal"]
 
 
 @pytest.mark.parametrize("sport, game_id", [("MLB", "odds-1"), ("NBA", "unknown")])

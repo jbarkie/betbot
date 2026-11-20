@@ -109,6 +109,7 @@ describe('AnalyticsModalComponent', () => {
         season_margin: -3.2,
         recent_margin: -3.2,
         latest_result: '2026-11-16',
+        incomplete: false,
       };
       const fixture = createFixture({
         id: 'nba-3',
@@ -124,6 +125,7 @@ describe('AnalyticsModalComponent', () => {
             ...lakers,
             season_record: { wins: 10, losses: 2 },
             season_margin: 12.5,
+            incomplete: true,
           },
         },
       });
@@ -131,6 +133,8 @@ describe('AnalyticsModalComponent', () => {
       const comparison = modal.querySelector('[data-testid="nba-team-comparison"]')!;
       expect(comparison.textContent).toContain('ESPN NBA scores');
       expect(comparison.textContent).toContain('Nov 18, 2026');
+      expect(comparison.querySelector('[data-testid="nba-incomplete-results"]')?.textContent)
+        .toContain('Records and averages may be incomplete');
       const seasonRow = Array.from(comparison.querySelectorAll('tr'))
         .find(row => row.querySelector('th')?.textContent === 'Season record');
       expect(Array.from(seasonRow!.querySelectorAll('td'), cell => cell.textContent?.trim()))

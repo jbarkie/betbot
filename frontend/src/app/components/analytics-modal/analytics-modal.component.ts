@@ -28,6 +28,11 @@ import { AnalyticsResponse } from '../models';
                 Completed regular-season games before {{ comparison.before | date:'MMM d, y' }}
                 (Eastern). Source: <a class="link" href="https://www.espn.com/nba/scoreboard">ESPN NBA scores</a>.
               </p>
+              @if (comparison.away.incomplete || comparison.home.incomplete) {
+                <p class="text-sm font-medium mb-2" data-testid="nba-incomplete-results">
+                  Records and averages may be incomplete. ESPN reported a tied final score that was excluded.
+                </p>
+              }
               <table class="table table-sm">
                 <thead>
                   <tr>

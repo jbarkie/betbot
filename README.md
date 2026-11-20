@@ -8,6 +8,7 @@ BetBot is a full-stack sports betting application that allows users to view and 
 - User authentication with JWT tokens
 - Intelligent odds caching system to minimize external API calls
 - Machine learning-powered game predictions for MLB (additional sports coming soon)
+- NBA team form, matchup stats, and moneyline analytics in the same game-card Analyze modal as MLB
 - Automated daily data updates for MLB team statistics and schedules
 - Advanced MLB analytics including team momentum, offensive/defensive stats, and head-to-head matchups
 - Trained ML models with 54-60% prediction accuracy using RandomForest, Logistic Regression, and XGBoost
@@ -114,6 +115,14 @@ The backend API is responsible for user authentication, fetching the latest odds
 - `GET /mlb/games?date={yyyy-mm-dd}`: Returns MLB games and odds for a given date
 - `GET /nfl/games?date={yyyy-mm-dd}`: Returns NFL games and odds for a given date
 - `GET /nhl/games?date={yyyy-mm-dd}`: Returns NHL games and odds for a given date
+
+#### NBA Analytics (Team Results and Market Odds)
+
+- `GET /analytics/nba/game?id={game_id}`: Requires authentication and a game ID from `/nba/games`. Unknown and non-NBA game IDs return `404`.
+- **Team Form & Matchup** compares season and last-10 win–loss records, road/home and head-to-head records, and average point margins. It uses completed [ESPN NBA](https://www.espn.com/nba/scoreboard) regular-season games strictly before the matchup's Eastern calendar date. The NBA Cup championship is excluded; neutral-site games do not count in road/home splits.
+- ESPN schedules are cached in memory for 15 minutes; concurrent requests on the API worker share an in-flight fetch for the same team and season. The lookup has a four-second budget and requires no API key. If the results feed is unavailable, `team_comparison` is `null` and market analytics still work.
+- A tied final score is invalid in the NBA. If ESPN reports one, the app skips that result, retains valid results, and warns that the comparison may be incomplete when the skipped game falls before the matchup date.
+- The market panel normalizes both cached FanDuel moneylines to 100%. These are market-implied probabilities, not an independent model prediction. If either price is unavailable, the market probabilities are `null` and team results can still be shown.
 
 #### MLB Analytics (Machine Learning)
 

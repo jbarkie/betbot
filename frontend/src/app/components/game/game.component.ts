@@ -1,5 +1,5 @@
 import { Component, inject, input, signal } from '@angular/core';
-import { AnalyticsRequest, Game, AnalyticsResponse } from '../models';
+import { Game, AnalyticsResponse } from '../models';
 import { AnalyticsService } from '../../services/analytics/analytics.service';
 import { firstValueFrom } from 'rxjs';
 import { GameTimePipe } from '../../pipes/game-time.pipe';
@@ -37,6 +37,7 @@ import { AnalyticsModalComponent } from '../analytics-modal/analytics-modal.comp
         <div class="card-actions justify-end">
           <button
             (click)="analyze()"
+            data-testid="analyze-game"
             class="btn btn-primary"
             [disabled]="isAnalyzing()"
           >
@@ -45,6 +46,11 @@ import { AnalyticsModalComponent } from '../analytics-modal/analytics-modal.comp
             } Analyze
           </button>
         </div>
+        @if (analyticsError(); as message) {
+        <p role="alert" data-testid="analytics-error" class="text-sm text-error">
+          {{ message }}
+        </p>
+        }
       </div>
       <figure>
         <img
@@ -74,6 +80,7 @@ export class GameComponent {
 
   isAnalyzing = signal(false);
   analyticsData = signal<AnalyticsResponse | null>(null);
+  analyticsError = signal<string | null>(null);
 
   getImageSrc(sport: string, teamString: string) {
     const teamName = this.normalizeTeamName(teamString);
@@ -89,17 +96,17 @@ export class GameComponent {
     if (this.isAnalyzing()) return;
 
     this.isAnalyzing.set(true);
+    this.analyticsError.set(null);
     try {
       const response = await firstValueFrom(
         this.analyticsService.analyze(
-          { gameId: this.game().id } as AnalyticsRequest,
+          { gameId: this.game().id },
           this.game().sport
         )
       );
       this.analyticsData.set(response);
-    } catch (error) {
-      console.error('Error analyzing game:', error);
-      // You could add a toast notification here for error handling
+    } catch {
+      this.analyticsError.set('Game analytics are unavailable. Please try again.');
     } finally {
       this.isAnalyzing.set(false);
     }

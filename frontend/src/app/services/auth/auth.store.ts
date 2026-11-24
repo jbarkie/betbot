@@ -87,6 +87,8 @@ export const AuthStore = signalStore(
           error: error instanceof Error ? error.message : 'Login failed',
           shouldShowLoginModal: true,
         });
+        // Rethrow so the caller can show a message for the HTTP status.
+        throw error;
       }
     },
 

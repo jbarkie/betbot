@@ -167,7 +167,7 @@ describe('AuthStore', () => {
       expect(store.shouldShowLoginModal()).toEqual(false);
     });
 
-    it('should set error when login fails', async () => {
+    it('should set error and rethrow when login fails', async () => {
       const mockRequest: LoginRequest = {
         username: 'test@example.com',
         password: 'password123',
@@ -176,7 +176,7 @@ describe('AuthStore', () => {
 
       loginService.login.mockReturnValue(throwError(() => mockError));
 
-      await store.login(mockRequest);
+      await expect(store.login(mockRequest)).rejects.toBe(mockError);
 
       expect(loginService.login).toHaveBeenCalledWith(mockRequest);
       expect(store.isAuthenticated()).toEqual(false);
@@ -241,7 +241,7 @@ describe('AuthStore', () => {
 
       loginService.login.mockReturnValue(throwError(() => mockError));
 
-      await store.login(mockRequest);
+      await expect(store.login(mockRequest)).rejects.toBe(mockError);
 
       expect(store.hasError()).toEqual(true);
     });

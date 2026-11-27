@@ -23,11 +23,13 @@ experiments batch better into Sprint 9 against a complete season.
 - [ ] **Data-freshness guard in training** — `train_mlb_model.py` should warn when the newest completed game is more than N days old, so a stale database cannot silently produce a stale model.
 - [ ] **Alembic migration CI check** — Fail CI if unapplied migrations exist on the branch. Promoted from Low: PR #41 shipped a migration, and the reviewer could not confirm from CI alone that it applied cleanly.
 
-### Sprint 9 Candidates — Model Accuracy (blocked on data correctness)
+### Deferred MLB Model Accuracy Candidates (blocked on data correctness)
 
 As of 2026-10-22, complete the proposed data-correctness work below before these
 experiments. The historical v3.3 score of 56.44% is unvalidated and is not a
 promotion threshold. End-of-season availability alone does not make training safe.
+These were once Sprint 9 candidates. Sprint 9 instead delivered NBA analytics;
+the MLB work remains outside its scope.
 
 - [ ] **Full-season v3.4 retrain** — As of the 2026-09-10 refinement, raw completed-game counts had grown from 6,909 on 2026-08-11 to 7,313 (+5.8%). Separately, v3.3 used 6,750 games after training-data filters (5,400 train / 1,350 test); recount eligible samples before retraining. Defer the next retrain until the complete 2026 season to avoid repeating the work shortly afterward. This is a scheduling choice, not evidence that an interim retrain would fail to improve the model: the ~1.35pp standard error describes held-out accuracy uncertainty and cannot be compared with dataset growth.
 - [ ] **XGBoost re-evaluation (≥ 2,000 games)** — Gate long cleared: 7,313 completed games total, 2,193 in 2026 as of 2026-09-10. Re-run `--hyperparameter-search` against the v3.3 baseline of 56.44% (AUC 0.5708) with 32 features available. v4.0 tuned params are the starting point.
@@ -41,7 +43,7 @@ promotion threshold. End-of-season availability alone does not make training saf
 
 - [ ] **Prediction transparency in the analytics modal** — The API returns `prediction_method`, `ml_model_name`, `ml_confidence`, `confidence_level` and `feature_importance`, and `models.ts` already declares all five on `AnalyticsResponse`, but `analytics-modal.component.ts` renders none of them. A user cannot tell an ML prediction from the rule-based fallback, even though the 0.55 confidence gate silently decides which one they get. (Supersedes the old "Frontend analytics integration" item, which claimed predictions were API-only — Sprint 1 shipped the modal.)
 - [ ] **NFL/NHL parity with MLB analytics** — Add ML-backed game analytics endpoints for NFL and NHL (currently only MLB has the ML prediction pipeline)
-- [ ] **NBA analytics endpoint** — Extend the analytics system to NBA games
+- [x] **NBA analytics endpoint** — The NBA Analyze modal compares team form and matchup history using ESPN NBA results and shows market-implied probabilities separately.
 - [ ] **Model retraining automation** — Scheduled script or cron job to retrain MLB model as new game data accumulates
 - [ ] **User favorites/watchlist** — Allow authenticated users to bookmark games or teams
 
@@ -75,7 +77,8 @@ promotion threshold. End-of-season availability alone does not make training saf
 
 Goal: restore dependable collection and produce a reproducible regular-season
 evaluation using date-correct team statistics and verified game eligibility.
-This plan supersedes the older model-accuracy sequencing above. No sprint is active.
+This plan supersedes the older MLB model-accuracy sequencing above and is
+separate from Sprint 9's NBA work.
 Preparing and publishing this plan does not approve live writes, scheduler reload,
 model retraining, promotion, or the still-DRAFT retrospective follow-up.
 
@@ -186,6 +189,17 @@ historical; the follow-up supersedes its manual-backfill and latency limitations
 | Sprint 6 | 2026-05-04 | XGBoost hyperparameter tuning via RandomizedSearchCV; evaluate v4.0 vs RF baseline | PR #36 merged — retro complete |
 | Sprint 8 | 2026-09-26 → 2026-10-20 | Serving robustness and operations: non-blocking external I/O, scheduler skip alerting, training freshness guard, Alembic CI check | PR #48 merged 2026-10-21 UTC (`4a77fa2`); notification visibility confirmed 2026-09-26; backend/ML tests 203 → 314 (last full run 2026-10-15); retro approved, follow-up section still DRAFT. Open after merge: #52 (snapshot repair apply and older-row audit), #53 (pitcher budget review) |
 | Sprint 7 | 2026-05-20 → 2026-08-11 | Add starting pitcher ERA/WHIP/K9 as pre-game ML features; retrain RF baseline on 2026 data | PR #41 merged — 21/21 criteria met; v3.3 promoted (32 features); tests 132 → 203; retro complete |
+| Sprint 9 | Started 2026-11-18 | Deliver NBA matchup analytics and evaluate omp on an end-to-end feature | Implementation verified in [PR #58](https://github.com/jbarkie/betbot/pull/58); [retro approved](retrospectives/SPRINT_9_RETROSPECTIVE.md) |
+
+---
+
+## Sprint 9 — NBA Matchup Analytics
+
+**Goal:** Deliver a long-requested NBA analytics feature in the shared Analyze modal while evaluating omp on a substantial end-to-end task.
+
+**Scope and closeout:** [#60](https://github.com/jbarkie/betbot/issues/60) tracks the delivered scope on `feature/20261118_Sprint_9`: authenticate NBA analysis, show ESPN-backed pregame team form separately from FanDuel market probabilities, and retain useful data during source or feed-entry failures. No NBA model training or MLB data repair. The scope and issue were recorded at closeout, not approved as a pre-kickoff sprint plan.
+
+**Outcome:** [PR #58](https://github.com/jbarkie/betbot/pull/58) passed all six CI checks on the implementation revision `38da0ef`. Chromium verified two matchups with live ESPN data and the warning with a synthetic tied-final entry. The [retrospective](retrospectives/SPRINT_9_RETROSPECTIVE.md) and all three workflow recommendations were approved.
 
 ---
 
@@ -436,6 +450,11 @@ record their numbers in `.claude/sprint_status.json`, and commit per issue.
 ---
 
 ## Lessons Learned (Running Log)
+
+**Sprint 9**
+- Probe upstream reachability and result semantics before choosing a feed.
+- Test cache behavior with overlapping requests and cancellation, not just sequential reuse; reproduce independent review claims before acting on them.
+- Check that per-task billing is observable before planning against a dollar cap. If it is not, narrow the scope and record the cost as unknown.
 
 **Sprint 5 (2026-04-24)**
 - v1.0's 59.1% accuracy was never a fair comparison target — it trained on ~800 late-season homogeneous games. The gap vs. v2.x is a dataset composition artifact, not a model deficiency. Always specify the test split and comparison dataset in accuracy-related ACs.

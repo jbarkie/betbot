@@ -129,6 +129,10 @@ bash machine_learning/scripts/schedule_updates.sh
 - Serving latency and blocking: analytics DB queries and feature computation run via `asyncio.to_thread`, with sessions confined to the worker. Live pitcher HTTP runs on the API loop using HTTPX and one cancellable 5s budget across probable-starter and game-log calls (`LIVE_LOOKUP_BUDGET_SECONDS`). Completed pitcher results survive the deadline; missing values use training medians. This is a network budget, not a deadline for DB queries or model inference; cancellation/connection cleanup can add overhead. The synchronous historical collector retains 30s request timeouts. Results remain cached for 15 minutes. Odds API timeout still returns HTTP 504. Singleton creation and model loading are separately locked.
 
 
+### NBA Matchup Analytics
+
+- Authenticated `GET /analytics/nba/game?id={game_id}` in `api/src/nba_analytics.py` uses the odds-cache game ID. `api/src/nba_results.py` reads ESPN regular-season results strictly before the matchup's Eastern date. Same-team/season fetches are shared on the API worker, with a four-second lookup budget and 15-minute cache. A tied final is skipped and marks affected pregame stats incomplete. Cached FanDuel probabilities are separate, not a trained prediction.
+
 ## Environment Setup
 
 Create `api/.env`:
@@ -221,6 +225,10 @@ All development follows a sprint-based Agile/Scrum workflow.
 
 **Planning Estimates**:
 - Do not put per-task hour estimates in sprint plans; they did not predict effort (Sprint 8 retro). Keep relative card sizing, dependencies, and uncertainty. Use observed completion times if forecasting becomes useful
+- For work with a dollar cap, confirm per-task billing is observable at kickoff. If it is not, agree on a narrower scope and report cost as unknown rather than claiming the cap was met.
+
+**External Data Cards**:
+- Before building, probe the feed from its intended runtime environment and capture one representative response. Record the cutoff, exclusion rules, and fallback behavior in the card.
 
 **Commit Discipline**:
 - Commit per GitHub issue during development, not one large commit at Phase 6
@@ -234,3 +242,4 @@ All development follows a sprint-based Agile/Scrum workflow.
 **Testing Conventions**:
 - Use `data-testid` attributes on elements that tests need to query — prefer over CSS class selectors, which are brittle to style changes
 - When writing acceptance criteria for UI states (loading, error, display), specify which component owns the state: container components own loading/error; presentational components own display-only states
+- For changes to shared async state, cover overlapping requests in a regression test, not just sequential reuse. Check independent review findings against the code or a reproduction before acting.

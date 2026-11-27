@@ -129,6 +129,10 @@ bash machine_learning/scripts/schedule_updates.sh
 - Serving latency and blocking: analytics DB queries and feature computation run via `asyncio.to_thread`, with sessions confined to the worker. Live pitcher HTTP runs on the API loop using HTTPX and one cancellable 5s budget across probable-starter and game-log calls (`LIVE_LOOKUP_BUDGET_SECONDS`). Completed pitcher results survive the deadline; missing values use training medians. This is a network budget, not a deadline for DB queries or model inference; cancellation/connection cleanup can add overhead. The synchronous historical collector retains 30s request timeouts. Results remain cached for 15 minutes. Odds API timeout still returns HTTP 504. Singleton creation and model loading are separately locked.
 
 
+### NBA Matchup Analytics
+
+- Authenticated `GET /analytics/nba/game?id={game_id}` in `api/src/nba_analytics.py` uses the odds-cache game ID. `api/src/nba_results.py` reads ESPN regular-season results strictly before the matchup's Eastern date. Same-team/season fetches are shared on the API worker, with a four-second lookup budget and 15-minute cache. A tied final is skipped and marks affected pregame stats incomplete. Cached FanDuel probabilities are separate, not a trained prediction.
+
 ## Environment Setup
 
 Create `api/.env`:

@@ -1,7 +1,15 @@
 {
-  "current_sprint": null,
-  "phase": "Sprint 8 merged; no sprint active. Post-Sprint-8 data-correctness plan PROPOSED, awaiting approval. Recent repair/recovery awaiting explicit manifest approval; broader repair and retraining not authorized.",
-  "branch": null,
+  "current_sprint": 9,
+  "phase": "Active — Phase 7: retrospective DRAFT, awaiting approval before merge.",
+  "branch": "feature/20261118_Sprint_9",
+  "goal": "Deliver ESPN-backed NBA matchup analytics in BetBot's Analyze modal.",
+  "context": "The user wanted to evaluate omp on a hard end-to-end task by having it build NBA analytics, a feature they had been meaning to add for a while. Sprint 9 was recorded as active during closeout; the separate MLB data-correctness proposal is not part of it.",
+  "pr": 58,
+  "issues": [60],
+  "retrospective": {
+    "status": "DRAFT — awaiting approval",
+    "path": "docs/retrospectives/SPRINT_9_RETROSPECTIVE.md"
+  },
   "last_sprint": {
     "number": 8,
     "pr": 48,
@@ -49,9 +57,10 @@
       40
     ]
   },
-  "plan_location": "docs/ALL_SPRINTS_MASTER_PLAN.md#post-sprint-8-data-correctness-proposed--awaiting-approval",
+  "plan_location": "docs/ALL_SPRINTS_MASTER_PLAN.md#sprint-9--nba-matchup-analytics-active",
   "proposed_follow_up": {
     "status": "PROPOSED \u2014 awaiting approval",
+    "plan_location": "docs/ALL_SPRINTS_MASTER_PLAN.md#post-sprint-8-data-correctness-proposed--awaiting-approval",
     "cards": [
       "A: Game eligibility and reproducible audit",
       "B: Wider repair preparation and reviewed execution",

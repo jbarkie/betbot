@@ -109,6 +109,18 @@ describe('LoginComponent', () => {
     );
   });
 
+  it('should show a lockout message when login is rate limited', async () => {
+    const loginRequest = { username: 'username', password: 'password' };
+    component.loginForm.patchValue(loginRequest);
+    mockAuthStore.login?.mockRejectedValue({ status: 429 });
+
+    await component.onSubmit();
+
+    expect(mockToastService.showError).toHaveBeenCalledWith(
+      'Too many failed login attempts. Please try again in a few minutes.'
+    );
+  });
+
   it('should reset form after successful login', async () => {
     const loginRequest = { username: 'username', password: 'password' };
     component.loginForm.patchValue(loginRequest);

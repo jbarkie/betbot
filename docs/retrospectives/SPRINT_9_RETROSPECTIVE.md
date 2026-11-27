@@ -1,9 +1,11 @@
-# Sprint 9 Retrospective — DRAFT
+# Sprint 9 Retrospective
 
 **Date:** 2026-11-26  
 **Branch:** `feature/20261118_Sprint_9`  
 **PR:** [#58](https://github.com/jbarkie/betbot/pull/58) · **Tracking card:** [#60](https://github.com/jbarkie/betbot/issues/60)  
 **Goal:** Deliver long-requested NBA matchup analytics and evaluate omp on a hard, end-to-end task.
+
+The user approved all three recommendations; they are now part of the project sprint workflow in [CLAUDE.md](../../CLAUDE.md#sprint-workflow).
 
 ## Outcomes vs. acceptance checks
 
@@ -15,7 +17,7 @@ These checks were reconstructed from the user-requested scope and documented at 
 | Show useful pregame team form from current results | **Met.** Two Chromium matchups with live ESPN results showed season and last-10 records, road/home splits, head-to-head, margins, and latest included dates. API tests check the Eastern-date cutoff and exclude non-qualifying games. |
 | Keep market probabilities separate and retain useful data when one source fails | **Met.** Browser verification showed team form without a market; API tests verified the market remains available when ESPN fails. No trained NBA model or new paid feed. |
 | Fix both reproduced review findings | **Met.** Concurrent-matchup tests exercise fetch sharing and cancellation. API tests show a tied final preserves valid stats and only flags comparisons it could affect. Chromium verified the warning with a synthetic tied final; none was observed in the live feed. |
-| Verify before merge | **Met on implementation revision `38da0ef`.** All six GitHub checks passed. The final local fix run passed 20 focused API tests and 9 modal tests; these are not full-suite counts. PR remains open. |
+| Verify before merge | **Met on implementation revision `38da0ef`.** All six GitHub checks passed. The final local fix run passed 20 focused API tests and 9 modal tests; these are not full-suite counts. |
 
 ## Retrospective
 
@@ -25,10 +27,10 @@ These checks were reconstructed from the user-requested scope and documented at 
 - **Estimation and cost:** No card estimate was made. The user requested an approximately $25 ceiling, but the implementation's billed cost was not available, so compliance is unverified. Claude CLI reported about $0.13 for the independent review attempts only.
 - **Surprises and lessons:** The league-hosted endpoints probed from this environment returned 403s or timed out. ESPN's team schedule worked, but tagged the NBA Cup championship as regular-season data. Verify both reachability and inclusion rules before choosing a source. For shared caches, test overlapping requests and cancellation, not just sequential hits.
 
-## Improvement recommendations — awaiting approval
+## Improvement recommendations — approved and adopted
 
 1. For future external-data cards, record a live source sample and the cutoff, exclusion, and degradation rules before implementation.
 2. For future cache or concurrency changes, require an overlapping-request test and reproduce each external review claim before accepting it.
 3. When evaluating an agent against a dollar ceiling, check that per-task billing is observable before kickoff. Record unavailable cost as unknown, not as within budget.
 
-No open NBA implementation blocker was identified in this closeout. The separate MLB repair, scheduler recovery, and retraining remain outside scope and unapproved. After retro approval, finalize the record before merging; the PR will close #60 on merge.
+No open NBA implementation blocker was identified in this closeout. The separate MLB repair, scheduler recovery, and retraining remain outside scope and unapproved.

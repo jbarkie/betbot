@@ -77,8 +77,8 @@ the MLB work remains outside its scope.
 
 Goal: restore dependable collection and produce a reproducible regular-season
 evaluation using date-correct team statistics and verified game eligibility.
-This plan supersedes the older MLB model-accuracy sequencing above and remains
-separate from the active NBA sprint.
+This plan supersedes the older MLB model-accuracy sequencing above and is
+separate from Sprint 9's NBA work.
 Preparing and publishing this plan does not approve live writes, scheduler reload,
 model retraining, promotion, or the still-DRAFT retrospective follow-up.
 
@@ -189,17 +189,17 @@ historical; the follow-up supersedes its manual-backfill and latency limitations
 | Sprint 6 | 2026-05-04 | XGBoost hyperparameter tuning via RandomizedSearchCV; evaluate v4.0 vs RF baseline | PR #36 merged — retro complete |
 | Sprint 8 | 2026-09-26 → 2026-10-20 | Serving robustness and operations: non-blocking external I/O, scheduler skip alerting, training freshness guard, Alembic CI check | PR #48 merged 2026-10-21 UTC (`4a77fa2`); notification visibility confirmed 2026-09-26; backend/ML tests 203 → 314 (last full run 2026-10-15); retro approved, follow-up section still DRAFT. Open after merge: #52 (snapshot repair apply and older-row audit), #53 (pitcher budget review) |
 | Sprint 7 | 2026-05-20 → 2026-08-11 | Add starting pitcher ERA/WHIP/K9 as pre-game ML features; retrain RF baseline on 2026 data | PR #41 merged — 21/21 criteria met; v3.3 promoted (32 features); tests 132 → 203; retro complete |
-| Sprint 9 | Started 2026-11-18 | Deliver NBA matchup analytics and evaluate omp on an end-to-end feature | PR #58 open; implementation verified; [retro DRAFT](retrospectives/SPRINT_9_RETROSPECTIVE.md) |
+| Sprint 9 | Started 2026-11-18 | Deliver NBA matchup analytics and evaluate omp on an end-to-end feature | Implementation verified in [PR #58](https://github.com/jbarkie/betbot/pull/58); [retro approved](retrospectives/SPRINT_9_RETROSPECTIVE.md) |
 
 ---
 
-## Sprint 9 — NBA Matchup Analytics (Active)
+## Sprint 9 — NBA Matchup Analytics
 
 **Goal:** Deliver a long-requested NBA analytics feature in the shared Analyze modal while evaluating omp on a substantial end-to-end task.
 
 **Scope and closeout:** [#60](https://github.com/jbarkie/betbot/issues/60) tracks the delivered scope on `feature/20261118_Sprint_9`: authenticate NBA analysis, show ESPN-backed pregame team form separately from FanDuel market probabilities, and retain useful data during source or feed-entry failures. No NBA model training or MLB data repair. The scope and issue were recorded at closeout, not approved as a pre-kickoff sprint plan.
 
-**Outcome:** [PR #58](https://github.com/jbarkie/betbot/pull/58) passed all six CI checks on the implementation revision `38da0ef`. Chromium verified two matchups with live ESPN data and the warning with a synthetic tied-final entry. The PR is unmerged; the [retrospective](retrospectives/SPRINT_9_RETROSPECTIVE.md) is DRAFT pending approval.
+**Outcome:** [PR #58](https://github.com/jbarkie/betbot/pull/58) passed all six CI checks on the implementation revision `38da0ef`. Chromium verified two matchups with live ESPN data and the warning with a synthetic tied-final entry. The [retrospective](retrospectives/SPRINT_9_RETROSPECTIVE.md) and all three workflow recommendations were approved.
 
 ---
 
@@ -451,9 +451,10 @@ record their numbers in `.claude/sprint_status.json`, and commit per issue.
 
 ## Lessons Learned (Running Log)
 
-**Sprint 9 (2026-11-26; draft)**
+**Sprint 9**
 - Probe upstream reachability and result semantics before choosing a feed.
 - Test cache behavior with overlapping requests and cancellation, not just sequential reuse; reproduce independent review claims before acting on them.
+- Check that per-task billing is observable before planning against a dollar cap. If it is not, narrow the scope and record the cost as unknown.
 
 **Sprint 5 (2026-04-24)**
 - v1.0's 59.1% accuracy was never a fair comparison target — it trained on ~800 late-season homogeneous games. The gap vs. v2.x is a dataset composition artifact, not a model deficiency. Always specify the test split and comparison dataset in accuracy-related ACs.

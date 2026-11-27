@@ -225,6 +225,10 @@ All development follows a sprint-based Agile/Scrum workflow.
 
 **Planning Estimates**:
 - Do not put per-task hour estimates in sprint plans; they did not predict effort (Sprint 8 retro). Keep relative card sizing, dependencies, and uncertainty. Use observed completion times if forecasting becomes useful
+- For work with a dollar cap, confirm per-task billing is observable at kickoff. If it is not, agree on a narrower scope and report cost as unknown rather than claiming the cap was met.
+
+**External Data Cards**:
+- Before building, probe the feed from its intended runtime environment and capture one representative response. Record the cutoff, exclusion rules, and fallback behavior in the card.
 
 **Commit Discipline**:
 - Commit per GitHub issue during development, not one large commit at Phase 6
@@ -238,3 +242,4 @@ All development follows a sprint-based Agile/Scrum workflow.
 **Testing Conventions**:
 - Use `data-testid` attributes on elements that tests need to query — prefer over CSS class selectors, which are brittle to style changes
 - When writing acceptance criteria for UI states (loading, error, display), specify which component owns the state: container components own loading/error; presentational components own display-only states
+- For changes to shared async state, cover overlapping requests in a regression test, not just sequential reuse. Check independent review findings against the code or a reproduction before acting.

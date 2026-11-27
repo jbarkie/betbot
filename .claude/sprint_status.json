@@ -1,16 +1,18 @@
 {
-  "current_sprint": 9,
-  "phase": "Active — Phase 7: retrospective DRAFT, awaiting approval before merge.",
-  "branch": "feature/20261118_Sprint_9",
-  "goal": "Deliver ESPN-backed NBA matchup analytics in BetBot's Analyze modal.",
-  "context": "The user wanted to evaluate omp on a hard end-to-end task by having it build NBA analytics, a feature they had been meaning to add for a while. Sprint 9 was recorded as active during closeout; the separate MLB data-correctness proposal is not part of it.",
-  "pr": 58,
-  "issues": [60],
-  "retrospective": {
-    "status": "DRAFT — awaiting approval",
-    "path": "docs/retrospectives/SPRINT_9_RETROSPECTIVE.md"
-  },
+  "current_sprint": null,
+  "phase": "No sprint active. Sprint 9 retrospective approved; delivery tracked in PR #58. The separate MLB data-correctness proposal remains unapproved.",
+  "branch": null,
   "last_sprint": {
+    "number": 9,
+    "branch": "feature/20261118_Sprint_9",
+    "goal": "Deliver ESPN-backed NBA matchup analytics in BetBot's Analyze modal.",
+    "context": "The user chose long-requested NBA analytics as a hard end-to-end evaluation of omp. Sprint 9 was recorded as active during closeout; the separate MLB data-correctness proposal was not part of it.",
+    "pr": 58,
+    "issues": [60],
+    "retrospective": "docs/retrospectives/SPRINT_9_RETROSPECTIVE.md",
+    "retrospective_status": "Approved — recommendations 1–3 adopted"
+  },
+  "previous_sprint": {
     "number": 8,
     "pr": 48,
     "merge_commit": "4a77fa2",
@@ -46,18 +48,7 @@
       53
     ]
   },
-  "previous_sprint": {
-    "number": 7,
-    "pr": 41,
-    "merge_commit": "b76165e",
-    "issues": [
-      37,
-      38,
-      39,
-      40
-    ]
-  },
-  "plan_location": "docs/ALL_SPRINTS_MASTER_PLAN.md#sprint-9--nba-matchup-analytics-active",
+  "plan_location": "docs/ALL_SPRINTS_MASTER_PLAN.md#sprint-9--nba-matchup-analytics",
   "proposed_follow_up": {
     "status": "PROPOSED \u2014 awaiting approval",
     "plan_location": "docs/ALL_SPRINTS_MASTER_PLAN.md#post-sprint-8-data-correctness-proposed--awaiting-approval",

@@ -17,14 +17,19 @@ import { LoginError } from '../models';
   imports: [ReactiveFormsModule, RouterModule],
   template: `
     <div class="modal-box">
-      <h3 class="font-bold text-lg mb-2">Login</h3>
+      <h3 id="login-title" class="font-bold text-lg mb-2">Login</h3>
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
         <div class="form-control">
-          <label class="label">
+          <label class="label" for="login-username">
             <span class="label-text">Username</span>
           </label>
           <input
+            id="login-username"
+            name="username"
             type="text"
+            autocomplete="username"
+            autocapitalize="none"
+            spellcheck="false"
             formControlName="username"
             placeholder="Username"
             class="input input-bordered w-full"
@@ -36,11 +41,14 @@ import { LoginError } from '../models';
           }
         </div>
         <div class="form-control mt-2">
-          <label class="label">
+          <label class="label" for="login-password">
             <span class="label-text">Password</span>
           </label>
           <input
+            id="login-password"
+            name="password"
             type="password"
+            autocomplete="current-password"
             formControlName="password"
             placeholder="Password"
             class="input input-bordered w-full mt-2"
@@ -65,12 +73,21 @@ import { LoginError } from '../models';
               >
               Login
             </button>
-            <label for="login-modal" class="btn">Cancel</label>
+            <button
+              type="button"
+              class="btn"
+              data-testid="cancel-login"
+              (click)="closeModal.emit()"
+              >
+              Cancel
+            </button>
           </div>
         </form>
       </div>
     `,
-  styles: ``,
+  // daisyUI's modal grid needs .modal-box as a direct child next to
+  // .modal-backdrop, so the host element must not create its own box.
+  styles: `:host { display: contents; }`,
 })
 export class LoginComponent {
   loginForm: FormGroup;

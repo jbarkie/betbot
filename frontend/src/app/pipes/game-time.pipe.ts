@@ -1,5 +1,16 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
+/** Game times from the API are Eastern wall-clock times: `YYYY-MM-DD HH:mm[:ss]`. */
+const GAME_TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})(?::(\d{2}))?$/;
+
+// The browser's time zone database knows when Eastern Time switches between
+// EST and EDT, including any future rule changes, so the pipe does not
+// encode DST rules itself.
+const easternOffsetFormat = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York',
+  timeZoneName: 'longOffset',
+});
+
 @Pipe({
   name: 'gameTime',
   standalone: true,
@@ -10,57 +21,54 @@ export class GameTimePipe implements PipeTransform {
       return '';
     }
 
-    try {
-      const [dateStr, timeStr] = value.split(' ');
-      const [year, month, day] = dateStr.split('-').map(Number);
-
-      // Create a date object in Eastern timezone
-      const tempDate = new Date(year, month - 1, day); // month is 0-indexed
-
-      // Determine if Eastern Time is in DST on this date
-      const isDST = this.isEasternDST(tempDate);
-      const offset = isDST ? '-04:00' : '-05:00'; // EST vs EDT
-
-      // Create the ISO string with proper timezone offset
-      const easternTimeString = `${dateStr}T${timeStr}${offset}`;
-      const date = new Date(easternTimeString);
-
-      // Check if the date is valid
-      if (isNaN(date.getTime())) {
-        return value; // Return original value if parsing fails
-      }
-
-      // Format to show time in user's local timezone
-      return date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
-    } catch (error) {
-      console.error('Error formatting game time:', error);
-      return value; // Return original value on error
+    const match = GAME_TIME_PATTERN.exec(value);
+    if (!match) {
+      return value;
     }
+
+    const [year, month, day, hour, minute] = match.slice(1, 6).map(Number);
+    const second = Number(match[6] ?? 0);
+
+    // The wall-clock fields read as if they were UTC. Out-of-range fields
+    // (month 13, hour 25) roll over, so reject anything that changed.
+    const wallClockAsUtc = Date.UTC(year, month - 1, day, hour, minute, second);
+    const check = new Date(wallClockAsUtc);
+    if (
+      check.getUTCFullYear() !== year ||
+      check.getUTCMonth() !== month - 1 ||
+      check.getUTCDate() !== day ||
+      check.getUTCHours() !== hour ||
+      check.getUTCMinutes() !== minute ||
+      check.getUTCSeconds() !== second
+    ) {
+      return value;
+    }
+
+    // Shift by Eastern's offset, then re-read the offset at the shifted
+    // instant so times within hours of a DST switch use the right one.
+    const firstGuess = wallClockAsUtc - easternOffsetMs(wallClockAsUtc);
+    const instant = wallClockAsUtc - easternOffsetMs(firstGuess);
+
+    // Format to show time in the user's local time zone
+    return new Date(instant).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
   }
+}
 
-  private isEasternDST(date: Date): boolean {
-    const year = date.getFullYear();
-
-    // DST starts on the second Sunday in March
-    const marchSecondSunday = this.getNthSundayOfMonth(year, 2, 2); // March = 2
-
-    // DST ends on the first Sunday in November
-    const novemberFirstSunday = this.getNthSundayOfMonth(year, 10, 1); // November = 10
-
-    return date >= marchSecondSunday && date < novemberFirstSunday;
+/** Eastern Time's UTC offset in milliseconds at the given instant (e.g. -4h during EDT). */
+function easternOffsetMs(epochMs: number): number {
+  const zoneName =
+    easternOffsetFormat
+      .formatToParts(epochMs)
+      .find((part) => part.type === 'timeZoneName')?.value ?? '';
+  // "GMT-04:00"; a zero offset is written as plain "GMT"
+  const offset = /GMT([+-])(\d{2}):(\d{2})/.exec(zoneName);
+  if (!offset) {
+    return 0;
   }
-
-  private getNthSundayOfMonth(year: number, month: number, n: number): Date {
-    const firstDay = new Date(year, month, 1);
-    const firstSunday = new Date(
-      year,
-      month,
-      1 + ((7 - firstDay.getDay()) % 7)
-    );
-    return new Date(year, month, firstSunday.getDate() + (n - 1) * 7);
-  }
+  const sign = offset[1] === '-' ? -1 : 1;
+  return sign * (Number(offset[2]) * 60 + Number(offset[3])) * 60_000;
 }

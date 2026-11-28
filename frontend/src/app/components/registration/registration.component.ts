@@ -28,11 +28,16 @@ import { AuthStore } from '../../services/auth/auth.store';
       (ngSubmit)="onSubmit()"
       >
       <div class="form-control">
-        <label class="label">
+        <label class="label" for="register-username">
           <span class="label-text">Username</span>
         </label>
         <input
+          id="register-username"
+          name="username"
           type="text"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
           formControlName="username"
           placeholder="Username"
           class="input input-bordered w-full"
@@ -49,11 +54,14 @@ import { AuthStore } from '../../services/auth/auth.store';
         }
       </div>
       <div class="form-control mt-2">
-        <label class="label">
+        <label class="label" for="register-first-name">
           <span class="label-text">First Name</span>
         </label>
         <input
+          id="register-first-name"
+          name="firstName"
           type="text"
+          autocomplete="given-name"
           formControlName="firstName"
           placeholder="Johnny"
           class="input input-bordered w-full mt-2"
@@ -70,11 +78,14 @@ import { AuthStore } from '../../services/auth/auth.store';
         }
       </div>
       <div class="form-control mt-2">
-        <label class="label">
+        <label class="label" for="register-last-name">
           <span class="label-text">Last Name</span>
         </label>
         <input
+          id="register-last-name"
+          name="lastName"
           type="text"
+          autocomplete="family-name"
           formControlName="lastName"
           placeholder="Appleseed"
           class="input input-bordered w-full mt-2"
@@ -91,11 +102,14 @@ import { AuthStore } from '../../services/auth/auth.store';
         }
       </div>
       <div class="form-control mt-2">
-        <label class="label">
+        <label class="label" for="register-email">
           <span class="label-text">Email</span>
         </label>
         <input
+          id="register-email"
+          name="email"
           type="email"
+          autocomplete="email"
           formControlName="email"
           placeholder="Email"
           class="input input-bordered w-full mt-2"
@@ -117,11 +131,14 @@ import { AuthStore } from '../../services/auth/auth.store';
         }
       </div>
       <div class="form-control mt-2">
-        <label class="label">
+        <label class="label" for="register-password">
           <span class="label-text">Password</span>
         </label>
         <input
+          id="register-password"
+          name="password"
           type="password"
+          autocomplete="new-password"
           formControlName="password"
           placeholder="Password"
           class="input input-bordered w-full mt-2"
@@ -143,11 +160,14 @@ import { AuthStore } from '../../services/auth/auth.store';
         }
       </div>
       <div class="form-control mt-2">
-        <label class="label">
+        <label class="label" for="register-confirm-password">
           <span class="label-text">Confirm Password</span>
         </label>
         <input
+          id="register-confirm-password"
+          name="confirmPassword"
           type="password"
+          autocomplete="new-password"
           formControlName="confirmPassword"
           placeholder="Confirm Password"
           class="input input-bordered w-full mt-2"

@@ -12,9 +12,9 @@ import { NavBarComponent } from './nav-bar.component';
 
 const mockAuthStore = {
   isAuthenticated: signal(false),
-  isLoginModalDisplayed: jest.fn().mockReturnValue(false),
+  isLoginModalDisplayed: signal(false),
   shouldShowLoginModal: signal(false),
-  showLoginModal: signal(false),
+  showLoginModal: jest.fn(),
   logout: jest.fn(),
   hideLoginModal: jest.fn(),
 };
@@ -24,6 +24,10 @@ describe('NavBarComponent', () => {
   let fixture: ComponentFixture<NavBarComponent>;
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+    mockAuthStore.isAuthenticated.set(false);
+    mockAuthStore.isLoginModalDisplayed.set(false);
+
     await TestBed.configureTestingModule({
       imports: [NavBarComponent, LoginComponent],
       providers: [
@@ -67,27 +71,14 @@ describe('NavBarComponent', () => {
     expect(logoutOption.nativeElement.textContent).toContain('Logout');
   });
 
-  it('should set showLoginModal true when login option is clicked', () => {
-    component.openLoginModal();
-    expect(mockAuthStore.showLoginModal).toBeTruthy();
+  it('should call showLoginModal when the login option is clicked', () => {
+    fixture.nativeElement.querySelector('[data-testid="open-login"]').click();
+    expect(mockAuthStore.showLoginModal).toHaveBeenCalled();
   });
 
   it('should call hideLoginModal  when closing login modal', () => {
     component.closeLoginModal();
     expect(mockAuthStore.hideLoginModal).toHaveBeenCalled();
-  });
-
-  it('should toggle login modal based on checkbox state', () => {
-    const openSpy = jest.spyOn(component, 'openLoginModal');
-    const closeSpy = jest.spyOn(component, 'closeLoginModal');
-
-    const event = { target: { checked: true } } as any;
-    component.toggleLoginModal(event);
-    expect(openSpy).toHaveBeenCalled();
-
-    event.target.checked = false;
-    component.toggleLoginModal(event);
-    expect(closeSpy).toHaveBeenCalled();
   });
 
   it('should dispatch logout action and remove token when logging out', () => {
@@ -114,16 +105,82 @@ describe('NavBarComponent', () => {
     });
   });
 
-  it('should update login modal visibility based on auth store state', () => {
-    mockAuthStore.isLoginModalDisplayed.mockReturnValue(true);
-    fixture.detectChanges();
-    const modalToggle = fixture.debugElement.query(
-      By.css('input[type="checkbox"]')
+  it('should open and close the login dialog with auth store state', () => {
+    const dialog: HTMLDialogElement = fixture.nativeElement.querySelector(
+      '[data-testid="login-dialog"]'
     );
-    expect(modalToggle.nativeElement.checked).toBe(true);
+    expect(dialog.open).toBe(false);
 
-    mockAuthStore.isLoginModalDisplayed.mockReturnValue(false);
+    mockAuthStore.isLoginModalDisplayed.set(true);
     fixture.detectChanges();
-    expect(modalToggle.nativeElement.checked).toBe(false);
+    expect(dialog.open).toBe(true);
+
+    mockAuthStore.isLoginModalDisplayed.set(false);
+    fixture.detectChanges();
+    expect(dialog.open).toBe(false);
+  });
+
+  it('should call hideLoginModal when the dialog closes itself (Escape or backdrop)', () => {
+    mockAuthStore.isLoginModalDisplayed.set(true);
+    fixture.detectChanges();
+    const dialog: HTMLDialogElement = fixture.nativeElement.querySelector(
+      '[data-testid="login-dialog"]'
+    );
+
+    dialog.close();
+
+    expect(mockAuthStore.hideLoginModal).toHaveBeenCalled();
+  });
+
+  it('should close the login dialog when Cancel is clicked', () => {
+    mockAuthStore.isLoginModalDisplayed.set(true);
+    fixture.detectChanges();
+    const dialog: HTMLDialogElement = fixture.nativeElement.querySelector(
+      '[data-testid="login-dialog"]'
+    );
+
+    dialog.querySelector<HTMLButtonElement>('[data-testid="cancel-login"]')!.click();
+
+    expect(dialog.open).toBe(false);
+    expect(mockAuthStore.hideLoginModal).toHaveBeenCalled();
+  });
+
+  it('should clear the login form and its errors when the dialog closes', () => {
+    mockAuthStore.isLoginModalDisplayed.set(true);
+    fixture.detectChanges();
+    const dialog: HTMLDialogElement = fixture.nativeElement.querySelector(
+      '[data-testid="login-dialog"]'
+    );
+    const login = fixture.debugElement.query(By.directive(LoginComponent))
+      .componentInstance as LoginComponent;
+    login.loginForm.patchValue({ username: '', password: 'secret' });
+    login.loginForm.markAllAsTouched();
+    fixture.detectChanges();
+    expect(dialog.textContent).toContain('Username is required.');
+
+    dialog.close();
+    fixture.detectChanges();
+
+    expect(login.loginForm.get('password')?.value).toBeNull();
+    expect(dialog.textContent).not.toContain('Username is required.');
+  });
+
+  it('should clear touched state left over from a previous open when reopening', () => {
+    const login = fixture.debugElement.query(By.directive(LoginComponent))
+      .componentInstance as LoginComponent;
+    // Reopening moves focus, which can blur a field left focused last time
+    login.loginForm.markAllAsTouched();
+
+    mockAuthStore.isLoginModalDisplayed.set(true);
+    fixture.detectChanges();
+
+    expect(login.loginForm.touched).toBe(false);
+    expect(fixture.nativeElement.textContent).not.toContain('Username is required.');
+  });
+
+  it('should label the login dialog with its heading', () => {
+    const dialog = fixture.nativeElement.querySelector('[data-testid="login-dialog"]');
+    const labelId = dialog.getAttribute('aria-labelledby');
+    expect(fixture.nativeElement.querySelector(`#${labelId}`).textContent).toContain('Login');
   });
 });

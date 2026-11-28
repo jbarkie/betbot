@@ -194,4 +194,23 @@ describe('RegistrationComponent', () => {
       'Registration failed. Please try again.'
     );
   });
+
+  it('should mark fields for browser and password manager autofill', () => {
+    const expected: Record<string, string> = {
+      username: 'username',
+      firstName: 'given-name',
+      lastName: 'family-name',
+      email: 'email',
+      password: 'new-password',
+      confirmPassword: 'new-password',
+    };
+
+    for (const [control, autocomplete] of Object.entries(expected)) {
+      const input: HTMLInputElement = fixture.nativeElement.querySelector(
+        `input[formControlName="${control}"]`
+      );
+      expect(input.getAttribute('autocomplete')).toBe(autocomplete);
+      expect(fixture.nativeElement.querySelector(`label[for="${input.id}"]`)).not.toBeNull();
+    }
+  });
 });

@@ -139,7 +139,9 @@ import { AnalyticsResponse } from '../models';
       </div>
     </div>
   `,
-  styles: [],
+  // daisyUI's modal grid needs .modal-box as a direct child next to
+  // .modal-backdrop, so the host element must not create its own box.
+  styles: [':host { display: contents; }'],
 })
 export class AnalyticsModalComponent {
   analytics = input.required<AnalyticsResponse>();

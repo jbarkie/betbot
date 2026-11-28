@@ -15,7 +15,13 @@ describe('GameTimePipe', () => {
     // June 21st should be in DST (EDT = UTC-4)
     const testTime = '2025-06-21 19:30:00';
     const result = pipe.transform(testTime);
-    expect(result).toMatch(/\d{1}:\d{2}\s?PM/);
+    // Compare with the instant rather than "PM": 7:30 PM Eastern is morning in Asia
+    const expectedTime = new Date('2025-06-21T19:30:00-04:00').toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+    expect(result).toBe(expectedTime);
   });
 
   it('should format a valid datetime string to 12-hour format (Standard time period)', () => {
@@ -107,5 +113,30 @@ describe('GameTimePipe', () => {
       hour12: true,
     });
     expect(stdResult).toBe(expectedStdResult);
+  });
+
+  describe('around Eastern daylight saving switches', () => {
+    const format = (iso: string) =>
+      new Date(iso).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+
+    it('uses EST the day before DST starts and EDT on the switch day', () => {
+      // DST started on Sunday, March 8, 2026
+      expect(pipe.transform('2026-03-07 13:00:00')).toBe(format('2026-03-07T13:00:00-05:00'));
+      expect(pipe.transform('2026-03-08 13:00:00')).toBe(format('2026-03-08T13:00:00-04:00'));
+    });
+
+    it('uses EDT the day before DST ends and EST on the switch day', () => {
+      // DST ended on Sunday, November 1, 2026
+      expect(pipe.transform('2026-10-31 19:00:00')).toBe(format('2026-10-31T19:00:00-04:00'));
+      expect(pipe.transform('2026-11-01 19:00:00')).toBe(format('2026-11-01T19:00:00-05:00'));
+    });
+
+    it('accepts times without seconds', () => {
+      expect(pipe.transform('2025-06-21 19:30')).toBe(format('2025-06-21T19:30:00-04:00'));
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, ElementRef, effect, inject, input, signal, viewChild } from '@angular/core';
 import { Game, AnalyticsResponse } from '../models';
 import { AnalyticsService } from '../../services/analytics/analytics.service';
 import { firstValueFrom } from 'rxjs';
@@ -61,17 +61,25 @@ import { AnalyticsModalComponent } from '../analytics-modal/analytics-modal.comp
       </figure>
     </div>
 
-    <!-- Analytics Modal -->
-    @if (analyticsData()) {
-    <input type="checkbox" id="analytics-modal" class="modal-toggle" checked />
-    <div class="modal" role="dialog">
-      <div class="modal-backdrop" (click)="closeAnalyticsModal()"></div>
+    <!-- Analytics Modal: a native modal dialog, so focus is trapped, the
+         page behind is inert, and Escape or a backdrop click closes it. -->
+    <dialog
+      #analyticsDialog
+      class="modal"
+      aria-label="Game analytics"
+      data-testid="analytics-dialog"
+      (close)="closeAnalyticsModal()"
+    >
+      @if (analyticsData(); as analytics) {
       <app-analytics-modal
-        [analytics]="analyticsData()!"
-        (close)="closeAnalyticsModal()"
+        [analytics]="analytics"
+        (close)="analyticsDialog.close()"
       ></app-analytics-modal>
-    </div>
-    }`,
+      }
+      <form method="dialog" class="modal-backdrop">
+        <button tabindex="-1">Close</button>
+      </form>
+    </dialog>`,
   styles: [],
 })
 export class GameComponent {
@@ -81,6 +89,21 @@ export class GameComponent {
   isAnalyzing = signal(false);
   analyticsData = signal<AnalyticsResponse | null>(null);
   analyticsError = signal<string | null>(null);
+
+  private analyticsDialog = viewChild.required<ElementRef<HTMLDialogElement>>('analyticsDialog');
+
+  constructor() {
+    // Open the dialog once analytics arrive; closing it clears them.
+    effect(() => {
+      const dialog = this.analyticsDialog().nativeElement;
+      const hasAnalytics = this.analyticsData() !== null;
+      if (hasAnalytics && !dialog.open) {
+        dialog.showModal();
+      } else if (!hasAnalytics && dialog.open) {
+        dialog.close();
+      }
+    });
+  }
 
   getImageSrc(sport: string, teamString: string) {
     const teamName = this.normalizeTeamName(teamString);

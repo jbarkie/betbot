@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, ElementRef, effect, inject, untracked, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LoginComponent } from '../login/login.component';
 
@@ -74,7 +74,13 @@ import { AuthStore } from '../../services/auth/auth.store';
               >
               @if (!authStore.isAuthenticated()) {
                 <li>
-                  <label for="login-modal" class="modal-button">Login</label>
+                  <button
+                    type="button"
+                    data-testid="open-login"
+                    (click)="openLoginModal()"
+                  >
+                    Login
+                  </button>
                 </li>
               }
               @if (authStore.isAuthenticated()) {
@@ -87,36 +93,53 @@ import { AuthStore } from '../../services/auth/auth.store';
           </div>
         </div>
       </div>
-      <input
-        type="checkbox"
-        id="login-modal"
-        class="modal-toggle"
-        [checked]="authStore.isLoginModalDisplayed()"
-        (change)="toggleLoginModal($event)"
-        />
-      <div class="modal">
-        <app-login (closeModal)="closeLoginModal()"></app-login>
-      </div>`,
+      <!-- Native modal dialog: the browser traps focus, makes the page
+           behind it inert, closes it on Escape and restores focus. -->
+      <dialog
+        #loginDialog
+        class="modal"
+        aria-labelledby="login-title"
+        data-testid="login-dialog"
+        (close)="closeLoginModal()"
+      >
+        <app-login (closeModal)="loginDialog.close()"></app-login>
+        <form method="dialog" class="modal-backdrop">
+          <button tabindex="-1">Close</button>
+        </form>
+      </dialog>`,
   styles: [],
 })
 export class NavBarComponent {
   protected authStore = inject(AuthStore);
+  private loginDialog = viewChild.required<ElementRef<HTMLDialogElement>>('loginDialog');
+  private loginForm = viewChild.required(LoginComponent);
+
+  constructor() {
+    // The auth store owns whether the login modal is shown (the auth guard
+    // opens it too), so the dialog follows the store.
+    effect(() => {
+      const dialog = this.loginDialog().nativeElement;
+      const shouldShow = this.authStore.isLoginModalDisplayed();
+      if (shouldShow && !dialog.open) {
+        dialog.showModal();
+        // Opening moves focus to the username field. A field still focused
+        // from the last time blurs during that move and Angular marks it
+        // touched, so clear that state now.
+        untracked(() => this.loginForm().loginForm.markAsUntouched());
+      } else if (!shouldShow && dialog.open) {
+        dialog.close();
+      }
+    });
+  }
 
   openLoginModal() {
     this.authStore.showLoginModal();
   }
 
   closeLoginModal() {
+    // Clear typed credentials and validation state when the dialog closes.
+    this.loginForm().loginForm.reset();
     this.authStore.hideLoginModal();
-  }
-
-  toggleLoginModal(event: Event) {
-    const isChecked = (event.target as HTMLInputElement).checked;
-    if (isChecked) {
-      this.openLoginModal();
-    } else {
-      this.closeLoginModal();
-    }
   }
 
   logout() {

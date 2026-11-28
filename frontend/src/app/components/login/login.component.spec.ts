@@ -137,4 +137,23 @@ describe('LoginComponent', () => {
     component.onRegisterLinkClick();
     expect(mockAuthStore.hideLoginModal).toHaveBeenCalled();
   });
+
+  it('should emit closeModal when Cancel is clicked', () => {
+    const closeSpy = jest.fn();
+    component.closeModal.subscribe(closeSpy);
+
+    fixture.nativeElement.querySelector('[data-testid="cancel-login"]').click();
+
+    expect(closeSpy).toHaveBeenCalled();
+  });
+
+  it('should mark fields for password manager autofill', () => {
+    const username = fixture.nativeElement.querySelector('input[formControlName="username"]');
+    const password = fixture.nativeElement.querySelector('input[formControlName="password"]');
+
+    expect(username.getAttribute('autocomplete')).toBe('username');
+    expect(password.getAttribute('autocomplete')).toBe('current-password');
+    expect(fixture.nativeElement.querySelector(`label[for="${username.id}"]`)).not.toBeNull();
+    expect(fixture.nativeElement.querySelector(`label[for="${password.id}"]`)).not.toBeNull();
+  });
 });

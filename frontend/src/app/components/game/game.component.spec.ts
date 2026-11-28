@@ -132,7 +132,8 @@ describe('GameComponent', () => {
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector('[data-testid="analytics-error"]').textContent)
         .toContain('Game analytics are unavailable');
-      expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+      const dialog: HTMLDialogElement = fixture.nativeElement.querySelector('[data-testid="analytics-dialog"]');
+      expect(dialog.open).toBe(false);
       expect(analyzeButton.disabled).toBe(false);
 
       analyzeButton.click();
@@ -149,10 +150,55 @@ describe('GameComponent', () => {
       await fixture.whenStable();
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector('[data-testid="analytics-error"]')).toBeNull();
-      const dialog = fixture.nativeElement.querySelector('[role="dialog"]');
+      expect(dialog.open).toBe(true);
       expect(dialog.textContent).toContain('Market Favorite');
-      expect(dialog.querySelector('[data-testid="home-win-pct"]').textContent).toContain('58.0%');
+      expect(dialog.querySelector('[data-testid="home-win-pct"]')!.textContent).toContain('58.0%');
       http.verify();
+    });
+  });
+
+  describe('analytics dialog', () => {
+    const analytics = {
+      id: '1',
+      home_team: 'Boston Red Sox',
+      away_team: 'New York Yankees',
+      predicted_winner: 'Boston Red Sox',
+      win_probability: 0.6,
+      prediction_method: 'machine_learning',
+    } as any;
+
+    function openDialog(): HTMLDialogElement {
+      component.analyticsData.set(analytics);
+      fixture.detectChanges();
+      return fixture.nativeElement.querySelector('[data-testid="analytics-dialog"]');
+    }
+
+    it('opens when analytics arrive', () => {
+      const dialog = openDialog();
+      expect(dialog.open).toBe(true);
+      expect(dialog.getAttribute('aria-label')).toBe('Game analytics');
+    });
+
+    it('closes and clears analytics when the Close button is clicked', () => {
+      const dialog = openDialog();
+      const closeButton = Array.from(
+        dialog.querySelectorAll<HTMLButtonElement>('.modal-action button')
+      ).find((button) => button.textContent?.trim() === 'Close')!;
+
+      closeButton.click();
+      fixture.detectChanges();
+
+      expect(dialog.open).toBe(false);
+      expect(component.analyticsData()).toBeNull();
+      expect(dialog.querySelector('app-analytics-modal')).toBeNull();
+    });
+
+    it('clears analytics when the dialog closes itself (Escape or backdrop)', () => {
+      const dialog = openDialog();
+
+      dialog.close();
+
+      expect(component.analyticsData()).toBeNull();
     });
   });
 

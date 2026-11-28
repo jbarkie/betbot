@@ -123,7 +123,7 @@ describe('AuthStore', () => {
       expect(store.shouldShowLoginModal()).toEqual(false);
     });
 
-    it('should set error when registration fails', async () => {
+    it('should set error and rethrow when registration fails', async () => {
       const mockRequest: RegisterRequest = {
         email: 'test@example.com',
         password: 'password123',
@@ -135,7 +135,7 @@ describe('AuthStore', () => {
 
       registrationService.register.mockReturnValue(throwError(() => mockError));
 
-      await store.register(mockRequest);
+      await expect(store.register(mockRequest)).rejects.toBe(mockError);
 
       expect(registrationService.register).toHaveBeenCalledWith(mockRequest);
       expect(store.isAuthenticated()).toEqual(false);

@@ -65,6 +65,8 @@ export const AuthStore = signalStore(
           error: error instanceof Error ? error.message : 'Registration failed',
           shouldShowLoginModal: false,
         });
+        // Rethrow so the caller can show a message for the HTTP status.
+        throw error;
       }
     },
 

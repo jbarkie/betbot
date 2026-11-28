@@ -175,4 +175,23 @@ describe('RegistrationComponent', () => {
       'Username already exists.'
     );
   });
+
+  it('should show a generic message for other registration errors', async () => {
+    component.registration.patchValue({
+      username: 'testuser',
+      firstName: 'Test',
+      lastName: 'User',
+      email: 'test@example.com',
+      password: 'password123',
+      confirmPassword: 'password123',
+    });
+    mockAuthStore.register.mockRejectedValue({ status: 500 });
+
+    await component.onSubmit();
+
+    expect(router.navigate).not.toHaveBeenCalled();
+    expect(toastService.showError).toHaveBeenCalledWith(
+      'Registration failed. Please try again.'
+    );
+  });
 });
